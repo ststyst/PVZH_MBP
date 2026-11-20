@@ -165,3 +165,74 @@ func test_hero_required() -> void:
 	bad_hero.hero_id = "not_a_hero"
 	var bad_errors: Array[String] = DeckRules.validate(bad_hero, cards, heroes, mode)
 	assert_true(_has_error(bad_errors, "英雄不存在"), "英雄不存在应报错：%s" % [bad_errors])
+
+
+func _profile_with(card_ids: Array, count: int = 1) -> PlayerProfile:
+	var profile := PlayerProfile.create_default("选择测试")
+	for card_id: String in card_ids:
+		profile.add_card(card_id, count)
+	return profile
+
+
+func _ids_of(entries: Array[Dictionary]) -> Array[String]:
+	var ids: Array[String] = []
+	for entry: Dictionary in entries:
+		ids.append(str(entry.get("card_id", "")))
+	return ids
+
+
+func test_selectable_cards_filtered_by_hero() -> void:
+	var profile: PlayerProfile = _profile_with([
+		"pvzh:turtle", "pvzh:fireball", "pvzh:hound", "pvzh:frostbolt", "pvzh:gnoll",
+	])
+	profile.add_card("pvzh:turtle", 2)
+	var deck: DeckData = _empty_deck("green_knight")
+	var entries: Array[Dictionary] = DeckRules.selectable_cards(profile, deck, cards, heroes, mode)
+	var ids: Array[String] = _ids_of(entries)
+	assert_true(ids.has("pvzh:turtle"), "中立卡应可选")
+	assert_true(ids.has("pvzh:gnoll"), "中立卡应可选")
+	assert_true(ids.has("pvzh:fireball"), "英雄专属卡应可选")
+	assert_false(ids.has("pvzh:hound"), "职业不符的卡不应出现")
+	assert_false(ids.has("pvzh:frostbolt"), "非专属且职业不符不应出现")
+	for entry: Dictionary in entries:
+		if str(entry.get("card_id", "")) != "pvzh:turtle":
+			continue
+		assert_eq(int(entry.get("owned", 0)), 3, "拥有数量应包含重复")
+		assert_eq(int(entry.get("in_deck", 0)), 0)
+		assert_eq(int(entry.get("max_copies", 0)), 4)
+		assert_eq(int(entry.get("remaining", 0)), 4)
+		assert_true(bool(entry.get("can_add", false)))
+		assert_false(bool(entry.get("is_hero_special", true)))
+
+
+func test_selectable_cards_exclude_not_owned_and_locked() -> void:
+	var profile: PlayerProfile = _profile_with(["pvzh:turtle"])
+	var locked: CardData = _inject_card("pvzh:test_locked", "normal", false)
+	profile.add_card(locked.card_id, 1)
+	var deck: DeckData = _empty_deck("green_knight")
+	var ids: Array[String] = _ids_of(DeckRules.selectable_cards(profile, deck, cards, heroes, mode))
+	assert_true(ids.has("pvzh:turtle"))
+	assert_false(ids.has("pvzh:test_locked"), "deck_includable=0 不应出现")
+	assert_false(ids.has("pvzh:fireball"), "未拥有的卡不应出现")
+
+
+func test_selectable_cards_without_hero_shows_all_owned() -> void:
+	var profile: PlayerProfile = _profile_with(["pvzh:hound", "pvzh:frostbolt"])
+	var deck := DeckData.new()
+	var ids: Array[String] = _ids_of(DeckRules.selectable_cards(profile, deck, cards, heroes, mode))
+	assert_true(ids.has("pvzh:hound"), "未选英雄时不做职业过滤")
+	assert_true(ids.has("pvzh:frostbolt"), "未选英雄时不做职业过滤")
+
+
+func test_selectable_cards_can_add_false_at_limit() -> void:
+	var profile: PlayerProfile = _profile_with(["pvzh:gnoll"])
+	var deck: DeckData = _empty_deck("green_knight")
+	for _index: int in range(4):
+		deck.add_card("pvzh:gnoll")
+	var entries: Array[Dictionary] = DeckRules.selectable_cards(profile, deck, cards, heroes, mode)
+	for entry: Dictionary in entries:
+		if str(entry.get("card_id", "")) != "pvzh:gnoll":
+			continue
+		assert_false(bool(entry.get("can_add", true)), "达到张数上限时 can_add 应为 false")
+		assert_eq(int(entry.get("in_deck", 0)), 4)
+		assert_eq(int(entry.get("remaining", -1)), 0)

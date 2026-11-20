@@ -323,6 +323,8 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 | `set_deck_hero(deck_id, hero_id)` | `{ok, message, errors, tags}` | 切换英雄并刷新标签 |
 | `add_card(deck_id, card_id)` | `{ok, message, count}` | 校验张数/稀有度上限/职业/专属/可编入 |
 | `remove_card(deck_id, card_id)` | `{ok, message, count}` | 移除一张 |
+| `get_available_cards(deck_id)` | `Array[Dictionary]` | 可选卡牌列表：只含背包中拥有、可编入、且符合英雄职业/中立/专属的卡；每项含 `card`、`owned`、`in_deck`、`max_copies`、`remaining`、`can_add`、`is_hero_special` |
+| `get_available_card_ids(deck_id)` | `Array[String]` | 可选卡牌 ID 的便捷版 |
 | `save_deck(deck_id)` | `{ok, message, errors, tags}` | 保存必定成功；仅按规则刷新 `default` 标签（不符合时移除标签，`errors` 供 UI 提示） |
 
 `DeckData` 字段：`deck_id`、`deck_name`、`hero_id`、`allowed_classes`、`card_ids`、`tags`、`updated_at_unix`；

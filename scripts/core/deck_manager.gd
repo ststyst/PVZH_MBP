@@ -61,6 +61,23 @@ func get_deck_errors(deck_id: String) -> Array[String]:
 	return DeckRules.validate(deck, CardDatabase, HeroDatabase, ModeManager.get_mode())
 
 
+## 当前牌组可选择的卡牌列表（牌组编辑器用）：
+## 只显示玩家背包中拥有、可编入、且符合英雄职业（或中立/专属）的卡。
+func get_available_cards(deck_id: String) -> Array[Dictionary]:
+	var deck: DeckData = get_deck(deck_id)
+	if deck == null:
+		return []
+	return DeckRules.selectable_cards(_profile(), deck, CardDatabase, HeroDatabase, ModeManager.get_mode())
+
+
+## 可选卡牌 ID 列表（便捷版）。
+func get_available_card_ids(deck_id: String) -> Array[String]:
+	var ids: Array[String] = []
+	for entry: Dictionary in get_available_cards(deck_id):
+		ids.append(str(entry.get("card_id", "")))
+	return ids
+
+
 # ----- 新增 / 删除 / 改名 / 换英雄 -----
 
 ## 创建牌组；deck_name 为空时自动生成「英雄名#三位数字」。

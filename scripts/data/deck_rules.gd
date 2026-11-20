@@ -99,3 +99,56 @@ static func refresh_tags(deck: DeckData, card_database, hero_database, mode: Gam
 		else:
 			deck.remove_tag(TAG_DEFAULT)
 	return errors
+
+
+## 当前牌组可选择的卡牌列表（供牌组编辑器展示）。
+## - 只包含玩家背包中拥有的卡（owned_cards 数量 > 0）且 deck_includable 的卡
+## - 牌组已选英雄时：只保留英雄两个职业 + 中立职业 + 英雄专属卡牌（与编入规则一致）
+## - 未选英雄时：不按职业过滤，展示全部拥有且可编入的卡
+## 每项为 Dictionary：card / card_id / english_name / display_name / owned / in_deck /
+##   max_copies / remaining / can_add / is_hero_special
+static func selectable_cards(
+	profile: PlayerProfile,
+	deck: DeckData,
+	card_database,
+	hero_database,
+	mode: GameModeConfig = null,
+) -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	if profile == null or deck == null or card_database == null or hero_database == null:
+		return result
+	var active_mode: GameModeConfig = mode if mode != null else GameModeConfig.default_config()
+	var hero: HeroData = hero_database.get_hero(deck.hero_id)
+	var neutral_classes: Array[String] = card_database.get_neutral_classes()
+	var deck_full: bool = deck.card_count() >= active_mode.deck_max_size
+	for card_id: Variant in profile.owned_cards.keys():
+		var owned_count: int = profile.get_card_count(str(card_id))
+		if owned_count <= 0:
+			continue
+		var card: CardData = card_database.get_card(str(card_id))
+		if card == null or not card.deck_includable:
+			continue
+		if hero != null and not class_allowed(card, hero, neutral_classes):
+			continue
+		var in_deck: int = deck.count_of(card.card_id)
+		var max_copies: int = max_copies_for(card, card_database, active_mode)
+		result.append({
+			"card": card,
+			"card_id": card.card_id,
+			"english_name": card.english_name,
+			"display_name": card.display_name(),
+			"owned": owned_count,
+			"in_deck": in_deck,
+			"max_copies": max_copies,
+			"remaining": maxi(max_copies - in_deck, 0),
+			"can_add": (not deck_full) and in_deck < max_copies,
+			"is_hero_special": hero != null and hero.is_special_card(card.card_id),
+		})
+	result.sort_custom(func(first: Dictionary, second: Dictionary) -> bool:
+		var first_card: CardData = first.get("card")
+		var second_card: CardData = second.get("card")
+		if first_card.cost != second_card.cost:
+			return first_card.cost < second_card.cost
+		return first_card.display_name() < second_card.display_name()
+	)
+	return result
