@@ -23,7 +23,7 @@
 - 玩法配置：`data/modes/default_mode.json`（牌组上限/满编/稀有度张数/英雄生命/初始费用与抽牌；可被 `user://modes/default_mode.json` 覆盖）。
 - 牌组管理 API：新建/删除/编辑/加牌/去牌/改名/换英雄、重名规则、`default` 标签。
 - 牌组编辑界面（`scenes/deck/DeckEditor.tscn`）：可选卡牌列表、选中/移除/信息下拉菜单、卡牌信息弹窗。
-- 卡牌美术：CSV `art_path` 列 + `CardArt` 加载（留空回退纯色外观）。
+- 卡牌美术：稀有度卡牌背景（`assets/cards/backgrounds/`）+ CSV `art_path` 外观图；缺图回退纯色外观。
 - 单机战斗：`scenes/battle/BattlePrep.tscn` 准备 + `Battle.tscn` 对战；推荐卡组 CSV（`data/battle`）；简单 AI。
 - 30 张示例卡数据（`data/cards/official/cards.csv`，CSV 数据驱动）+ 能力 DSL
   （`docs/EffectDsl.md`：变量、四则运算、条件目标、实体事件与过滤）。

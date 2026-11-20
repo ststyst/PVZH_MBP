@@ -255,7 +255,9 @@ ConfirmService.show_message(LoginFlow.get_developer_message(), "开发者的话"
 以及加载时解析的 `class_label` / `rarity_label` / `keyword_labels` / `tribe_labels`。
 
 卡面加载：`CardArt.get_texture(path)`（带缓存；空/缺失返回 null，回退纯色外观），
-列表格子与详情弹窗在 `art_path` 非空时显示图片。
+`CardArt.get_card_background(rarity)` / `get_card_background_style(rarity)`
+（按稀有度读取 `assets/cards/backgrounds/<rarity>.png`，9 宫格 32px；缺图返回 null 并回退默认样式）。
+列表格子与详情弹窗会先铺稀有度背景，再叠加 `art_path` 外观图。
 
 方法：`display_name()`、`is_entity()`、`get_type_text()`、`get_class_text()`、`get_rarity_text()`、
 `get_keywords_text()`、`get_tribes_text()`、`has_keyword()`、`max_copies()`、`craft_cost()`、`disenchant_value()`。

@@ -28,10 +28,10 @@ theme_override_constants/separation = 4
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
-custom_minimum_size = Vector2(0, 64)
+custom_minimum_size = Vector2(0, 84)
 mouse_filter = 2
 expand_mode = 1
-stretch_mode = 5
+stretch_mode = 6
 
 [node name="CardName" type="Label" parent="Content/VBox"]
 unique_name_in_owner = true

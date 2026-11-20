@@ -56,6 +56,10 @@ func _apply_art(card: CardData) -> void:
 
 
 func _apply_rarity_style(rarity: String) -> void:
+	var background: StyleBoxTexture = CardArt.get_card_background_style(rarity)
+	if background != null:
+		card_frame.add_theme_stylebox_override("panel", background)
+		return
 	var box := StyleBoxFlat.new()
 	box.bg_color = Color(0.10, 0.11, 0.15)
 	box.border_color = _rarity_color(rarity)

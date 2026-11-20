@@ -23,6 +23,7 @@ var card_id: String = ""
 ## status_text 非空时替换左下角状态文字（例如“拥有 2 · 编入 1”）。
 func setup(card: CardData, owned_count: int, status_text: String = "") -> void:
 	card_id = card.card_id
+	_apply_background(card.rarity)
 	name_label.text = card.display_name()
 	name_label.add_theme_color_override("font_color", _rarity_color(card.rarity))
 	meta_label.text = _build_meta_text(card)
@@ -54,6 +55,15 @@ func _apply_art(card: CardData) -> void:
 	var texture: Texture2D = CardArt.get_texture(card.art_path)
 	art_texture.visible = texture != null
 	art_texture.texture = texture
+
+
+## 卡牌背景按稀有度切换；缺少素材时保持默认按钮外观。
+func _apply_background(rarity: String) -> void:
+	var style: StyleBoxTexture = CardArt.get_card_background_style(rarity)
+	if style == null:
+		return
+	for state: String in ["normal", "hover", "pressed", "disabled", "focus"]:
+		add_theme_stylebox_override(state, style)
 
 
 func _update_owned_text(owned_count: int) -> void:

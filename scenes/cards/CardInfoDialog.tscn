@@ -46,7 +46,7 @@ visible = false
 layout_mode = 2
 custom_minimum_size = Vector2(0, 160)
 expand_mode = 1
-stretch_mode = 5
+stretch_mode = 6
 
 [node name="TopRow" type="HBoxContainer" parent="Margin/VBox/CardFrame/CardMargin/CardVBox"]
 layout_mode = 2

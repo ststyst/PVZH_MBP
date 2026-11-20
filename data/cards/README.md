@@ -55,8 +55,19 @@ english_name,chinese_name,kind,cost,attack,health,shield,class,rarity,keywords,t
 | `tribes` | string | 流派，逗号分隔；必须是配置中的 tribe |
 | `ability` | string | 特殊能力，伪代码（见下） |
 | `description` | string | 中文简介，卡牌详情页底部显示 |
-| `art_path` | string | 卡牌美术贴图路径（如 `res://assets/textures/cards/fireball.png`）；留空回退纯色外观 |
+| `art_path` | string | 卡牌外观图路径（如 `res://assets/cards/art/fireball.png`）；留空只显示稀有度背景 |
 | `deck_includable` | int | 是否可被牌组编入：`1` 可（默认），`0` 不可 |
+
+### 卡面组成与素材尺寸
+
+卡面 = **稀有度背景**（`assets/cards/backgrounds/<rarity>.png`）+ **外观图**（`art_path`）。
+
+- 背景按稀有度取图：`normal.png`、`rare.png`、`super_rare.png`、`legend.png`、`unknown.png`；
+  缺图时回退默认纯色卡牌。背景按 9 宫格拉伸，边距 32 px。
+- 参考尺寸：背景 **512×640 px（4:5）**，可出 1024×1280；
+  外观图建议 **768×512 px（3:2）**（或 512×512），主体居中并留 8% 安全边。
+- 列表格子显示 160×200，详情弹窗卡面约 320×480；外观图按 cover 裁切。
+- 详见 `assets/cards/backgrounds/README.md`。
 
 ### 词缀（由代码决定）
 
