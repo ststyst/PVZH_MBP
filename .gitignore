@@ -1,3 +1,6 @@
 # Godot 4+ specific ignores
 .godot/
 /android/
+
+# 插件目录（本地使用，不随仓库分发）
+addons/
