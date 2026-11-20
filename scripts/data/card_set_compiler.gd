@@ -1,4 +1,4 @@
-﻿class_name CardSetCompiler
+class_name CardSetCompiler
 extends RefCounted
 ## 卡牌 CSV 编译器（开发者测试界面调用）：
 ## - 读取指定目录下的 config.csv / cards.csv
@@ -107,6 +107,9 @@ static func compile_pack(
 			warnings.append("%s：锦囊牌的攻/血/防应为 0（当前 %d/%d/%d）。" % [row_label, attack, health, shield])
 		var keywords: Array[String] = _parse_keywords(row, header, row_label, errors)
 		var tribes: Array[String] = _parse_tribes(row, header, config, row_label, errors)
+		var deck_includable: bool = _flag_cell(
+			row, header, "deck_includable", "deck_includable（是否可编入牌组）", row_label, errors
+		)
 		var ability: String = _cell(row, header, "ability").strip_edges()
 		var ability_script: CardEffectScript = CardEffectScript.parse(ability)
 		for problem: String in ability_script.errors:
@@ -138,6 +141,7 @@ static func compile_pack(
 		card.rarity = rarity
 		card.keywords = keywords
 		card.tribes = tribes
+		card.deck_includable = deck_includable
 		card.ability = ability
 		card.ability_script = ability_script
 		card.class_label = config.class_label(card_class)
@@ -330,6 +334,26 @@ static func _parse_tribes(
 		if not result.has(tribe_id):
 			result.append(tribe_id)
 	return result
+
+
+## 读取 0/1 布尔列；缺省/空值视为 1（true）。
+static func _flag_cell(
+	row: PackedStringArray,
+	header: Dictionary,
+	column: String,
+	column_label: String,
+	row_label: String,
+	errors: Array[String],
+) -> bool:
+	if not header.has(column):
+		return true
+	var raw: String = _cell(row, header, column).strip_edges()
+	if raw.is_empty() or raw == "1":
+		return true
+	if raw == "0":
+		return false
+	errors.append("%s：%s必须是 0 或 1（当前 %s）。" % [row_label, column_label, raw])
+	return true
 
 
 static func _read_csv(path: String) -> Array[PackedStringArray]:

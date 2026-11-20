@@ -1,4 +1,4 @@
-﻿extends Node
+extends Node
 ## 卡牌数据库：从 CSV 载入全局配置与卡牌数据（数据驱动）。
 ##
 ## 官方卡牌目录：res://data/cards/official/
@@ -245,6 +245,7 @@ func _load_row(
 	card.shield = _parse_int(row, header, "shield", english_name)
 	card.card_class = card_class
 	card.rarity = rarity
+	card.deck_includable = _parse_deck_includable(row, header, english_name, row_number)
 	card.ability = _cell(row, header, "ability").strip_edges()
 	card.ability_script = CardEffectScript.parse(card.ability)
 	for problem: String in card.ability_script.errors:
@@ -309,6 +310,24 @@ func _parse_int(row: PackedStringArray, header: Dictionary, column: String, engl
 		load_errors.append("卡牌 %s 的 %s 不是整数：%s（按 0 处理）" % [english_name, column, raw])
 		return 0
 	return int(raw)
+
+
+## deck_includable：0 不可编入、1 可编入；缺省/空值按 1 处理。
+func _parse_deck_includable(
+	row: PackedStringArray,
+	header: Dictionary,
+	english_name: String,
+	row_number: int,
+) -> bool:
+	var raw: String = _cell(row, header, "deck_includable").strip_edges()
+	if raw.is_empty() or raw == "1":
+		return true
+	if raw == "0":
+		return false
+	load_errors.append(
+		"第 %d 行 deck_includable 必须为 0 或 1（%s，当前 %s），按 1 处理。" % [row_number, english_name, raw]
+	)
+	return true
 
 
 func _read_csv(path: String) -> Array[PackedStringArray]:

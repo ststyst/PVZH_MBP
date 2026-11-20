@@ -34,12 +34,16 @@ static func validate(deck: DeckData, database) -> Array[String]:
 			errors.append("卡牌 %s 有 %d 张，最多 %d 张。" % [card_id, copies, card.max_copies()])
 		if card.card_class != "neutral" and not deck.allowed_classes.has(card.card_class):
 			errors.append("卡牌 %s 的职业 %s 不在允许范围内。" % [card_id, card.card_class])
+		if not card.deck_includable:
+			errors.append("卡牌 %s 不可被编入牌组。" % card_id)
 	return errors
 
 
 ## 添加一张牌是否合法（用于牌组编辑器高亮/禁用）。
 static func can_add_card(deck: DeckData, card: CardData, database) -> bool:
 	if deck == null or card == null or database == null:
+		return false
+	if not card.deck_includable:
 		return false
 	if deck.card_count() >= DeckData.MAX_CARD_COUNT:
 		return false

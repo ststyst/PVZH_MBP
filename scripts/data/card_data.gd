@@ -1,4 +1,4 @@
-﻿class_name CardData
+class_name CardData
 extends Resource
 ## 一张卡牌的静态定义（由 CSV 载入，数据驱动）。
 ## 内部唯一标识 card_id 带命名空间前缀：官方 "pvzh:<英文名>"，模组 "<作者.模组>:<英文名>"。
@@ -39,6 +39,9 @@ var rarity: String = ""
 var keywords: Array[String] = []
 ## 已通过校验的流派 id
 var tribes: Array[String] = []
+
+## 是否可被牌组编入（CSV 列 deck_includable：0 不可、1 可；省略视为 1）
+var deck_includable: bool = true
 
 ## 伪代码形式的具体能力（由解释器执行）
 var ability: String = ""
@@ -82,6 +85,11 @@ func get_tribes_text() -> String:
 
 func has_keyword(keyword: String) -> bool:
 	return keywords.has(CardKeywords.normalize(keyword))
+
+
+## 是否可以被牌组编入（牌组规则使用）。
+func is_deck_includable() -> bool:
+	return deck_includable
 
 
 ## 是否写有可执行的能力（非空且编译无语法错误）。
@@ -134,6 +142,7 @@ func to_pack_dict() -> Dictionary:
 		"tribe_labels": tribe_labels.duplicate(),
 		"ability_program": program,
 		"ability_errors": ability_errors,
+		"deck_includable": deck_includable,
 	}
 
 
@@ -152,6 +161,7 @@ static func from_pack_dict(data: Dictionary, card_namespace: String = "") -> Car
 	card.shield = int(data.get("shield", 0))
 	card.card_class = str(data.get("card_class", "neutral"))
 	card.rarity = str(data.get("rarity", "unknown"))
+	card.deck_includable = bool(data.get("deck_includable", true))
 	card.ability = str(data.get("ability", ""))
 	card.class_label = str(data.get("class_label", ""))
 	card.rarity_label = str(data.get("rarity_label", ""))

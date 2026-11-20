@@ -54,6 +54,7 @@ english_name,chinese_name,kind,cost,attack,health,shield,class,rarity,keywords,t
 | `tribes` | string | 流派，逗号分隔；必须是配置中的 tribe |
 | `ability` | string | 特殊能力，伪代码（见下） |
 | `description` | string | 中文简介，卡牌详情页底部显示 |
+| `deck_includable` | int | 是否可被牌组编入：`1` 可（默认），`0` 不可 |
 
 ### 词缀（由代码决定）
 
@@ -107,7 +108,8 @@ when die: heal(hero, 3)
 
 - 待编译目录：`user://card_packs/import/`（放 `config.csv` / `cards.csv`）。
 - 调用 `DeveloperTools.compile_card_set()`（源码目录可指定）：
-  - 校验全局配置、职业/稀有度/词缀/流派、数值规则（费用必须为正、实体生命 ≥1 等）、伪代码语法与实体/锦囊语义；
+  - 校验全局配置、职业/稀有度/词缀/流派、数值规则（费用必须为正、实体生命 ≥1 等）、伪代码语法与实体/锦囊语义、
+    `deck_includable` 必须为 0/1；
   - 报错写入 `user://card_packs/compile_report.txt`，带行号与原因；
   - 全部通过时生成 `user://card_packs/compiled/<命名空间>.cardpack`（已编译能力程序，跳过运行时解析）。
 - 启动时若存在 `user://card_packs/compiled/official.cardpack`，`CardDatabase` 会优先读取它（更快）；

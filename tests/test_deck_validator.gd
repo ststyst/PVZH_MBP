@@ -106,3 +106,35 @@ func test_can_add_card() -> void:
 	assert_true(DeckValidator.can_add_card(deck, fireball, database))
 	assert_true(DeckValidator.can_add_card(deck, turtle, database), "中立牌始终允许")
 	assert_false(DeckValidator.can_add_card(deck, charger, database), "职业不符不能加入")
+
+
+class StubDatabase:
+	var values: Dictionary = {}
+
+	func get_card(card_id: String):
+		return values.get(card_id)
+
+
+func _make_stub_card(card_id: String, deck_includable: bool) -> CardData:
+	var card := CardData.new()
+	card.card_id = card_id
+	card.card_class = "neutral"
+	card.rarity = "normal"
+	card.deck_includable = deck_includable
+	return card
+
+
+func test_deck_includable_rule() -> void:
+	var stub: StubDatabase = StubDatabase.new()
+	var locked: CardData = _make_stub_card("locked_card", false)
+	stub.values["locked_card"] = locked
+	var allowed: Array[String] = ["neutral"]
+	var empty_cards: Array[String] = []
+	var deck: DeckData = _make_deck(allowed, empty_cards)
+	assert_false(DeckValidator.can_add_card(deck, locked, stub), "不可编入的卡不能加入牌组")
+	var ids: Array[String] = []
+	for _index: int in range(DeckData.MAX_CARD_COUNT):
+		ids.append("locked_card")
+	var full_deck: DeckData = _make_deck(allowed, ids)
+	var errors: Array[String] = DeckValidator.validate(full_deck, stub)
+	assert_true(_has_error(errors, "不可被编入牌组"), "校验应报告不可编入：%s" % [errors])

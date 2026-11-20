@@ -250,6 +250,7 @@ ConfirmService.show_message(LoginFlow.get_developer_message(), "开发者的话"
 
 字段：`card_id`、`card_namespace`、`english_name`、`chinese_name`、`description`、`kind`（entity/spell）、
 `cost`、`attack`、`health`、`shield`、`card_class`、`rarity`、`keywords`、`tribes`、`ability`（伪代码），
+`deck_includable`（是否可被牌组编入，默认 true），
 以及加载时解析的 `class_label` / `rarity_label` / `keyword_labels` / `tribe_labels`。
 
 方法：`display_name()`、`is_entity()`、`get_type_text()`、`get_class_text()`、`get_rarity_text()`、
@@ -279,7 +280,7 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 | `can_add_card(deck, card, database)` | bool | 牌组编辑器高亮/禁用 |
 
 校验内容：正好 30 张；同名张数（传说 1、其余 2）；职业必须在 `deck.allowed_classes` 内（中立始终允许）；
-卡牌必须存在；`allowed_classes` 为空时报错。
+卡牌必须存在；`deck_includable == false` 的卡牌不可编入；`allowed_classes` 为空时报错。
 
 ### `CollectionManager`（autoload）
 

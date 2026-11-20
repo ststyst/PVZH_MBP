@@ -167,3 +167,32 @@ func test_namespace_required() -> void:
 	])
 	var result: Dictionary = _compile("nons", "")
 	assert_false(bool(result.get("ok", true)), "空命名空间应报错")
+
+
+func test_deck_includable_flag_roundtrip() -> void:
+	var dir_path: String = TEST_ROOT.path_join("flag")
+	var header: String = HEADER.trim_suffix("\n") + ",deck_includable\n"
+	_write_text(dir_path.path_join("config.csv"), CONFIG_TEXT)
+	_write_text(dir_path.path_join("cards.csv"), header + 'token_unit,代币,entity,1,1,1,0,neutral,normal,"","","","",0\n')
+	var result: Dictionary = _compile("flag")
+	assert_true(bool(result.get("ok", false)), "deck_includable=0 应能编译：%s" % [result.get("errors", [])])
+	var database: Node = CardDatabaseScript.new()
+	database.reload(false)
+	database.load_pack_file(str(result.get("pack_path", "")), "", true)
+	var card: CardData = database.get_card("testmod:token_unit")
+	assert_true(card != null)
+	if card != null:
+		assert_false(card.deck_includable, "编译包应保留 deck_includable=0")
+	if is_instance_valid(database):
+		database.free()
+
+
+func test_deck_includable_invalid_reports_error() -> void:
+	var dir_path: String = TEST_ROOT.path_join("flag_bad")
+	var header: String = HEADER.trim_suffix("\n") + ",deck_includable\n"
+	_write_text(dir_path.path_join("config.csv"), CONFIG_TEXT)
+	_write_text(dir_path.path_join("cards.csv"), header + 'token_unit,代币,entity,1,1,1,0,neutral,normal,"","","","",2\n')
+	var result: Dictionary = _compile("flag_bad")
+	assert_false(bool(result.get("ok", true)), "deck_includable=2 应编译失败")
+	var joined: String = "\n".join(result.get("errors", []))
+	assert_true(joined.find("必须是 0 或 1") != -1, "应报告标志位非法：%s" % joined)

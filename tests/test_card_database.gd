@@ -43,6 +43,8 @@ func test_card_fields() -> void:
 	assert_eq(fireball.class_label, "聪明")
 	assert_eq(fireball.rarity_label, "稀有")
 	assert_eq(fireball.ability, "deal_damage(chosen, 6)")
+	assert_true(fireball.deck_includable, "默认应可被编入牌组")
+	assert_true(fireball.is_deck_includable())
 
 
 func test_namespacing() -> void:
