@@ -71,7 +71,7 @@ func _on_battle_pressed() -> void:
 
 
 func _on_deck_pressed() -> void:
-	_show_placeholder("牌组构筑", "下一步（M2）实现牌组编辑器与规则校验。")
+	GameState.go_to_deck_editor()
 
 
 func _on_collection_pressed() -> void:

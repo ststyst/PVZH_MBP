@@ -16,6 +16,7 @@ const SCENE_LOGIN: String = "res://scenes/main/LoginScreen.tscn"
 const SCENE_MAIN: String = "res://scenes/main/MainScreen.tscn"
 const SCENE_BATTLE: String = "res://scenes/main/Battle.tscn"
 const SCENE_COLLECTION: String = "res://scenes/collection/CollectionScreen.tscn"
+const SCENE_DECK_EDITOR: String = "res://scenes/deck/DeckEditor.tscn"
 
 ## 本地游玩时每 30 秒自动落盘一次。
 const AUTOSAVE_INTERVAL_SECONDS: float = 30.0
@@ -283,6 +284,10 @@ func go_to_battle() -> void:
 
 func go_to_collection() -> void:
 	_change_scene(SCENE_COLLECTION, SCREEN.COLLECTION)
+
+
+func go_to_deck_editor() -> void:
+	_change_scene(SCENE_DECK_EDITOR, SCREEN.DECK_BUILDER)
 
 
 func go_to_login() -> void:

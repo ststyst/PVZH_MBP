@@ -1,0 +1,97 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/card_info_dialog.gd" id="1_card_info"]
+
+[node name="CardInfoDialog" type="AcceptDialog"]
+title = "卡牌信息"
+size = Vector2i(380, 600)
+min_size = Vector2i(340, 480)
+ok_button_text = "关闭"
+script = ExtResource("1_card_info")
+
+[node name="Margin" type="MarginContainer" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 64
+
+[node name="VBox" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+
+[node name="CardFrame" type="PanelContainer" parent="Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+custom_minimum_size = Vector2(0, 360)
+
+[node name="CardMargin" type="MarginContainer" parent="Margin/VBox/CardFrame"]
+layout_mode = 2
+theme_override_constants/margin_left = 14
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 14
+theme_override_constants/margin_bottom = 14
+
+[node name="CardVBox" type="VBoxContainer" parent="Margin/VBox/CardFrame/CardMargin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="TopRow" type="HBoxContainer" parent="Margin/VBox/CardFrame/CardMargin/CardVBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="CostLabel" type="Label" parent="Margin/VBox/CardFrame/CardMargin/CardVBox/TopRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.78, 1, 1)
+theme_override_font_sizes/font_size = 34
+text = "0"
+
+[node name="NameLabel" type="Label" parent="Margin/VBox/CardFrame/CardMargin/CardVBox/TopRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 22
+text = "卡牌名称"
+autowrap_mode = 2
+
+[node name="MetaLabel" type="Label" parent="Margin/VBox/CardFrame/CardMargin/CardVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.65098, 0.678431, 0.760784, 1)
+theme_override_font_sizes/font_size = 12
+text = "实体 · 中立 · 普通"
+autowrap_mode = 2
+
+[node name="StatsLabel" type="Label" parent="Margin/VBox/CardFrame/CardMargin/CardVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "攻击 0　生命 0　防御 0"
+
+[node name="KeywordsLabel" type="Label" parent="Margin/VBox/CardFrame/CardMargin/CardVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.92, 0.76, 0.36, 1)
+theme_override_font_sizes/font_size = 13
+text = ""
+
+[node name="TribesLabel" type="Label" parent="Margin/VBox/CardFrame/CardMargin/CardVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.65098, 0.678431, 0.760784, 1)
+theme_override_font_sizes/font_size = 12
+text = ""
+
+[node name="DescriptionLabel" type="Label" parent="Margin/VBox/CardFrame/CardMargin/CardVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.788235, 0.807843, 0.847059, 1)
+theme_override_font_sizes/font_size = 13
+text = "卡牌简介。"
+autowrap_mode = 2

@@ -19,13 +19,18 @@ var card_id: String = ""
 
 
 ## 注入卡牌数据与拥有数量。必须在 add_child 之后调用（依赖 @onready 节点）。
-func setup(card: CardData, owned_count: int) -> void:
+## status_text 非空时替换左下角状态文字（例如“拥有 2 · 编入 1”）。
+func setup(card: CardData, owned_count: int, status_text: String = "") -> void:
 	card_id = card.card_id
 	name_label.text = card.display_name()
 	name_label.add_theme_color_override("font_color", _rarity_color(card.rarity))
 	meta_label.text = _build_meta_text(card)
 	desc_label.text = card.description
-	_update_owned_text(owned_count)
+	if status_text.is_empty():
+		_update_owned_text(owned_count)
+	else:
+		owned_label.text = status_text
+		owned_label.add_theme_color_override("font_color", Color(0.72, 0.78, 0.90))
 	tooltip_text = "%s\n%s" % [card.display_name(), card.description]
 
 
