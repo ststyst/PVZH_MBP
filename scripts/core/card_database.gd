@@ -31,7 +31,7 @@ const REQUIRED_COLUMNS: Array[String] = [
 	"description",
 ]
 
-const VALID_KINDS: Array[String] = ["entity", "spell"]
+const VALID_KINDS: Array[String] = ["entity", "spell", "environment"]
 
 ## 编译包格式版本（与 CardSetCompiler 保持一致）
 const PACK_FORMAT_VERSION: int = 1

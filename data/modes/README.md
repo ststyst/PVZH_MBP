@@ -17,6 +17,9 @@
 | `enemy_initial_energy` | int | 1 | z 阵营初始回合费用 |
 | `player_initial_draw` | int | 4 | p 阵营初始抽牌数 |
 | `enemy_initial_draw` | int | 4 | z 阵营初始抽牌数 |
+| `hand_limit` | int | 10 | 双方手牌上限；超过时取消抽牌 |
+| `energy_cap` | int | 99 | 双方费用上限 |
+| `phase_time_limit_seconds` | int | 40 | 单个回合阶段真实时间上限（秒），到点强制结束 |
 
 玩家对战时：p 阵营英雄使用 `player_*` 数据，z 阵营英雄使用 `enemy_*` 数据。
 
@@ -32,7 +35,10 @@
   "player_initial_energy": 1,
   "enemy_initial_energy": 1,
   "player_initial_draw": 4,
-  "enemy_initial_draw": 4
+  "enemy_initial_draw": 4,
+  "hand_limit": 10,
+  "energy_cap": 99,
+  "phase_time_limit_seconds": 40
 }
 ```
 

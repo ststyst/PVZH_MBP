@@ -65,8 +65,24 @@ func is_entity() -> bool:
 	return kind == "entity"
 
 
+func is_spell() -> bool:
+	return kind == "spell"
+
+
+func is_environment() -> bool:
+	return kind == "environment"
+
+
 func get_type_text() -> String:
-	return "实体" if is_entity() else "锦囊"
+	match kind:
+		"entity":
+			return "实体"
+		"spell":
+			return "锦囊"
+		"environment":
+			return "环境"
+		_:
+			return "未知"
 
 
 func get_class_text() -> String:

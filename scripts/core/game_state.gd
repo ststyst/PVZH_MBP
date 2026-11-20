@@ -14,7 +14,8 @@ const GAME_VERSION: String = "alpha0.1"
 
 const SCENE_LOGIN: String = "res://scenes/main/LoginScreen.tscn"
 const SCENE_MAIN: String = "res://scenes/main/MainScreen.tscn"
-const SCENE_BATTLE: String = "res://scenes/main/Battle.tscn"
+const SCENE_BATTLE_PREP: String = "res://scenes/battle/BattlePrep.tscn"
+const SCENE_BATTLE: String = "res://scenes/battle/Battle.tscn"
 const SCENE_COLLECTION: String = "res://scenes/collection/CollectionScreen.tscn"
 const SCENE_DECK_EDITOR: String = "res://scenes/deck/DeckEditor.tscn"
 
@@ -276,6 +277,10 @@ func go_to_main() -> void:
 				screen_changed.emit(SCREEN.MAIN)
 				return
 	_change_scene(SCENE_MAIN, SCREEN.MAIN)
+
+
+func go_to_battle_prep() -> void:
+	_change_scene(SCENE_BATTLE_PREP, SCREEN.BATTLE)
 
 
 func go_to_battle() -> void:

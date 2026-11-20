@@ -51,6 +51,15 @@ func get_hero(hero_id: String) -> HeroData:
 	return heroes.get(hero_id, null) as HeroData
 
 
+## 按 heroes.csv 的英文名查找（推荐卡组用）。
+func find_by_english(english_name: String) -> HeroData:
+	var target: String = english_name.strip_edges()
+	for hero: HeroData in heroes.values():
+		if hero.english_name == target:
+			return hero
+	return null
+
+
 func has_hero(hero_id: String) -> bool:
 	return heroes.has(hero_id)
 

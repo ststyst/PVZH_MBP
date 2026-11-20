@@ -83,8 +83,8 @@ static func compile_pack(
 		row_label = "%s（%s）" % [row_label, english_name]
 		var errors_before: int = errors.size()
 		var kind: String = _cell(row, header, "kind").strip_edges().to_lower()
-		if kind != "entity" and kind != "spell":
-			errors.append("%s：卡牌种类必须是 entity 或 spell（当前 %s）。" % [row_label, kind])
+		if kind != "entity" and kind != "spell" and kind != "environment":
+			errors.append("%s：卡牌种类必须是 entity / spell / environment（当前 %s）。" % [row_label, kind])
 		var card_class: String = _cell(row, header, "class").strip_edges().to_lower()
 		if not config.has_class(card_class):
 			errors.append("%s：职业不在全局配置中（%s）。" % [row_label, card_class])
@@ -105,6 +105,8 @@ static func compile_pack(
 			errors.append("%s：实体牌的生命值不能小于 1（当前 %d）。" % [row_label, health])
 		if kind == "spell" and (attack != 0 or health != 0 or shield != 0):
 			warnings.append("%s：锦囊牌的攻/血/防应为 0（当前 %d/%d/%d）。" % [row_label, attack, health, shield])
+		if kind == "environment" and (attack != 0 or health != 0 or shield != 0):
+			warnings.append("%s：环境牌的攻/血/防应为 0（当前 %d/%d/%d）。" % [row_label, attack, health, shield])
 		var keywords: Array[String] = _parse_keywords(row, header, row_label, errors)
 		var tribes: Array[String] = _parse_tribes(row, header, config, row_label, errors)
 		var deck_includable: bool = _flag_cell(

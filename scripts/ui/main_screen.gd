@@ -67,7 +67,7 @@ func _apply_identity_rules() -> void:
 
 
 func _on_battle_pressed() -> void:
-	GameState.go_to_battle()
+	GameState.go_to_battle_prep()
 
 
 func _on_deck_pressed() -> void:

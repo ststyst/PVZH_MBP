@@ -38,6 +38,9 @@ func test_defaults() -> void:
 	assert_eq(config.enemy_initial_energy, 1)
 	assert_eq(config.player_initial_draw, 4)
 	assert_eq(config.enemy_initial_draw, 4)
+	assert_eq(config.hand_limit, 10)
+	assert_eq(config.energy_cap, 99)
+	assert_eq(config.phase_time_limit_seconds, 40)
 
 
 func test_from_dict_overrides() -> void:
@@ -51,6 +54,9 @@ func test_from_dict_overrides() -> void:
 		"enemy_initial_energy": 3,
 		"player_initial_draw": 5,
 		"enemy_initial_draw": 6,
+		"hand_limit": 8,
+		"energy_cap": 12,
+		"phase_time_limit_seconds": 15,
 	})
 	assert_eq(config.deck_max_size, 30)
 	assert_false(config.enforce_full_deck)
@@ -63,6 +69,9 @@ func test_from_dict_overrides() -> void:
 	assert_eq(config.initial_energy_for_faction("z"), 3)
 	assert_eq(config.initial_draw_for_faction("p"), 5)
 	assert_eq(config.initial_draw_for_faction("z"), 6)
+	assert_eq(config.hand_limit, 8)
+	assert_eq(config.energy_cap, 12)
+	assert_eq(config.phase_time_limit_seconds, 15)
 
 
 func test_from_default_file() -> void:

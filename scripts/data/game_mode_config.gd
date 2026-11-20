@@ -14,6 +14,9 @@ const DEFAULT_MAX_COPIES: Array = [4, 4, 4, 4, 1, 4, 4, 4]
 const DEFAULT_HERO_MAX_HEALTH: int = 20
 const DEFAULT_INITIAL_ENERGY: int = 1
 const DEFAULT_INITIAL_DRAW: int = 4
+const DEFAULT_HAND_LIMIT: int = 10
+const DEFAULT_ENERGY_CAP: int = 99
+const DEFAULT_PHASE_TIME_SECONDS: int = 40
 
 var deck_max_size: int = DEFAULT_DECK_MAX_SIZE
 var enforce_full_deck: bool = DEFAULT_ENFORCE_FULL_DECK
@@ -26,6 +29,12 @@ var player_initial_energy: int = DEFAULT_INITIAL_ENERGY
 var enemy_initial_energy: int = DEFAULT_INITIAL_ENERGY
 var player_initial_draw: int = DEFAULT_INITIAL_DRAW
 var enemy_initial_draw: int = DEFAULT_INITIAL_DRAW
+## 双方手牌上限；超出时取消抽牌
+var hand_limit: int = DEFAULT_HAND_LIMIT
+## 费用上限（双方相同）
+var energy_cap: int = DEFAULT_ENERGY_CAP
+## 单个回合阶段的时间上限（秒）；到点强制结束
+var phase_time_limit_seconds: int = DEFAULT_PHASE_TIME_SECONDS
 
 ## 来源文件路径（调试/服务器配置用）
 var source_path: String = ""
@@ -47,6 +56,11 @@ static func from_dict(data: Dictionary) -> GameModeConfig:
 	config.enemy_initial_energy = maxi(_int_value(data, "enemy_initial_energy", DEFAULT_INITIAL_ENERGY), 0)
 	config.player_initial_draw = maxi(_int_value(data, "player_initial_draw", DEFAULT_INITIAL_DRAW), 0)
 	config.enemy_initial_draw = maxi(_int_value(data, "enemy_initial_draw", DEFAULT_INITIAL_DRAW), 0)
+	config.hand_limit = maxi(_int_value(data, "hand_limit", DEFAULT_HAND_LIMIT), 1)
+	config.energy_cap = maxi(_int_value(data, "energy_cap", DEFAULT_ENERGY_CAP), 1)
+	config.phase_time_limit_seconds = maxi(
+		_int_value(data, "phase_time_limit_seconds", DEFAULT_PHASE_TIME_SECONDS), 1
+	)
 	return config
 
 
@@ -99,6 +113,9 @@ func to_dict() -> Dictionary:
 		"enemy_initial_energy": enemy_initial_energy,
 		"player_initial_draw": player_initial_draw,
 		"enemy_initial_draw": enemy_initial_draw,
+		"hand_limit": hand_limit,
+		"energy_cap": energy_cap,
+		"phase_time_limit_seconds": phase_time_limit_seconds,
 	}
 
 

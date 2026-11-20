@@ -23,6 +23,8 @@ const EVENTS: Array[String] = [
 	"healed",
 	"attack_changed",
 	"health_changed",
+	"turn_start",
+	"turn_end",
 ]
 const SELECTORS: Array[String] = [
 	"self",

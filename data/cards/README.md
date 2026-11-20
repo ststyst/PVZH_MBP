@@ -45,9 +45,9 @@ english_name,chinese_name,kind,cost,attack,health,shield,class,rarity,keywords,t
 |---|---|---|
 | `english_name` | string | 英文命名，也是内部 ID 的来源（去空格、转小写、空格换下划线） |
 | `chinese_name` | string | 中文显示名（默认语言为中文） |
-| `kind` | string | `entity`（打出后召唤实体）或 `spell`（锦囊） |
+| `kind` | string | `entity`（召唤实体）/ `spell`（锦囊）/ `environment`（环境牌，打出后改变一列环境） |
 | `cost` | int | 费用 |
-| `attack` / `health` | int | 攻击力 / 生命值（锦囊填 0） |
+| `attack` / `health` | int | 攻击力 / 生命值（锦囊、环境牌填 0） |
 | `shield` | int | 防御力（护甲） |
 | `class` | string | 职业，必须是 `config.csv` 中的 class 之一 |
 | `rarity` | string | 稀有度，必须是 `config.csv` 中的 rarity 之一 |
@@ -61,7 +61,7 @@ english_name,chinese_name,kind,cost,attack,health,shield,class,rarity,keywords,t
 ### 词缀（由代码决定）
 
 `charge` 冲锋、`taunt` 嘲讽、`deadly` 剧毒、`armored` 护甲、`strikethrough` 穿透、
-`bullseye` 必中、`double_strike` 双击、`overshoot` 溅射、`frenzy` 狂怒、`untrickable` 免疫锦囊。
+`bullseye` 必中、`double_strike` 双击、`overshoot` 溅射、`frenzy` 狂怒、`untrickable` 免疫锦囊、`team_up` 组队。
 
 完整定义见 `scripts/data/card_keywords.gd`。
 
@@ -71,6 +71,7 @@ english_name,chinese_name,kind,cost,attack,health,shield,class,rarity,keywords,t
 载入时编译到 `CardData.ability_script`；语法/语义错误记入 `CardDatabase.load_errors`。
 
 - **锦囊（spell）**：顶层语句在打出时执行一次；不能用 `when` 块。
+- **环境（environment）**：顶层语句在打出时执行；打出时会把所选列的环境改为这张环境牌；不能用 `when` 块。
 - **实体（entity）**：能力属于召唤出的实体，必须写在 `when` 事件块里；实体牌本身没有锦囊式打出效果。
 
 ```csv
@@ -135,7 +136,7 @@ green_knight,绿影骑士,p,"solar,guardian","fireball,armor_up"
 
 - 待编译目录：`user://card_packs/import/`（放 `config.csv` / `cards.csv`）。
 - 调用 `DeveloperTools.compile_card_set()`（源码目录可指定）：
-  - 校验全局配置、职业/稀有度/词缀/流派、数值规则（费用必须为正、实体生命 ≥1 等）、伪代码语法与实体/锦囊语义、
+  - 校验全局配置、职业/稀有度/词缀/流派、数值规则（费用必须为正、实体生命 ≥1 等）、伪代码语法与实体/锦囊/环境语义、
     `deck_includable` 必须为 0/1；
   - 报错写入 `user://card_packs/compile_report.txt`，带行号与原因；
   - 全部通过时生成 `user://card_packs/compiled/<命名空间>.cardpack`（已编译能力程序，跳过运行时解析）。

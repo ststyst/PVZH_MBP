@@ -347,6 +347,46 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 
 规则：张数 ≤ `deck_max_size`（`enforce_full_deck` 时必须正好等于）；单卡张数按稀有度数组；
 职业必须属于英雄两个职业（中立职业无视限制、英雄专属卡无视限制）；`deck_includable=0` 的卡不可编入。
+### 战斗 `BattleManager` / `BattleEngine` / `EasyBattleAI`
+
+场景：`res://scenes/battle/BattlePrep.tscn`（准备）、`res://scenes/battle/Battle.tscn`（对战）。
+
+#### `BattleManager`（autoload）
+
+| API | 返回 | 说明 |
+|---|---|---|
+| `get_available_player_decks()` | `Array[DeckData]` | 只返回带 `default` 标签的牌组 |
+| `start_vs_ai(deck_id, difficulty="easy")` | `{ok, message}` | 选择电脑推荐卡组并写入 `current_battle` |
+| `current_battle` | Dictionary | 对战双方英雄、阵营、牌库快照 |
+| `recommended_decks` | `RecommendedDecks` | 推荐卡组（`data/battle/recommended_decks.csv`） |
+| `reload_recommended_decks()` | void | 重新加载推荐卡组 |
+
+#### `BattleEngine`
+
+`BattleEngine.new(card_database, seed)` 后调用
+`setup(player_side, player_hero, player_deck_ids, enemy_hero, enemy_deck_ids, mode)`。
+
+| API | 说明 |
+|---|---|
+| `confirm_mulligan(side)` / `replace_mulligan_card(side, index)` | 起手调度（每张限换一次） |
+| `play_card(side, hand_index, target)` | target：实体 `{column,slot}`；环境 `{column}`；需要目标 `{handle}` |
+| `end_phase(side)` / `advance_phase()` | 结束当前阶段 / 推进阶段 |
+| `swap_team_up(side, entity)` | 组队实体与同列同阵营另一实体换位 |
+| `valid_slots(side, card)` / `target_candidates(card, side)` | UI 高亮与 AI 选目标 |
+| `damage_handle / heal_handle / buff_handle / ...` | 效果原语入口 |
+| `changed` / `game_finished(winner)` 信号 | 状态变化 / 胜负 |
+
+规则：5 列 × 双方各 2 位（普通位 + 组队位）；每回合 z 出牌 → p 出牌 → z 锦囊/环境 → 逐列战斗 → 回合结束；
+英雄生命来自玩法配置；同一列战斗先结算双方攻击再统一死亡判定；出牌阶段伤害立即死亡判定。
+
+#### `EasyBattleAI`
+
+`EasyBattleAI.take_action(engine, side)`：尽量打出费用最高的可打出手牌，目标随机；无牌可出时结束阶段。
+
+#### `RecommendedDecks`
+
+`RecommendedDecks.load_file(path, card_database, hero_database)`；字段 `decks`（`deck_id/deck_name/hero_id/hero_faction/card_ids`）与 `load_errors`。
+
 ### `CollectionManager`（autoload）
 
 | 方法 | 返回 | 说明 |

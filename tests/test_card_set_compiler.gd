@@ -161,6 +161,17 @@ func test_missing_cards_csv_reports_error() -> void:
 	assert_true(joined.find("cards.csv") != -1, "应报告缺少 cards.csv：%s" % joined)
 
 
+func test_environment_kind_compiles() -> void:
+	var dir_path: String = TEST_ROOT.path_join("env")
+	_write_text(dir_path.path_join("config.csv"), CONFIG_TEXT)
+	_write_text(
+		dir_path.path_join("cards.csv"),
+		HEADER + 'env_card,环境卡,environment,1,0,0,0,neutral,normal,"","","",""\n'
+	)
+	var result: Dictionary = _compile("env")
+	assert_true(bool(result.get("ok", false)), "环境牌应能编译：%s" % [result.get("errors", [])])
+
+
 func test_namespace_required() -> void:
 	_make_pack("nons", [
 		'pawn,兵,entity,1,1,1,0,neutral,normal,"","","",""',

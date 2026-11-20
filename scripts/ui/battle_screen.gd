@@ -1,12 +1,671 @@
 extends Control
-## 战斗场景占位：M3 在此实现回合、法力水晶、手牌与随从区。
+## 战斗界面（电脑随机卡组对战）：
+## - 起手调度（每张牌可刷新一次）
+## - 5 列 × 双方各 2 位（普通位 / 组队位）；点击组队实体可与同列另一实体换位
+## - 阶段：z 出牌 → p 出牌 → z 锦囊/环境 → 逐列战斗 → 回合结束
+## - 简单 AI：优先打出费用最高的可打出手牌，目标随机
 
-@onready var back_button: Button = %BackButton
+const CARD_TILE_SCENE: PackedScene = preload("res://scenes/cards/CardTile.tscn")
+const SLOT_HEIGHT: int = 44
+const HAND_HEIGHT: int = 210
+const AI_INTERVAL: float = 0.7
+
+var engine: BattleEngine = null
+var player_side: String = "p"
+var enemy_side: String = "z"
+var mode: GameModeConfig = null
+
+var _started: bool = false
+var _pending_card_index: int = -1
+var _pending_mode: String = ""
+var _pending_candidates: Array = []
+var _phase_remaining: float = 0.0
+var _last_phase_key: String = ""
+var _ai_accum: float = 0.0
+
+var _enemy_hero_button: Button = null
+var _player_hero_button: Button = null
+var _enemy_info_label: Label = null
+var _player_info_label: Label = null
+var _board_columns: Array[Dictionary] = []
+var _phase_label: Label = null
+var _turn_label: Label = null
+var _timer_label: Label = null
+var _log_label: Label = null
+var _status_label: Label = null
+var _end_phase_button: Button = null
+var _hand_row: HBoxContainer = null
+var _mulligan_overlay: Control = null
+var _mulligan_row: HBoxContainer = null
+var _mulligan_used: Array[bool] = []
+var _game_over_overlay: Control = null
+var _game_over_label: Label = null
 
 
 func _ready() -> void:
-	back_button.pressed.connect(_on_back_pressed)
+	_build_ui()
+	var setup: Dictionary = BattleManager.current_battle
+	if setup.is_empty():
+		_show_fatal("没有进行中的对局，请返回准备界面重新开始。")
+		return
+	player_side = str(setup.get("player_side", "p"))
+	enemy_side = "z" if player_side == "p" else "p"
+	var player_hero: HeroData = HeroDatabase.get_hero(str(setup.get("player_hero_id", "")))
+	var enemy_hero: HeroData = HeroDatabase.get_hero(str(setup.get("enemy_hero_id", "")))
+	if player_hero == null or enemy_hero == null:
+		_show_fatal("英雄数据缺失，无法开始对局。")
+		return
+	mode = ModeManager.get_mode()
+	engine = BattleEngine.new(CardDatabase)
+	engine.changed.connect(_on_engine_changed)
+	engine.game_finished.connect(_on_game_finished)
+	engine.setup(
+		player_side,
+		player_hero,
+		_to_string_array(setup.get("player_deck_ids", [])),
+		enemy_hero,
+		_to_string_array(setup.get("enemy_deck_ids", [])),
+		mode,
+	)
+	engine.confirm_mulligan(enemy_side)
+	_show_mulligan()
 
 
-func _on_back_pressed() -> void:
-	GameState.go_to_main()
+func _to_string_array(raw: Variant) -> Array[String]:
+	var result: Array[String] = []
+	if raw is Array:
+		for entry: Variant in raw:
+			result.append(str(entry))
+	return result
+
+
+# ----- UI 构建 -----
+
+func _build_ui() -> void:
+	var background := ColorRect.new()
+	background.color = Color(0.0705882, 0.0784314, 0.109804)
+	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(background)
+
+	var margin := MarginContainer.new()
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	margin.add_theme_constant_override("margin_left", 6)
+	margin.add_theme_constant_override("margin_right", 6)
+	margin.add_theme_constant_override("margin_top", 6)
+	margin.add_theme_constant_override("margin_bottom", 6)
+	add_child(margin)
+
+	var root := VBoxContainer.new()
+	root.add_theme_constant_override("separation", 4)
+	margin.add_child(root)
+
+	var enemy_bar := HBoxContainer.new()
+	root.add_child(enemy_bar)
+	_enemy_hero_button = _make_bar_button()
+	_enemy_hero_button.pressed.connect(_on_enemy_hero_pressed)
+	enemy_bar.add_child(_enemy_hero_button)
+	_enemy_info_label = _make_label("", 12)
+	_enemy_info_label.custom_minimum_size = Vector2(150, 0)
+	enemy_bar.add_child(_enemy_info_label)
+
+	var board := HBoxContainer.new()
+	board.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	board.add_theme_constant_override("separation", 4)
+	root.add_child(board)
+	for column_index: int in range(BattleEngine.COLUMN_COUNT):
+		var column := VBoxContainer.new()
+		column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		column.add_theme_constant_override("separation", 2)
+		board.add_child(column)
+		var environment_label := _make_label("", 10)
+		environment_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		column.add_child(environment_label)
+		var z_team := _make_slot_button("组队位")
+		z_team.pressed.connect(_on_slot_pressed.bind("z", column_index, BattleEngine.SLOT_TEAM_UP))
+		column.add_child(z_team)
+		var z_normal := _make_slot_button("空位")
+		z_normal.pressed.connect(_on_slot_pressed.bind("z", column_index, BattleEngine.SLOT_NORMAL))
+		column.add_child(z_normal)
+		column.add_child(HSeparator.new())
+		var p_normal := _make_slot_button("空位")
+		p_normal.pressed.connect(_on_slot_pressed.bind("p", column_index, BattleEngine.SLOT_NORMAL))
+		column.add_child(p_normal)
+		var p_team := _make_slot_button("组队位")
+		p_team.pressed.connect(_on_slot_pressed.bind("p", column_index, BattleEngine.SLOT_TEAM_UP))
+		column.add_child(p_team)
+		_board_columns.append({
+			"env": environment_label,
+			"z_team": z_team,
+			"z_normal": z_normal,
+			"p_normal": p_normal,
+			"p_team": p_team,
+		})
+
+	var center_bar := HBoxContainer.new()
+	center_bar.add_theme_constant_override("separation", 8)
+	root.add_child(center_bar)
+	_phase_label = _make_label("", 14)
+	center_bar.add_child(_phase_label)
+	_turn_label = _make_label("", 12)
+	center_bar.add_child(_turn_label)
+	_timer_label = _make_label("", 12)
+	center_bar.add_child(_timer_label)
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	center_bar.add_child(spacer)
+	_end_phase_button = Button.new()
+	_end_phase_button.text = "结束阶段"
+	_end_phase_button.custom_minimum_size = Vector2(120, 36)
+	_end_phase_button.pressed.connect(_on_end_phase_pressed)
+	center_bar.add_child(_end_phase_button)
+
+	_log_label = _make_label("", 11)
+	_log_label.custom_minimum_size = Vector2(0, 42)
+	_log_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	root.add_child(_log_label)
+
+	var hand_title := HBoxContainer.new()
+	root.add_child(hand_title)
+	var hand_label := _make_label("手牌", 13)
+	hand_title.add_child(hand_label)
+	var hand_spacer := Control.new()
+	hand_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hand_title.add_child(hand_spacer)
+	_status_label = _make_label("", 11)
+	_status_label.add_theme_color_override("font_color", Color(0.749, 0.780, 0.859))
+	hand_title.add_child(_status_label)
+
+	var hand_scroll := ScrollContainer.new()
+	hand_scroll.custom_minimum_size = Vector2(0, HAND_HEIGHT)
+	hand_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	hand_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	root.add_child(hand_scroll)
+	_hand_row = HBoxContainer.new()
+	_hand_row.add_theme_constant_override("separation", 4)
+	hand_scroll.add_child(_hand_row)
+
+	var player_bar := HBoxContainer.new()
+	root.add_child(player_bar)
+	_player_hero_button = _make_bar_button()
+	_player_hero_button.pressed.connect(_on_player_hero_pressed)
+	player_bar.add_child(_player_hero_button)
+	_player_info_label = _make_label("", 12)
+	_player_info_label.custom_minimum_size = Vector2(150, 0)
+	player_bar.add_child(_player_info_label)
+
+	_build_mulligan_overlay()
+	_build_game_over_overlay()
+
+
+func _build_mulligan_overlay() -> void:
+	_mulligan_overlay = ColorRect.new()
+	_mulligan_overlay.color = Color(0.03, 0.035, 0.05, 0.94)
+	_mulligan_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_mulligan_overlay.z_index = 10
+	_mulligan_overlay.visible = false
+	add_child(_mulligan_overlay)
+	var margin := MarginContainer.new()
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	margin.add_theme_constant_override("margin_left", 16)
+	margin.add_theme_constant_override("margin_right", 16)
+	margin.add_theme_constant_override("margin_top", 24)
+	margin.add_theme_constant_override("margin_bottom", 24)
+	_mulligan_overlay.add_child(margin)
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 12)
+	margin.add_child(vbox)
+	var title := _make_label("起手调度", 22)
+	vbox.add_child(title)
+	var hint := _make_label("点击卡牌下方的“刷新”可洗回牌组并重抽一张（每张限一次）。", 12)
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	vbox.add_child(hint)
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	vbox.add_child(scroll)
+	_mulligan_row = HBoxContainer.new()
+	_mulligan_row.add_theme_constant_override("separation", 8)
+	scroll.add_child(_mulligan_row)
+	var confirm := Button.new()
+	confirm.text = "确定"
+	confirm.custom_minimum_size = Vector2(0, 60)
+	confirm.pressed.connect(_on_mulligan_confirm_pressed)
+	vbox.add_child(confirm)
+
+
+func _build_game_over_overlay() -> void:
+	_game_over_overlay = ColorRect.new()
+	_game_over_overlay.color = Color(0.03, 0.035, 0.05, 0.94)
+	_game_over_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_game_over_overlay.z_index = 11
+	_game_over_overlay.visible = false
+	add_child(_game_over_overlay)
+	var margin := MarginContainer.new()
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	margin.add_theme_constant_override("margin_left", 24)
+	margin.add_theme_constant_override("margin_right", 24)
+	margin.add_theme_constant_override("margin_top", 24)
+	margin.add_theme_constant_override("margin_bottom", 24)
+	_game_over_overlay.add_child(margin)
+	var vbox := VBoxContainer.new()
+	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	margin.add_child(vbox)
+	_game_over_label = _make_label("", 32)
+	_game_over_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(_game_over_label)
+	var back := Button.new()
+	back.text = "返回准备界面"
+	back.custom_minimum_size = Vector2(0, 60)
+	back.pressed.connect(_on_return_after_game_pressed)
+	vbox.add_child(back)
+
+
+func _make_label(text: String, font_size: int) -> Label:
+	var label := Label.new()
+	label.text = text
+	label.add_theme_font_size_override("font_size", font_size)
+	return label
+
+
+func _make_slot_button(text: String) -> Button:
+	var button := Button.new()
+	button.text = text
+	button.custom_minimum_size = Vector2(0, SLOT_HEIGHT)
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.add_theme_font_size_override("font_size", 10)
+	button.clip_text = true
+	return button
+
+
+func _make_bar_button() -> Button:
+	var button := Button.new()
+	button.custom_minimum_size = Vector2(0, 48)
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.add_theme_font_size_override("font_size", 12)
+	return button
+
+
+# ----- 起手 -----
+
+func _show_mulligan() -> void:
+	_started = false
+	_mulligan_used.clear()
+	var state: BattlePlayerState = engine.players[player_side]
+	for _index: int in range(state.hand.size()):
+		_mulligan_used.append(false)
+	_mulligan_overlay.visible = true
+	_rebuild_mulligan_row()
+	_refresh_all()
+
+
+func _rebuild_mulligan_row() -> void:
+	for child: Node in _mulligan_row.get_children():
+		_mulligan_row.remove_child(child)
+		child.queue_free()
+	var state: BattlePlayerState = engine.players[player_side]
+	for index: int in range(state.hand.size()):
+		var card: CardData = engine.hand_card(player_side, index)
+		if card == null:
+			continue
+		var column := VBoxContainer.new()
+		column.add_theme_constant_override("separation", 4)
+		_mulligan_row.add_child(column)
+		var tile: CardTile = CARD_TILE_SCENE.instantiate()
+		column.add_child(tile)
+		tile.setup(card, 0, "费用 %d" % card.cost)
+		var refresh := Button.new()
+		refresh.text = "刷新"
+		refresh.disabled = index < _mulligan_used.size() and _mulligan_used[index]
+		refresh.custom_minimum_size = Vector2(0, 36)
+		refresh.pressed.connect(_on_mulligan_refresh_pressed.bind(index))
+		column.add_child(refresh)
+
+
+func _on_mulligan_refresh_pressed(index: int) -> void:
+	if index < _mulligan_used.size() and _mulligan_used[index]:
+		return
+	if engine.replace_mulligan_card(player_side, index):
+		if index < _mulligan_used.size():
+			_mulligan_used[index] = true
+		_rebuild_mulligan_row()
+
+
+func _on_mulligan_confirm_pressed() -> void:
+	engine.confirm_mulligan(player_side)
+	_mulligan_overlay.visible = false
+	_started = true
+	_last_phase_key = ""
+	_phase_remaining = mode.phase_time_limit_seconds
+	_refresh_all()
+
+
+# ----- 玩家操作 -----
+
+func _on_hand_pressed(index: int) -> void:
+	if not _can_player_act():
+		_set_status("现在不是你的出牌阶段。", true)
+		return
+	var card: CardData = engine.hand_card(player_side, index)
+	if card == null:
+		return
+	if engine.phase == BattleEngine.PHASE_SPELL and not (card.is_spell() or card.is_environment()):
+		_set_status("锦囊/环境阶段不能打出实体牌。", true)
+		return
+	if card.cost > int(engine.players[player_side].energy):
+		_set_status("费用不足。", true)
+		return
+	if card.is_entity():
+		_pending_card_index = index
+		_pending_mode = "place"
+		_pending_candidates.clear()
+		_set_status("请选择放置位置（组队牌只能放组队位）。")
+		_refresh_all()
+	elif card.is_environment():
+		_pending_card_index = index
+		_pending_mode = "column"
+		_pending_candidates.clear()
+		_set_status("请选择一列，将其环境变为这张环境牌。")
+		_refresh_all()
+	elif engine.card_needs_target(card):
+		_pending_card_index = index
+		_pending_mode = "target"
+		_pending_candidates = engine.target_candidates(card, player_side)
+		_set_status("请选择目标（★标记）。")
+		_refresh_all()
+	else:
+		_play_pending({})
+
+
+func _on_slot_pressed(side: String, column: int, slot: int) -> void:
+	if not _started or engine == null:
+		return
+	if _pending_mode == "place" and side == player_side:
+		_play_pending({"column": column, "slot": slot})
+		return
+	if _pending_mode == "column":
+		if side == player_side:
+			_play_pending({"column": column})
+		return
+	if _pending_mode == "target":
+		var entity: BattleEntity = _entity_at(column, side, slot)
+		if entity != null and _pending_candidates.has(entity):
+			_play_pending({"handle": entity})
+		else:
+			_set_status("该位置不是合法目标。", true)
+		return
+	var own_entity: BattleEntity = _entity_at(column, side, slot)
+	if side == player_side and own_entity != null and own_entity.team_up:
+		if engine.swap_team_up(player_side, own_entity):
+			_set_status("已交换位置。")
+			_refresh_all()
+		else:
+			_set_status("这一列没有可交换的另一实体。", true)
+		return
+	_set_status("先点击手牌选择要打出的牌。")
+
+
+func _on_enemy_hero_pressed() -> void:
+	_on_hero_target(enemy_side)
+
+
+func _on_player_hero_pressed() -> void:
+	_on_hero_target(player_side)
+
+
+func _on_hero_target(side: String) -> void:
+	if _pending_mode == "target" and _pending_candidates.has(engine.hero_handle(side)):
+		_play_pending({"handle": engine.hero_handle(side)})
+		return
+	_set_status("这不是当前可选择的英雄目标。")
+
+
+func _play_pending(target: Dictionary) -> void:
+	if _pending_card_index < 0:
+		return
+	var result: Dictionary = engine.play_card(player_side, _pending_card_index, target)
+	_clear_pending()
+	if not bool(result.get("ok", false)):
+		_set_status(str(result.get("message", "出牌失败。")), true)
+	else:
+		_set_status(str(result.get("message", "")), false)
+	_refresh_all()
+
+
+func _on_end_phase_pressed() -> void:
+	if not _can_player_act():
+		return
+	_clear_pending()
+	engine.end_phase(player_side)
+	_refresh_all()
+
+
+func _clear_pending() -> void:
+	_pending_card_index = -1
+	_pending_mode = ""
+	_pending_candidates.clear()
+
+
+# ----- 状态刷新 -----
+
+func _on_engine_changed() -> void:
+	_refresh_all()
+
+
+func _refresh_all() -> void:
+	if engine == null:
+		return
+	_update_hero_bars()
+	_update_board()
+	_rebuild_hand()
+	_update_labels()
+	_update_log()
+
+
+func _update_hero_bars() -> void:
+	var player_state: BattlePlayerState = engine.players[player_side]
+	var enemy_state: BattlePlayerState = engine.players[enemy_side]
+	_player_hero_button.text = "%s（%s） 生命 %d/%d · 费用 %d/%d" % [
+		player_state.hero.display_name(), player_side.to_upper(),
+		player_state.hero_health, player_state.hero_max_health,
+		player_state.energy, player_state.energy_cap,
+	]
+	_enemy_hero_button.text = "%s（%s） 生命 %d/%d · 费用 %d/%d" % [
+		enemy_state.hero.display_name(), enemy_side.to_upper(),
+		enemy_state.hero_health, enemy_state.hero_max_health,
+		enemy_state.energy, enemy_state.energy_cap,
+	]
+	_player_info_label.text = "手牌 %d · 牌库 %d" % [player_state.hand_count(), player_state.deck_count()]
+	_enemy_info_label.text = "手牌 %d · 牌库 %d" % [enemy_state.hand_count(), enemy_state.deck_count()]
+
+
+func _update_board() -> void:
+	var valid_slots: Array[Dictionary] = []
+	if _pending_mode == "place" and _pending_card_index >= 0:
+		var pending_card: CardData = engine.hand_card(player_side, _pending_card_index)
+		if pending_card != null:
+			valid_slots = engine.valid_slots(player_side, pending_card)
+	for column_index: int in range(_board_columns.size()):
+		var column_ui: Dictionary = _board_columns[column_index]
+		column_ui["env"].text = "第%d列\n%s" % [column_index + 1, engine.environment_labels[column_index]]
+		_update_slot_button(column_ui["z_team"], "z", column_index, BattleEngine.SLOT_TEAM_UP, valid_slots)
+		_update_slot_button(column_ui["z_normal"], "z", column_index, BattleEngine.SLOT_NORMAL, valid_slots)
+		_update_slot_button(column_ui["p_normal"], "p", column_index, BattleEngine.SLOT_NORMAL, valid_slots)
+		_update_slot_button(column_ui["p_team"], "p", column_index, BattleEngine.SLOT_TEAM_UP, valid_slots)
+
+
+func _update_slot_button(
+	button: Button,
+	side: String,
+	column: int,
+	slot: int,
+	valid_slots: Array[Dictionary],
+) -> void:
+	var entity: BattleEntity = _entity_at(column, side, slot)
+	if entity == null:
+		button.text = "组队位" if slot == BattleEngine.SLOT_TEAM_UP else "空位"
+	else:
+		button.text = "%s\n⚔%d ♥%d" % [entity.display_name(), entity.attack, entity.health]
+		if entity.shield > 0:
+			button.text += " 🛡%d" % entity.shield
+	var actionable: bool = false
+	if not _started or engine.winner != "":
+		actionable = false
+	elif _pending_mode == "place":
+		for slot_info: Dictionary in valid_slots:
+			if int(slot_info.get("column", -1)) == column and int(slot_info.get("slot", -1)) == slot:
+				actionable = true
+				break
+	elif _pending_mode == "column":
+		actionable = side == player_side
+	elif _pending_mode == "target":
+		actionable = entity != null and _pending_candidates.has(entity)
+	else:
+		actionable = entity != null and entity.side == player_side and entity.team_up
+	button.disabled = not actionable
+	if _pending_mode == "target" and actionable:
+		button.text = "★" + button.text
+
+
+func _rebuild_hand() -> void:
+	for child: Node in _hand_row.get_children():
+		_hand_row.remove_child(child)
+		child.queue_free()
+	if engine == null:
+		return
+	var state: BattlePlayerState = engine.players[player_side]
+	for index: int in range(state.hand.size()):
+		var card: CardData = engine.hand_card(player_side, index)
+		if card == null:
+			continue
+		var tile: CardTile = CARD_TILE_SCENE.instantiate()
+		_hand_row.add_child(tile)
+		tile.setup(card, 0, "费用 %d" % card.cost)
+		tile.pressed.connect(_on_hand_pressed.bind(index))
+		var disabled: bool = not _can_player_act()
+		if engine.phase == BattleEngine.PHASE_SPELL and not (card.is_spell() or card.is_environment()):
+			disabled = true
+		if card.cost > int(state.energy):
+			disabled = true
+		tile.disabled = disabled
+
+
+func _update_labels() -> void:
+	_phase_label.text = _phase_text()
+	_turn_label.text = "第 %d 回合" % engine.turn
+	_end_phase_button.visible = _can_player_act()
+	_update_timer_label()
+
+
+func _update_timer_label() -> void:
+	if _can_player_act():
+		_timer_label.text = "阶段剩余 %d 秒" % maxi(ceili(_phase_remaining), 0)
+	else:
+		_timer_label.text = ""
+
+
+func _phase_text() -> String:
+	if engine.winner != "":
+		return "对局结束"
+	match engine.phase:
+		BattleEngine.PHASE_MULLIGAN:
+			return "起手调度"
+		BattleEngine.PHASE_HAND:
+			return "z 出牌阶段" if engine.active_side == "z" else "p 出牌阶段"
+		BattleEngine.PHASE_SPELL:
+			return "z 锦囊/环境阶段"
+		BattleEngine.PHASE_COMBAT:
+			return "对战结算"
+		BattleEngine.PHASE_TURN_END:
+			return "回合结束"
+		_:
+			return ""
+
+
+func _update_log() -> void:
+	if engine.log_entries.is_empty():
+		_log_label.text = ""
+		return
+	var start: int = maxi(engine.log_entries.size() - 2, 0)
+	_log_label.text = "\n".join(engine.log_entries.slice(start))
+
+
+func _can_player_act() -> bool:
+	if engine == null or not _started or engine.winner != "":
+		return false
+	if engine.active_side != player_side:
+		return false
+	return engine.phase == BattleEngine.PHASE_HAND or engine.phase == BattleEngine.PHASE_SPELL
+
+
+func _entity_at(column: int, side: String, slot: int) -> BattleEntity:
+	for entity: BattleEntity in engine.entities:
+		if entity.alive and entity.column == column and entity.side == side and entity.slot == slot:
+			return entity
+	return null
+
+
+func _set_status(message: String, is_error: bool = false) -> void:
+	if _status_label == null:
+		return
+	_status_label.text = message
+	_status_label.add_theme_color_override(
+		"font_color",
+		Color(0.941, 0.549, 0.549) if is_error else Color(0.749, 0.780, 0.859),
+	)
+
+
+# ----- 主循环：计时 / AI -----
+
+func _phase_key() -> String:
+	if engine == null:
+		return ""
+	return "%s_%s_%d_%s" % [engine.phase, engine.active_side, engine.turn, engine.winner]
+
+
+func _process(delta: float) -> void:
+	if engine == null or not _started:
+		return
+	var key: String = _phase_key()
+	if key != _last_phase_key:
+		_last_phase_key = key
+		_phase_remaining = mode.phase_time_limit_seconds
+		_ai_accum = 0.0
+		_clear_pending()
+		_refresh_all()
+		if engine.winner != "":
+			return
+	if engine.winner != "":
+		return
+	if _can_player_act():
+		_phase_remaining -= delta
+		_update_timer_label()
+		if _phase_remaining <= 0.0:
+			_set_status("阶段时间到，自动结束。")
+			_clear_pending()
+			engine.end_phase(player_side)
+	else:
+		_ai_accum += delta
+		if _ai_accum >= AI_INTERVAL and engine.active_side == enemy_side:
+			if engine.phase == BattleEngine.PHASE_HAND or engine.phase == BattleEngine.PHASE_SPELL:
+				_ai_accum = 0.0
+				EasyBattleAI.take_action(engine, enemy_side)
+
+
+func _on_game_finished(winner_side: String) -> void:
+	_game_over_overlay.visible = true
+	if winner_side == player_side:
+		_game_over_label.text = "胜利！"
+	else:
+		_game_over_label.text = "失败……"
+
+
+func _on_return_after_game_pressed() -> void:
+	BattleManager.clear_current_battle()
+	GameState.go_to_battle_prep()
+
+
+func _show_fatal(message: String) -> void:
+	_started = false
+	_game_over_overlay.visible = true
+	_game_over_label.text = message

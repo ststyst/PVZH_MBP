@@ -7,5 +7,8 @@
   "player_initial_energy": 1,
   "enemy_initial_energy": 1,
   "player_initial_draw": 4,
-  "enemy_initial_draw": 4
+  "enemy_initial_draw": 4,
+  "hand_limit": 10,
+  "energy_cap": 99,
+  "phase_time_limit_seconds": 40
 }

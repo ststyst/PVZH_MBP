@@ -44,6 +44,10 @@ const DEFINITIONS: Dictionary = {
 		"label": "免疫锦囊",
 		"description": "不能被锦囊牌指定。",
 	},
+	"team_up": {
+		"label": "组队",
+		"description": "只能放在同列的“组队位”；点击可与同列、同阵营的另一个实体交换位置。",
+	},
 }
 
 

@@ -55,6 +55,8 @@ func validate_for_kind(kind: String) -> Array[String]:
 		problems.append("实体牌的能力必须写在 when 事件块中（例如 when enter: ...），不能有打出时直接执行的语句。")
 	if kind == "spell" and not events.is_empty():
 		problems.append("锦囊牌不能使用 when 事件块；锦囊能力在打出时直接执行。")
+	if kind == "environment" and not events.is_empty():
+		problems.append("环境牌不能使用 when 事件块；环境牌能力在打出时直接执行。")
 	return problems
 
 

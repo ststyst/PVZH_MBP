@@ -1,0 +1,132 @@
+class_name BattleEffectContext
+extends EffectContext
+## 战斗层效果上下文：把 DSL 原语映射到 BattleEngine 的真实操作。
+## 句柄：BattleEntity 或 "hero:p"/"hero:z"。
+
+var engine: BattleEngine = null
+var caster_side: String = "p"
+var chosen_handle: Variant = null
+var _self_handle: Variant = null
+var _event_handle: Variant = null
+
+
+func _init(battle_engine: BattleEngine, side: String) -> void:
+	engine = battle_engine
+	caster_side = side
+
+
+func set_self_target(handle) -> void:
+	_self_handle = handle
+
+
+func set_event_target(handle) -> void:
+	_event_handle = handle
+
+
+func set_chosen_target(handle) -> void:
+	chosen_handle = handle
+
+
+func resolve_selector(selector: String) -> Array:
+	match selector:
+		"self":
+			return [] if _self_handle == null else [_self_handle]
+		"event":
+			return [] if _event_handle == null else [_event_handle]
+		"chosen":
+			return [] if chosen_handle == null else [chosen_handle]
+		"hero":
+			return [engine.hero_handle(caster_side)]
+		"enemy_hero":
+			return [engine.hero_handle(engine.opposite_side(caster_side))]
+		"all_enemies":
+			return _entities_of(engine.opposite_side(caster_side))
+		"random_enemy":
+			return _random_one(_entities_of(engine.opposite_side(caster_side)))
+		"all_allies":
+			return _entities_of(caster_side)
+		"random_ally":
+			return _random_one(_entities_of(caster_side))
+		_:
+			return []
+
+
+func describe_entity(handle) -> Dictionary:
+	if handle is BattleEntity:
+		var entity: BattleEntity = handle
+		return {
+			"side": _relative_side(entity.side),
+			"class": entity.card.card_class if entity.card != null else "",
+			"tribes": entity.card.tribes if entity.card != null else [],
+			"attack": entity.attack,
+			"health": entity.health,
+			"shield": entity.shield,
+		}
+	if handle is String and handle.begins_with("hero:"):
+		var side: String = handle.substr(5)
+		var state: BattlePlayerState = engine.players.get(side, null)
+		return {
+			"side": _relative_side(side),
+			"class": "hero",
+			"tribes": [],
+			"attack": 0,
+			"health": state.hero_health if state != null else 0,
+			"shield": 0,
+		}
+	return {}
+
+
+func summon(card_name: String, count: int = 1) -> Array:
+	return engine.summon_card_by_name(caster_side, card_name, count)
+
+
+func draw_cards(count: int) -> int:
+	return engine.draw_cards(caster_side, count)
+
+
+func deal_damage(target, amount: int) -> void:
+	engine.damage_handle(target, amount)
+
+
+func heal(target, amount: int) -> void:
+	engine.heal_handle(target, amount)
+
+
+func gain_shield(target, amount: int) -> void:
+	engine.gain_shield_handle(target, amount)
+
+
+func buff_stats(target, attack_delta: int, health_delta: int) -> void:
+	engine.buff_handle(target, attack_delta, health_delta)
+
+
+func gain_energy(amount: int) -> void:
+	engine.gain_energy(caster_side, amount)
+
+
+func give_keyword(target, keyword: String) -> void:
+	engine.give_keyword_handle(target, keyword)
+
+
+func destroy(target) -> void:
+	engine.destroy_handle(target)
+
+
+func _entities_of(side: String) -> Array:
+	var result: Array = []
+	for entity: BattleEntity in engine.entities:
+		if entity.alive and entity.side == side:
+			result.append(entity)
+	return result
+
+
+func _random_one(handles: Array) -> Array:
+	if handles.is_empty():
+		return []
+	return [handles[engine.rng.randi_range(0, handles.size() - 1)]]
+
+
+func _relative_side(side: String) -> String:
+	if _self_handle is BattleEntity and _self_handle.side == side:
+		return "self"
+	return "ally" if side == caster_side else "enemy"
