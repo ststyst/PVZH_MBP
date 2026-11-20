@@ -89,3 +89,20 @@ func test_empty_ability() -> void:
 func test_bad_indentation_reports_error() -> void:
 	var script: CardEffectScript = _parse("if attack(chosen) > 3:\ndeal_damage(chosen, 1)")
 	assert_true(script.has_errors(), "缺少缩进应报错")
+
+
+func test_multiple_when_blocks_semicolon() -> void:
+	var script: CardEffectScript = _parse("when die: gain_energy(2); when enter: buff_stats(self, 2, 0)")
+	assert_false(script.has_errors(), "多事件块应可解析：%s" % [script.errors])
+	assert_eq(script.events.size(), 2)
+	if script.events.size() == 2:
+		assert_eq(str(script.events[0].get("event", "")), "die")
+		assert_eq(str(script.events[1].get("event", "")), "enter")
+
+
+func test_multiple_when_blocks_newline() -> void:
+	var script: CardEffectScript = _parse(
+		"when die: gain_energy(2)\nwhen enter: buff_stats(self, 2, 0)"
+	)
+	assert_false(script.has_errors(), "多事件块（换行）应可解析：%s" % [script.errors])
+	assert_eq(script.events.size(), 2)

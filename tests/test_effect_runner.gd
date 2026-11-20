@@ -134,3 +134,24 @@ func test_unassigned_variable_is_recorded() -> void:
 	context.selector_results["chosen"] = ["enemy_1"]
 	var errors: Array[String] = _run("deal_damage(chosen, missing)")
 	assert_gt(errors.size(), 0, "未定义变量应记录错误")
+
+
+func test_multi_ability_entity() -> void:
+	var script: CardEffectScript = CardEffectScript.parse(
+		"when die: gain_energy(2); when enter: buff_stats(self, 2, 0)"
+	)
+	assert_false(script.has_errors(), "双异能实体应可解析：%s" % [script.errors])
+	script.run_event(context, "enter", "self_handle")
+	assert_eq(context.calls.size(), 1, "入场应触发第一条能力")
+	if not context.calls.is_empty():
+		assert_eq(str(context.calls[0].get("op", "")), "buff_stats")
+		assert_eq(int(context.calls[0].get("attack", 0)), 2)
+	context.calls.clear()
+	script.run_event(context, "die", "self_handle")
+	assert_eq(context.calls.size(), 1, "死亡应触发第二条能力")
+	if not context.calls.is_empty():
+		assert_eq(str(context.calls[0].get("op", "")), "gain_energy")
+		assert_eq(int(context.calls[0].get("amount", 0)), 2)
+	context.calls.clear()
+	script.run_event(context, "attack", "self_handle")
+	assert_eq(context.calls.size(), 0, "未声明的事件不应触发")

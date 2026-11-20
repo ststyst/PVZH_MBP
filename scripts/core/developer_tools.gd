@@ -1,4 +1,4 @@
-extends Node
+﻿extends Node
 ## 开发者存档专属的测试功能 API。界面上的「测试」按钮打开面板后调用这里的方法。
 ## 非开发者存档时 is_enabled() 为 false，所有操作都会被拒绝。
 
@@ -66,3 +66,77 @@ func set_currencies(gold: int, diamond: int) -> void:
 	GameState.emit_currency()
 	GameState.save_active_profile()
 	test_action_done.emit("set_currencies", "金币 %d / 钻石 %d" % [gold, diamond])
+
+
+# ----- 卡牌 CSV 编译（开发者测试界面） -----
+
+## 编译指定目录下的 config.csv / cards.csv。
+## 默认目录：user://card_packs/import（玩家/开发者把 CSV 放这里）。
+## 返回 CardSetCompiler 的报告：{ ok, summary, errors, warnings, card_count, pack_path, report_path }
+func compile_card_set(
+	source_dir: String = "",
+	card_namespace: String = "",
+	output_pack_path: String = "",
+) -> Dictionary:
+	if not is_enabled():
+		return {"ok": false, "summary": "仅开发者存档可用。", "errors": ["仅开发者存档可用。"], "warnings": [], "card_count": 0, "pack_path": "", "report_path": ""}
+	var target_dir: String = source_dir
+	if target_dir.is_empty():
+		target_dir = CardSetCompiler.DEFAULT_IMPORT_DIR
+	var target_namespace: String = card_namespace
+	if target_namespace.is_empty():
+		target_namespace = CardDatabase.OFFICIAL_NAMESPACE
+	var result: Dictionary = CardSetCompiler.compile_pack(
+		target_dir,
+		target_namespace,
+		output_pack_path,
+		CardDatabase.config,
+	)
+	test_action_done.emit("compile_card_set", str(result.get("summary", "")))
+	return result
+
+
+## 直接编译官方 CSV（res://data/cards/official），产物写入官方编译包路径。
+func compile_official_cards() -> Dictionary:
+	if not is_enabled():
+		return {"ok": false, "summary": "仅开发者存档可用。", "errors": ["仅开发者存档可用。"], "warnings": [], "card_count": 0, "pack_path": "", "report_path": ""}
+	var result: Dictionary = CardSetCompiler.compile_pack(
+		CardDatabase.OFFICIAL_DIR,
+		CardDatabase.OFFICIAL_NAMESPACE,
+		CardDatabase.COMPILED_OFFICIAL_PACK,
+		CardDatabase.config,
+	)
+	test_action_done.emit("compile_official_cards", str(result.get("summary", "")))
+	return result
+
+
+## 最近一次编译报告文件路径（user:// 下，可直接用文本编辑器查看）。
+func get_compile_report_path() -> String:
+	return CardSetCompiler.REPORT_PATH
+
+
+## 读取最近一次编译报告的文本内容。
+func get_compile_report() -> String:
+	if not FileAccess.file_exists(CardSetCompiler.REPORT_PATH):
+		return ""
+	return FileAccess.get_file_as_string(CardSetCompiler.REPORT_PATH)
+
+
+## 重新加载卡牌数据库（默认优先读取编译包），返回卡牌数量。
+func reload_card_database(use_compiled_pack: bool = true) -> int:
+	CardDatabase.reload(use_compiled_pack)
+	test_action_done.emit("reload_card_database", "卡牌 %d 张" % CardDatabase.card_count())
+	return CardDatabase.card_count()
+
+
+func get_card_database_errors() -> Array[String]:
+	return CardDatabase.load_errors.duplicate()
+
+
+func has_compiled_official_pack() -> bool:
+	return FileAccess.file_exists(CardDatabase.COMPILED_OFFICIAL_PACK)
+
+
+## 删除官方编译包（下次启动/重载回退 CSV）。
+func clear_compiled_official_pack() -> bool:
+	return CardDatabase.clear_compiled_official_pack()

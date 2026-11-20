@@ -1,4 +1,4 @@
-extends Node
+﻿extends Node
 ## 卡牌数据库：从 CSV 载入全局配置与卡牌数据（数据驱动）。
 ##
 ## 官方卡牌目录：res://data/cards/official/
@@ -33,6 +33,11 @@ const REQUIRED_COLUMNS: Array[String] = [
 
 const VALID_KINDS: Array[String] = ["entity", "spell"]
 
+## 编译包格式版本（与 CardSetCompiler 保持一致）
+const PACK_FORMAT_VERSION: int = 1
+## 官方卡牌的编译包（由开发者测试界面编译生成；存在时启动优先读取）
+const COMPILED_OFFICIAL_PACK: String = "user://card_packs/compiled/official.cardpack"
+
 ## card_id（含命名空间）-> CardData
 var cards: Dictionary = {}
 var config: CardSetConfig = null
@@ -44,10 +49,18 @@ func _ready() -> void:
 	reload()
 
 
-func reload() -> void:
+func reload(use_compiled_pack: bool = true) -> void:
 	cards.clear()
 	load_errors.clear()
 	config = CardSetConfig.new()
+	if use_compiled_pack and FileAccess.file_exists(COMPILED_OFFICIAL_PACK):
+		var loaded: int = load_pack_file(COMPILED_OFFICIAL_PACK, OFFICIAL_NAMESPACE, true)
+		if loaded > 0:
+			cards_reloaded.emit(cards.size())
+			return
+		load_errors.append("编译包加载失败，已回退 CSV：%s" % COMPILED_OFFICIAL_PACK)
+		cards.clear()
+		config = CardSetConfig.new()
 	load_errors.append_array(config.load_file(OFFICIAL_DIR.path_join(CONFIG_FILE_NAME)))
 	load_card_set(OFFICIAL_DIR, OFFICIAL_NAMESPACE, true)
 	cards_reloaded.emit(cards.size())
@@ -79,6 +92,60 @@ func load_card_set(dir_path: String, card_namespace: String, is_official: bool =
 ## 模组接口预留：载入模组卡牌（未来使用 user://mods/<作者.模组>/cards.csv）。
 func load_mod_card_set(card_namespace: String, dir_path: String) -> int:
 	return load_card_set(dir_path, card_namespace, false)
+
+
+## 读取编译包（.cardpack），跳过 CSV 与伪代码解析，直接恢复卡牌与能力程序。
+func load_pack_file(path: String, namespace_override: String = "", reset_first: bool = false) -> int:
+	var file: FileAccess = FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		load_errors.append("无法读取编译包：%s" % path)
+		return 0
+	var payload: Variant = file.get_var()
+	file.close()
+	if not payload is Dictionary:
+		load_errors.append("编译包内容无效：%s" % path)
+		return 0
+	var data: Dictionary = payload
+	if int(data.get("format_version", 0)) != PACK_FORMAT_VERSION:
+		load_errors.append("编译包版本不匹配（需要 %d）：%s" % [PACK_FORMAT_VERSION, path])
+		return 0
+	var pack_config: Variant = data.get("config", {})
+	if not pack_config is Dictionary:
+		load_errors.append("编译包缺少配置：%s" % path)
+		return 0
+	if reset_first or config == null or config.rarities.is_empty():
+		config = CardSetConfig.from_dict(pack_config)
+	var card_namespace: String = namespace_override
+	if card_namespace.is_empty():
+		card_namespace = str(data.get("card_namespace", ""))
+	var raw_cards: Variant = data.get("cards", [])
+	if not raw_cards is Array:
+		load_errors.append("编译包缺少卡牌列表：%s" % path)
+		return 0
+	var loaded: int = 0
+	for entry: Variant in raw_cards:
+		if not entry is Dictionary:
+			continue
+		var card: CardData = CardData.from_pack_dict(entry, card_namespace)
+		if card.card_id.is_empty():
+			continue
+		if cards.has(card.card_id):
+			load_errors.append("编译包卡牌 ID 重复：%s" % card.card_id)
+			continue
+		cards[card.card_id] = card
+		loaded += 1
+	return loaded
+
+
+func has_compiled_official_pack() -> bool:
+	return FileAccess.file_exists(COMPILED_OFFICIAL_PACK)
+
+
+## 删除官方编译包（下次启动回退 CSV）。
+func clear_compiled_official_pack() -> bool:
+	if not FileAccess.file_exists(COMPILED_OFFICIAL_PACK):
+		return false
+	return DirAccess.remove_absolute(COMPILED_OFFICIAL_PACK) == OK
 
 
 func get_card(card_id: String) -> CardData:

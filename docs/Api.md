@@ -206,6 +206,20 @@ ConfirmService.show_message(LoginFlow.get_developer_message(), "开发者的话"
 | `clear_all_cards()` | void | 清空卡牌收藏 |
 | `test_action_done`（信号） | `action`, `detail` | 每个操作完成后通知面板刷新 |
 
+### 卡牌 CSV 编译（开发者测试界面）
+
+| 方法 | 返回 | 说明 |
+|---|---|---|
+| `compile_card_set(source_dir="", namespace="", output_pack_path="")` | 报告 Dictionary | 编译 `user://card_packs/import`（可指定）下的 config.csv/cards.csv |
+| `compile_official_cards()` | 报告 Dictionary | 编译官方 `res://data/cards/official` 到官方编译包 |
+| `get_compile_report_path()` / `get_compile_report()` | String | 最近一次编译报告文件路径 / 文本 |
+| `reload_card_database(use_compiled_pack=true)` | int | 重新加载卡牌（优先编译包），返回卡牌数 |
+| `get_card_database_errors()` | `Array[String]` | 当前加载错误 |
+| `has_compiled_official_pack()` / `clear_compiled_official_pack()` | bool | 查询/删除官方编译包 |
+
+编译成功会生成 `.cardpack`（`user://card_packs/compiled/`），失败会生成
+`user://card_packs/compile_report.txt`，逐行指出 CSV 行号与问题（费用、生命、职业、词缀、流派、稀有度、伪代码语法等）。
+
 ---
 
 ## 8. 卡牌与牌组（CSV 数据驱动）

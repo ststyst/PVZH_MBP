@@ -1,4 +1,4 @@
-class_name CardData
+﻿class_name CardData
 extends Resource
 ## 一张卡牌的静态定义（由 CSV 载入，数据驱动）。
 ## 内部唯一标识 card_id 带命名空间前缀：官方 "pvzh:<英文名>"，模组 "<作者.模组>:<英文名>"。
@@ -104,3 +104,77 @@ func craft_cost() -> int:
 ## 分解获得（钻石）；未知稀有度为 0。
 func disenchant_value() -> int:
 	return int(RARITY_DISENCHANT_VALUE.get(rarity, 0))
+
+
+## 序列化为编译包中的卡牌条目（含已编译的能力程序）。
+func to_pack_dict() -> Dictionary:
+	var program: Dictionary = {}
+	var ability_errors: Array = []
+	if ability_script != null:
+		program = ability_script.to_program()
+		ability_errors = ability_script.errors.duplicate()
+	return {
+		"card_id": card_id,
+		"english_name": english_name,
+		"chinese_name": chinese_name,
+		"description": description,
+		"kind": kind,
+		"cost": cost,
+		"attack": attack,
+		"health": health,
+		"shield": shield,
+		"card_class": card_class,
+		"rarity": rarity,
+		"keywords": keywords.duplicate(),
+		"tribes": tribes.duplicate(),
+		"ability": ability,
+		"class_label": class_label,
+		"rarity_label": rarity_label,
+		"keyword_labels": keyword_labels.duplicate(),
+		"tribe_labels": tribe_labels.duplicate(),
+		"ability_program": program,
+		"ability_errors": ability_errors,
+	}
+
+
+## 从编译包条目恢复卡牌（跳过解析）。
+static func from_pack_dict(data: Dictionary, card_namespace: String = "") -> CardData:
+	var card := CardData.new()
+	card.card_id = str(data.get("card_id", ""))
+	card.card_namespace = card_namespace if not card_namespace.is_empty() else str(data.get("card_namespace", ""))
+	card.english_name = str(data.get("english_name", ""))
+	card.chinese_name = str(data.get("chinese_name", ""))
+	card.description = str(data.get("description", ""))
+	card.kind = str(data.get("kind", "spell"))
+	card.cost = int(data.get("cost", 0))
+	card.attack = int(data.get("attack", 0))
+	card.health = int(data.get("health", 0))
+	card.shield = int(data.get("shield", 0))
+	card.card_class = str(data.get("card_class", "neutral"))
+	card.rarity = str(data.get("rarity", "unknown"))
+	card.ability = str(data.get("ability", ""))
+	card.class_label = str(data.get("class_label", ""))
+	card.rarity_label = str(data.get("rarity_label", ""))
+	var raw_keywords: Variant = data.get("keywords", [])
+	if raw_keywords is Array:
+		for entry: Variant in raw_keywords:
+			card.keywords.append(str(entry))
+	var raw_tribes: Variant = data.get("tribes", [])
+	if raw_tribes is Array:
+		for entry: Variant in raw_tribes:
+			card.tribes.append(str(entry))
+	var raw_keyword_labels: Variant = data.get("keyword_labels", [])
+	if raw_keyword_labels is Array:
+		for entry: Variant in raw_keyword_labels:
+			card.keyword_labels.append(str(entry))
+	var raw_tribe_labels: Variant = data.get("tribe_labels", [])
+	if raw_tribe_labels is Array:
+		for entry: Variant in raw_tribe_labels:
+			card.tribe_labels.append(str(entry))
+	var program: Variant = data.get("ability_program", {})
+	var parse_errors: Variant = data.get("ability_errors", [])
+	card.ability_script = CardEffectScript.from_program(
+		program if program is Dictionary else {},
+		parse_errors if parse_errors is Array else [],
+	)
+	return card

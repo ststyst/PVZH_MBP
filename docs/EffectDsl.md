@@ -78,7 +78,19 @@ when enter(side == 'enemy' and attack > 3):
 
 默认（不写过滤）= 只响应自己。监听其他实体请显式写条件，例如 `side != 'self'`、`side == 'enemy'`、`side == 'any'`。
 
-## 六、示例
+## 六、多异能
+
+同一张卡可以写**多个 `when` 块**（换行或 `;` 分隔），例如“死亡时给 2 费 + 入场时 +2 攻”：
+
+```
+when die: gain_energy(2); when enter: buff_stats(self, 2, 0)
+```
+
+执行时按事件分别触发，互不影响。也可以同一个事件写多个块（都会按顺序触发）。
+
+## 七、示例
+
+## 七、示例
 
 实体（入场获得 2 费）：
 
@@ -123,7 +135,7 @@ destroy(chosen_if(attack <= 3))
 deal_damage(all_enemies, 2); heal(all_allies, 2)
 ```
 
-## 七、书写规则
+## 八、书写规则
 
 - 块可以用两种写法：
   - 多行缩进（推荐）：
@@ -136,7 +148,7 @@ deal_damage(all_enemies, 2); heal(all_allies, 2)
 - 缩进用空格（Tab 按 4 空格计），同一块内必须一致。
 - 未定义变量、除以 0、未知函数/事件、参数数量错误都会记录错误；**运行期错误不会中断战斗**。
 
-## 八、战斗层接入（实现 `EffectContext`）
+## 九、战斗层接入（实现 `EffectContext`）
 
 战斗层需要实现 `scripts/data/effects/effect_context.gd`：
 

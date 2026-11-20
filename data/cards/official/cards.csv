@@ -8,7 +8,7 @@ dragonling,幼龙,entity,3,3,3,0,neutral,rare,"","pet","","还没长大，但已
 wind_elemental,风怒元素,entity,4,2,4,0,neutral,rare,"double_strike","universe","","每次攻击会打两下。"
 assassin,暗影刺客,entity,5,4,4,0,neutral,rare,"deadly","universe","","剧毒。"
 giant,山岭巨人,entity,8,8,8,2,neutral,rare,"","pet","","虽然笨重，但站在那里就很有压迫感。"
-ancient_dragon,远古巨龙,entity,9,8,8,0,neutral,legend,"","universe","when enter: deal_damage(all_enemies, 2)","登场时震天动地，对所有敌人造成 2 点伤害。"
+ancient_dragon,远古巨龙,entity,9,8,8,0,neutral,legend,"","universe","when enter: deal_damage(all_enemies, 2); when die: draw_cards(1)","登场时对所有敌人造成 2 点伤害；死亡时为使用者抽 1 张牌。"
 arcane_missiles,奥术飞弹,spell,1,0,0,0,smarty,normal,"","","repeat(3): deal_damage(random_enemy, 1)","造成 3 点伤害，随机分配给敌方角色。"
 frostbolt,寒冰箭,spell,2,0,0,0,smarty,normal,"","","deal_damage(chosen, 3)","造成 3 点伤害。"
 flamewaker,火焰行者,entity,3,2,3,0,smarty,rare,"","robot","when attacked(side == 'any'): deal_damage(random_enemy, 1)","每当一个角色受到攻击时，对随机敌人造成 1 点伤害。"

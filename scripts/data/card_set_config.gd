@@ -112,6 +112,43 @@ func _add_entry(target: Array[String], labels: Dictionary, name: String, label: 
 		labels[name] = label
 
 
+## 序列化（供编译包使用）。
+func to_dict() -> Dictionary:
+	return {
+		"rarities": rarities.duplicate(),
+		"classes": classes.duplicate(),
+		"tribes": tribes.duplicate(),
+		"rarity_labels": rarity_labels.duplicate(),
+		"class_labels": class_labels.duplicate(),
+		"tribe_labels": tribe_labels.duplicate(),
+	}
+
+
+static func from_dict(data: Dictionary) -> CardSetConfig:
+	var config := CardSetConfig.new()
+	var raw_rarities: Variant = data.get("rarities", [])
+	if raw_rarities is Array:
+		for entry: Variant in raw_rarities:
+			config.rarities.append(str(entry))
+	var raw_classes: Variant = data.get("classes", [])
+	if raw_classes is Array:
+		for entry: Variant in raw_classes:
+			config.classes.append(str(entry))
+	var raw_tribes: Variant = data.get("tribes", [])
+	if raw_tribes is Array:
+		for entry: Variant in raw_tribes:
+			config.tribes.append(str(entry))
+	config.rarity_labels = data.get("rarity_labels", {}).duplicate()
+	config.class_labels = data.get("class_labels", {}).duplicate()
+	config.tribe_labels = data.get("tribe_labels", {}).duplicate()
+	return config
+
+
+## 复制一份配置（编译时可在副本上合并，不影响运行时数据库）。
+func copy_config() -> CardSetConfig:
+	return CardSetConfig.from_dict(to_dict())
+
+
 func _map_header(row: PackedStringArray) -> Dictionary:
 	var header: Dictionary = {}
 	for index: int in range(row.size()):

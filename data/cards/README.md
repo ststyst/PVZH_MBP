@@ -103,7 +103,18 @@ when die: heal(hero, 3)
 - 未来模组卡牌：`<作者名>.<模组名>:<english_name>`，例如 `alice.better_cards:spore_shot`。
 - 由于命名空间不同，模组卡牌不会与官方卡牌重名；模组目录 `user://mods/...` 的载入接口已预留（`load_mod_card_set`），当前未启用。
 
-## 四、经济数值（按稀有度）
+## 四、编译与快速载入（开发者测试界面）
+
+- 待编译目录：`user://card_packs/import/`（放 `config.csv` / `cards.csv`）。
+- 调用 `DeveloperTools.compile_card_set()`（源码目录可指定）：
+  - 校验全局配置、职业/稀有度/词缀/流派、数值规则（费用必须为正、实体生命 ≥1 等）、伪代码语法与实体/锦囊语义；
+  - 报错写入 `user://card_packs/compile_report.txt`，带行号与原因；
+  - 全部通过时生成 `user://card_packs/compiled/<命名空间>.cardpack`（已编译能力程序，跳过运行时解析）。
+- 启动时若存在 `user://card_packs/compiled/official.cardpack`，`CardDatabase` 会优先读取它（更快）；
+  删除该文件或调用 `clear_compiled_official_pack()` 即回退 CSV。
+- 模组同样走编译流程：内部 ID 使用 `<作者.模组>:<英文名>` 命名空间，产物可随模组分发。
+
+## 五、经济数值（按稀有度）
 
 | 稀有度 | 合成（钻石） | 分解（钻石） | 最大持有 |
 |---|---|---|---|

@@ -25,6 +25,21 @@ static func parse(source: String) -> CardEffectScript:
 	return script
 
 
+## 从已编译的程序（例如编译包）直接构造，跳过解析。
+static func from_program(program: Dictionary, parse_errors: Array = []) -> CardEffectScript:
+	var script := CardEffectScript.new()
+	script.on_play = program.get("on_play", [])
+	script.events = program.get("events", [])
+	for error_message: Variant in parse_errors:
+		script.errors.append(str(error_message))
+	return script
+
+
+## 供编译包序列化。
+func to_program() -> Dictionary:
+	return {"on_play": on_play, "events": events}
+
+
 func has_errors() -> bool:
 	return not errors.is_empty()
 
