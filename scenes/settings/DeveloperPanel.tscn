@@ -1,0 +1,169 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/developer_panel.gd" id="1_dev"]
+
+[node name="DeveloperPanel" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_dev")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.0705882, 0.0784314, 0.109804, 1)
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="VBox" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="TopBar" type="HBoxContainer" parent="Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="BackButton" type="Button" parent="Margin/VBox/TopBar"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "← 返回设置"
+
+[node name="TitleLabel" type="Label" parent="Margin/VBox/TopBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 22
+text = "开发者调试"
+
+[node name="InfoLabel" type="Label" parent="Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.74902, 0.780392, 0.858824, 1)
+theme_override_font_sizes/font_size = 12
+autowrap_mode = 1
+
+[node name="Scroll" type="ScrollContainer" parent="Margin/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Content" type="VBoxContainer" parent="Margin/VBox/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="CurrencyTitle" type="Label" parent="Margin/VBox/Scroll/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.72, 0.32, 1)
+theme_override_font_sizes/font_size = 16
+text = "货币"
+
+[node name="CurrencyRow" type="HBoxContainer" parent="Margin/VBox/Scroll/Content"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="AddGoldButton" type="Button" parent="Margin/VBox/Scroll/Content/CurrencyRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "+1000 金币"
+
+[node name="AddDiamondButton" type="Button" parent="Margin/VBox/Scroll/Content/CurrencyRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "+100 钻石"
+
+[node name="ResetCurrencyButton" type="Button" parent="Margin/VBox/Scroll/Content/CurrencyRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "重置货币"
+
+[node name="CardsTitle" type="Label" parent="Margin/VBox/Scroll/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.72, 0.32, 1)
+theme_override_font_sizes/font_size = 16
+text = "卡牌"
+
+[node name="CardsRow" type="HBoxContainer" parent="Margin/VBox/Scroll/Content"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="UnlockCardsButton" type="Button" parent="Margin/VBox/Scroll/Content/CardsRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "解锁全部卡牌"
+
+[node name="ClearCardsButton" type="Button" parent="Margin/VBox/Scroll/Content/CardsRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "清空全部卡牌"
+
+[node name="DataTitle" type="Label" parent="Margin/VBox/Scroll/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.72, 0.32, 1)
+theme_override_font_sizes/font_size = 16
+text = "卡牌数据 / CSV 编译"
+
+[node name="CompileOfficialButton" type="Button" parent="Margin/VBox/Scroll/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(0, 44)
+text = "编译官方卡牌（→ 官方编译包）"
+
+[node name="CompileImportButton" type="Button" parent="Margin/VBox/Scroll/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(0, 44)
+text = "编译 user://card_packs/import"
+
+[node name="ReloadCardsButton" type="Button" parent="Margin/VBox/Scroll/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(0, 44)
+text = "重新加载卡牌数据库"
+
+[node name="ReportButton" type="Button" parent="Margin/VBox/Scroll/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(0, 44)
+text = "查看编译报告"
+
+[node name="ClearPackButton" type="Button" parent="Margin/VBox/Scroll/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(0, 44)
+text = "清除官方编译包"
+
+[node name="OutputTitle" type="Label" parent="Margin/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.65098, 0.678431, 0.760784, 1)
+theme_override_font_sizes/font_size = 12
+text = "输出"
+
+[node name="ResultText" type="TextEdit" parent="Margin/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 190)
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+editable = false
+wrap_mode = 1

@@ -13,6 +13,7 @@ const TOOLTIP_SERVER_ONLY: String = "仅服务器身份可用（登录专用服�
 @onready var social_button: Button = %SocialButton
 @onready var events_button: Button = %EventsButton
 @onready var settings_button: Button = %SettingsButton
+@onready var dev_button: Button = %DevButton
 @onready var logout_button: Button = %LogoutButton
 @onready var status_label: Label = %StatusLabel
 
@@ -30,6 +31,7 @@ func _connect_signals() -> void:
 	social_button.pressed.connect(_on_social_pressed)
 	events_button.pressed.connect(_on_events_pressed)
 	settings_button.pressed.connect(_on_settings_pressed)
+	dev_button.pressed.connect(_on_dev_pressed)
 	logout_button.pressed.connect(_on_logout_pressed)
 
 
@@ -64,6 +66,7 @@ func _apply_identity_rules() -> void:
 	events_button.disabled = not server_mode
 	social_button.tooltip_text = "" if server_mode else TOOLTIP_SERVER_ONLY
 	events_button.tooltip_text = "" if server_mode else TOOLTIP_SERVER_ONLY
+	dev_button.visible = GameState.is_developer_save()
 
 
 func _on_battle_pressed() -> void:
@@ -87,7 +90,11 @@ func _on_events_pressed() -> void:
 
 
 func _on_settings_pressed() -> void:
-	_show_placeholder("设置", "音量、语言与账号设置将在后续里程碑补齐。")
+	GameState.go_to_settings()
+
+
+func _on_dev_pressed() -> void:
+	GameState.go_to_developer_panel()
 
 
 func _on_logout_pressed() -> void:

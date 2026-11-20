@@ -178,8 +178,22 @@ func _on_create_confirm_pressed() -> void:
 
 ---
 
-## 6. 弹出框 `ConfirmService`
+### 设置界面 `SettingsScreen`
 
+场景：`res://scenes/settings/SettingsScreen.tscn`（主界面「设置」进入）。
+
+| 功能 | 实现 |
+|---|---|
+| 主音量滑块 | `AppStorage.get/set_master_volume()`，立即作用于 Master 总线并持久化 |
+| 显示预设 | `DisplayService.get_presets()` 渲染下拉框，选择后 `apply_preset(id)` 并持久化 |
+| 账号/存档信息 | 身份、玩家名、金币/钻石、开发者标记、存档或服务器账号 |
+| 保存当前存档 | `GameState.save_active_profile()`（服务器身份下提示由服务器保存） |
+| 开发者调试 | 仅开发者存档启用，进入 `DeveloperPanel.tscn` |
+| 返回 | `GameState.go_to_main()` |
+
+导航 API：`GameState.go_to_settings()`、`GameState.go_to_developer_panel()`。
+
+## 6. 弹出框 `ConfirmService`
 | 方法 | 返回 | 说明 |
 |---|---|---|
 | `ask_yes_no(message, title="确认", yes_text="是", no_text="否")` | **`await` → bool** | 是=true，否/ESC/关闭=false；同一时间只有一个确认框 |
@@ -193,6 +207,8 @@ ConfirmService.show_message(LoginFlow.get_developer_message(), "开发者的话"
 ---
 
 ## 7. 开发者工具 `DeveloperTools`
+
+对应界面：`res://scenes/settings/DeveloperPanel.tscn`（设置页「开发者调试」或主界面「调试」按钮进入；仅开发者存档可用）。
 
 仅当当前存档 `is_developer_save == true` 时可用（否则所有操作返回 false / 0）。
 

@@ -25,6 +25,7 @@
 - 牌组编辑界面（`scenes/deck/DeckEditor.tscn`）：可选卡牌列表、选中/移除/信息下拉菜单、卡牌信息弹窗。
 - 卡牌美术：稀有度卡牌背景（`assets/cards/backgrounds/`）+ CSV `art_path` 外观图；缺图回退纯色外观。
 - 单机战斗：`scenes/battle/BattlePrep.tscn` 准备 + `Battle.tscn` 对战；推荐卡组 CSV（`data/battle`）；简单 AI。
+- 设置与调试：设置页（音量/显示预设/保存存档/开发者入口）+ 开发者调试面板（货币/卡牌/CSV 编译）。
 - 30 张示例卡数据（`data/cards/official/cards.csv`，CSV 数据驱动）+ 能力 DSL
   （`docs/EffectDsl.md`：变量、四则运算、条件目标、实体事件与过滤）。
 - 旧版占位界面（LoginScreen / MainScreen / Battle）；正式 UI 由后续开发替换。
