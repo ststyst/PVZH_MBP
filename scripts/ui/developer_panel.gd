@@ -7,6 +7,7 @@ extends Control
 @onready var add_diamond_button: Button = %AddDiamondButton
 @onready var reset_currency_button: Button = %ResetCurrencyButton
 @onready var unlock_cards_button: Button = %UnlockCardsButton
+@onready var add_all_cards_button: Button = %AddAllCardsButton
 @onready var clear_cards_button: Button = %ClearCardsButton
 @onready var compile_official_button: Button = %CompileOfficialButton
 @onready var compile_import_button: Button = %CompileImportButton
@@ -24,6 +25,7 @@ func _ready() -> void:
 	add_diamond_button.pressed.connect(_on_add_diamond)
 	reset_currency_button.pressed.connect(_on_reset_currency)
 	unlock_cards_button.pressed.connect(_on_unlock_cards)
+	add_all_cards_button.pressed.connect(_on_add_all_cards)
 	clear_cards_button.pressed.connect(_on_clear_cards)
 	compile_official_button.pressed.connect(_on_compile_official)
 	compile_import_button.pressed.connect(_on_compile_import)
@@ -32,7 +34,7 @@ func _ready() -> void:
 	clear_pack_button.pressed.connect(_on_clear_pack)
 	_action_buttons = [
 		add_gold_button, add_diamond_button, reset_currency_button,
-		unlock_cards_button, clear_cards_button,
+		unlock_cards_button, add_all_cards_button, clear_cards_button,
 		compile_official_button, compile_import_button, reload_cards_button,
 		report_button, clear_pack_button,
 	]
@@ -83,6 +85,15 @@ func _on_reset_currency() -> void:
 func _on_unlock_cards() -> void:
 	var added: int = DeveloperTools.unlock_all_cards()
 	_write_result("解锁全部卡牌：新增 %d 张。" % added)
+	_refresh_info()
+
+
+func _on_add_all_cards() -> void:
+	var added: int = DeveloperTools.add_all_cards(10)
+	if added > 0:
+		_write_result("所有卡牌各 +10 张：共新增 %d 张。" % added)
+	else:
+		_write_result("添加失败（仅开发者存档可用）。")
 	_refresh_info()
 
 

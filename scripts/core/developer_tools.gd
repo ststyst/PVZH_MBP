@@ -1,4 +1,4 @@
-﻿extends Node
+extends Node
 ## 开发者存档专属的测试功能 API。界面上的「测试」按钮打开面板后调用这里的方法。
 ## 非开发者存档时 is_enabled() 为 false，所有操作都会被拒绝。
 
@@ -45,6 +45,19 @@ func unlock_all_cards() -> int:
 			added += max_copies - owned
 	GameState.save_active_profile()
 	test_action_done.emit("unlock_all_cards", "+%d" % added)
+	return added
+
+
+## 给所有卡牌各增加 count 张（仅开发者存档；不受收藏上限限制）。
+func add_all_cards(count: int = 10) -> int:
+	if not is_enabled() or GameState.profile == null or count <= 0:
+		return 0
+	var added: int = 0
+	for card_id: String in CardDatabase.all_card_ids():
+		GameState.profile.add_card(card_id, count)
+		added += count
+	GameState.save_active_profile()
+	test_action_done.emit("add_all_cards", "+%d" % added)
 	return added
 
 

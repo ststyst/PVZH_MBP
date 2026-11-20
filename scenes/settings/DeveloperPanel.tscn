@@ -118,6 +118,12 @@ layout_mode = 2
 size_flags_horizontal = 3
 text = "清空全部卡牌"
 
+[node name="AddAllCardsButton" type="Button" parent="Margin/VBox/Scroll/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(0, 44)
+text = "所有卡牌各 +10 张"
+
 [node name="DataTitle" type="Label" parent="Margin/VBox/Scroll/Content"]
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.72, 0.32, 1)

@@ -219,6 +219,7 @@ ConfirmService.show_message(LoginFlow.get_developer_message(), "开发者的话"
 | `add_diamond(amount=100)` | bool | 加钻石 |
 | `set_currencies(gold, diamond)` | void | 直接设置两种货币 |
 | `unlock_all_cards()` | int | 解锁全部卡牌到持有上限，返回新增张数 |
+| `add_all_cards(count=10)` | int | 给所有卡牌各增加 `count` 张（不受收藏上限限制），返回新增张数 |
 | `clear_all_cards()` | void | 清空卡牌收藏 |
 | `test_action_done`（信号） | `action`, `detail` | 每个操作完成后通知面板刷新 |
 
