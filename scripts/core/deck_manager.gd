@@ -185,7 +185,8 @@ func remove_card(deck_id: String, card_id: String) -> Dictionary:
 	return {"ok": true, "message": "已移除一张卡牌。", "deck_id": deck_id, "count": deck.count_of(card_id)}
 
 
-## 保存牌组：按当前玩法配置刷新 default 标签并持久化。
+## 保存牌组：无论是否符合默认组卡规则都会保存成功；
+## 完全符合时打上 default 标签，不符合时仅移除该标签（不阻止保存）。
 func save_deck(deck_id: String) -> Dictionary:
 	var deck: DeckData = get_deck(deck_id)
 	if deck == null:
@@ -194,9 +195,12 @@ func save_deck(deck_id: String) -> Dictionary:
 	deck.updated_at_unix = int(Time.get_unix_time_from_system())
 	_persist()
 	decks_changed.emit()
+	var message: String = "牌组已保存。"
+	if not errors.is_empty():
+		message = "牌组已保存（未满足完整牌组要求，已移除 default 标签）。"
 	return {
-		"ok": errors.is_empty(),
-		"message": "牌组已保存。" if errors.is_empty() else "牌组已保存，但不符合完整牌组要求。",
+		"ok": true,
+		"message": message,
 		"errors": errors,
 		"tags": deck.tags.duplicate(),
 	}

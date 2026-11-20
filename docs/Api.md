@@ -1,4 +1,4 @@
-﻿# 游戏 API 文档（供 UI 接入）
+# 游戏 API 文档（供 UI 接入）
 
 > 版本：alpha0.1　|　对应 Godot 4.7.2 工程 `PVZH_MBP`
 > 本文只描述**接口层**（autoload 单例与数据模型），不包含任何场景/按钮/布局实现——这些由后续 UI 开发完成。
@@ -323,7 +323,7 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 | `set_deck_hero(deck_id, hero_id)` | `{ok, message, errors, tags}` | 切换英雄并刷新标签 |
 | `add_card(deck_id, card_id)` | `{ok, message, count}` | 校验张数/稀有度上限/职业/专属/可编入 |
 | `remove_card(deck_id, card_id)` | `{ok, message, count}` | 移除一张 |
-| `save_deck(deck_id)` | `{ok, message, errors, tags}` | 按玩法配置刷新 `default` 标签并落盘 |
+| `save_deck(deck_id)` | `{ok, message, errors, tags}` | 保存必定成功；仅按规则刷新 `default` 标签（不符合时移除标签，`errors` 供 UI 提示） |
 
 `DeckData` 字段：`deck_id`、`deck_name`、`hero_id`、`allowed_classes`、`card_ids`、`tags`、`updated_at_unix`；
 方法：`card_count()`、`count_of()`、`get_card_counts()`、`add_card()`、`remove_card()`、`clear_cards()`、
