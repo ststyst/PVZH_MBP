@@ -1,0 +1,53 @@
+extends SceneTree
+## 无编辑器测试入口：不打开编辑器也能跑 res://tests/test_*.gd 里的 McpTestSuite。
+##
+## 用法：
+##   godot --headless --path <工程目录> --script res://tests/run_tests.gd
+##
+## 退出码：0 全部通过；1 有失败。
+
+const TEST_SCRIPTS: Array[String] = [
+	"res://tests/test_deck_data.gd",
+	"res://tests/test_save_manager.gd",
+]
+
+
+func _initialize() -> void:
+	var total_tests: int = 0
+	var failed_tests: int = 0
+	var total_assertions: int = 0
+	for script_path: String in TEST_SCRIPTS:
+		var script: GDScript = load(script_path) as GDScript
+		if script == null:
+			printerr("无法加载测试脚本：%s" % script_path)
+			failed_tests += 1
+			continue
+		var suite: McpTestSuite = script.new() as McpTestSuite
+		if suite == null:
+			printerr("无法实例化测试套件：%s" % script_path)
+			failed_tests += 1
+			continue
+		var current_suite_name: String = suite.suite_name()
+		suite.suite_setup({})
+		if suite._suite_failed:
+			printerr("[%s] 套件初始化失败：%s" % [current_suite_name, suite._suite_failed_message])
+			failed_tests += 1
+			continue
+		for method_info: Dictionary in suite.get_method_list():
+			var method_name: String = str(method_info.get("name", ""))
+			if not method_name.begins_with("test_"):
+				continue
+			suite._reset()
+			suite.setup()
+			suite.call(method_name)
+			suite.teardown()
+			total_tests += 1
+			total_assertions += suite._assertion_count
+			if suite._failed:
+				failed_tests += 1
+				printerr("[%s] %s 失败：%s" % [current_suite_name, method_name, suite._message])
+			else:
+				print("[%s] %s 通过（%d 断言）" % [current_suite_name, method_name, suite._assertion_count])
+		suite.suite_teardown()
+	print("测试完成：%d 个用例，%d 个断言，%d 个失败" % [total_tests, total_assertions, failed_tests])
+	quit(1 if failed_tests > 0 else 0)
