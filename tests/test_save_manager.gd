@@ -1,6 +1,6 @@
 @tool
 extends McpTestSuite
-## 本地存档与服务器缓存测试。运行方式：MCP test_run（suite = "save"）或 tests/run_tests.gd。
+## 本地存档与全局缓存测试。运行方式：MCP test_run（suite = "save"）或 tests/run_tests.gd。
 
 const SaveManagerScript := preload("res://scripts/core/save_manager.gd")
 
@@ -90,7 +90,7 @@ func test_profile_roundtrip() -> void:
 	if profile == null:
 		return
 	profile.gold = 777
-	profile.arcane_dust = 55
+	profile.diamond = 55
 	profile.add_card("test_card", 3)
 	var deck: DeckData = profile.create_deck("测试牌组")
 	assert_true(deck.add_card("test_card"))
@@ -101,11 +101,53 @@ func test_profile_roundtrip() -> void:
 	if reloaded == null:
 		return
 	assert_eq(reloaded.gold, 777)
-	assert_eq(reloaded.arcane_dust, 55)
+	assert_eq(reloaded.diamond, 55)
 	assert_eq(reloaded.get_card_count("test_card"), 3)
 	assert_eq(reloaded.decks.size(), 1)
 	assert_eq(reloaded.decks[0].card_ids.size(), 2)
 	assert_eq(reloaded.decks[0].deck_name, "测试牌组")
+
+
+func test_developer_flag_and_play_time() -> void:
+	var slot_key: String = manager.create_slot_with_flags("开发者测试", true)
+	assert_ne(slot_key, "", "create_slot_with_flags 应成功")
+	if slot_key.is_empty():
+		return
+	created_slots.append(slot_key)
+	var profile: PlayerProfile = manager.load_slot(slot_key)
+	assert_true(profile != null, "应能读回开发者存档")
+	if profile == null:
+		return
+	assert_true(profile.is_developer_save, "开发者标记应为 true")
+	profile.play_time_seconds = 3725
+	assert_true(manager.save_slot(slot_key, profile))
+	var reloaded: PlayerProfile = manager.load_slot(slot_key)
+	assert_eq(reloaded.play_time_seconds, 3725)
+	assert_eq(reloaded.get_play_time_text(), "01:02:05")
+	var slots: Array[SaveSlotInfo] = manager.list_slots()
+	var matched_slot: SaveSlotInfo = null
+	for slot: SaveSlotInfo in slots:
+		if slot.slot_key == slot_key:
+			matched_slot = slot
+	assert_true(matched_slot != null, "列表应包含该存档")
+	if matched_slot == null:
+		return
+	assert_true(matched_slot.is_developer_save)
+	assert_eq(matched_slot.play_time_seconds, 3725)
+	assert_eq(matched_slot.get_play_time_text(), "01:02:05")
+
+
+func test_non_developer_flag() -> void:
+	var slot_key: String = manager.create_slot_with_flags("正式玩家", false)
+	assert_ne(slot_key, "", "create_slot_with_flags 应成功")
+	if slot_key.is_empty():
+		return
+	created_slots.append(slot_key)
+	var profile: PlayerProfile = manager.load_slot(slot_key)
+	assert_true(profile != null)
+	if profile == null:
+		return
+	assert_false(profile.is_developer_save)
 
 
 func test_delete_slot() -> void:
@@ -115,6 +157,7 @@ func test_delete_slot() -> void:
 		return
 	assert_true(manager.delete_slot(slot_key), "delete_slot 应成功")
 	assert_true(manager.load_slot(slot_key) == null, "删除后不应再读到存档")
+	assert_false(manager.slot_exists(slot_key))
 
 
 func test_recent_server_cache() -> void:

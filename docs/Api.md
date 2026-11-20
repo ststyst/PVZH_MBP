@@ -1,0 +1,280 @@
+# 游戏 API 文档（供 UI 接入）
+
+> 版本：alpha0.1　|　对应 Godot 4.7.2 工程 `PVZH_MBP`
+> 本文只描述**接口层**（autoload 单例与数据模型），不包含任何场景/按钮/布局实现——这些由后续 UI 开发完成。
+> 代码位置：`scripts/core/`（服务）、`scripts/data/`（数据模型）、`scripts/core/confirm_service.gd`（弹出框）。
+
+---
+
+## 0. 通用约定
+
+- 所有服务都是 **autoload 单例**，直接按名字调用即可（如 `LoginFlow.request_start_game()`）。
+- 信号统一用 `服务.信号名.connect(方法)` 订阅。
+- 需要「是 / 否」结果的地方用 `await ConfirmService.ask_yes_no(...)`。
+- 所有返回 `Dictionary` 的方法统一结构：`{ ok: bool, message: String }`（另有 `slot_key` 等附加字段时会注明）。
+- 素材：本工程所有卡牌 `art_path` 均为空字符串，UI 不要依赖图片资源。
+
+---
+
+## 1. 登录流程 `LoginFlow`
+
+| 枚举 | 取值 |
+|---|---|
+| `MODE` | `NONE=0`, `LOCAL=1`, `SERVER=2` |
+| `PANEL` | `MODE_SELECT=0`, `LOCAL_MENU=1`, `SAVE_SELECT=2`, `SAVE_CREATE=3`, `SERVER_LOGIN=4` |
+| `START_RESULT` | `STARTED=0`, `NEED_CREATE_SAVE=1`, `SAVE_NOT_FOUND=2`, `LOAD_FAILED=3` |
+
+### 信号
+
+| 信号 | 参数 | 触发时机 |
+|---|---|---|
+| `mode_changed` | `mode: int` | 游玩模式变化 |
+| `panel_changed` | `panel: int` | 登录界面内部面板变化（模式选择/本地菜单/选档/新建/服务器） |
+| `start_result` | `result: int`, `slot_key: String` | 「开始游戏」的结果 |
+| `save_list_changed` | — | 存档创建/删除后，选档界面应重新拉取列表 |
+| `save_create_cancelled` | — | 新建存档页点「返回」放弃 |
+| `server_login_finished` | `result: int`, `message: String` | 服务器登录结果（目前固定为未实现） |
+
+### 方法
+
+| 方法 | 参数 | 返回 | 说明 |
+|---|---|---|---|
+| `open_login_screen()` | — | void | LoginScreen 的 `_ready` 调用：重置到模式选择，并**预加载主界面** |
+| `select_mode(mode)` | `mode: MODE` | void | 选择单机 / 服务器；自动切到对应面板 |
+| `back_to_mode_select()` | — | void | 服务器登录页返回、或从本地菜单返回模式选择 |
+| `open_local_menu()` | — | void | 打开单机菜单（开始游戏 / 选择存档） |
+| `open_save_select()` | — | void | 打开存档选择列表 |
+| `open_save_create()` | — | void | 打开新建存档页（会记住来源面板） |
+| `cancel_save_create()` | — | void | 新建存档页「返回」：放弃创建并回到来源面板，发 `save_create_cancelled` |
+| `open_server_login()` | — | void | 打开服务器登录页 |
+| `request_start_game()` | — | `int` (`START_RESULT`) | **开始游戏**：使用最近游玩的存档；没有则切到新建存档页并返回 `NEED_CREATE_SAVE` |
+| `create_save_and_start(display_name)` | `display_name: String` | `Dictionary` {`ok`,`message`,`slot_key`} | 校验名称非空 → 建存档（编辑器内自动标记开发者存档）→ 直接用该存档开始游戏 |
+| `start_with_save(slot_key)` | `slot_key: String` | `Dictionary` | 「选择存档」列表的左侧按钮：用该存档开始游戏 |
+| `delete_save(slot_key)` | `slot_key: String` | `Dictionary` | 删除存档；右侧按钮先 `await ConfirmService.ask_yes_no()` 再调用 |
+| `get_save_slots()` | — | `Array[SaveSlotInfo]` | 存档列表，按最近游玩倒序 |
+| `has_any_save()` | — | `bool` | 是否存在任意存档 |
+| `get_server_form_defaults()` | — | `Dictionary` {`ip`,`account`,`remember`} | 服务器登录页自动填写（上次勾选保存的信息） |
+| `submit_server_login(ip, account, password, remember, port=-1)` | port 缺省用 45770 | void | 校验非空 → 按「记住」保存 IP/账号（**不保存密码**）→ 调起登录。登录逻辑未实现，结果通过 `server_login_finished` 返回 `LOGIN_RESULT.NOT_IMPLEMENTED` |
+| `quit_game()` | — | void | 退出游戏：先保存存档再退出 |
+| `get_developer_message()` | — | `String` | 「开发者的话」文本（可直接给提示框） |
+| `get_panel()` / `get_mode()` | — | `int` | 当前面板 / 模式 |
+
+### 典型接线
+
+```gdscript
+func _ready() -> void:
+    LoginFlow.open_login_screen()
+    LoginFlow.panel_changed.connect(_on_panel_changed)
+    LoginFlow.start_result.connect(_on_start_result)
+    LoginFlow.server_login_finished.connect(_on_server_login_finished)
+    LoginFlow.save_list_changed.connect(_refresh_save_list)
+
+func _on_start_pressed() -> void:
+    LoginFlow.request_start_game()
+
+func _on_delete_pressed(slot_key: String) -> void:
+    var confirmed: bool = await ConfirmService.ask_yes_no("删除后无法恢复，确定删除该存档吗？")
+    if confirmed:
+        LoginFlow.delete_save(slot_key)
+
+func _on_create_confirm_pressed() -> void:
+    var result: Dictionary = LoginFlow.create_save_and_start(name_edit.text)
+    if not bool(result.get("ok", false)):
+        status_label.text = str(result.get("message", ""))
+```
+
+> 说明：`request_start_game()` 内部会直接切换场景到主界面，无需 UI 再跳转。
+
+---
+
+## 2. 存档 `SaveManager`
+
+存储位置：`user://saves/<slot_key>/profile.json`（`user://` 由 Godot 映射到系统用户目录）。
+
+| 方法 | 返回 | 说明 |
+|---|---|---|
+| `create_slot(display_name)` | `String` slot_key | 新建存档；**在编辑器内运行时自动标记开发者存档** |
+| `create_slot_with_flags(display_name, is_developer)` | `String` | 显式指定开发者标记（测试用） |
+| `list_slots()` | `Array[SaveSlotInfo]` | 存档摘要列表（最近游玩倒序） |
+| `load_slot(slot_key)` | `PlayerProfile` / `null` | 读取存档，损坏返回 null |
+| `save_slot(slot_key, profile)` | `bool` | 原子写（先写 .tmp 再替换） |
+| `delete_slot(slot_key)` | `bool` | 删除存档目录 |
+| `slot_exists(slot_key)` | `bool` | 存档是否存在 |
+| `is_editor_build()` | `bool` | 是否运行在 Godot 编辑器内（`OS.has_feature("editor")`） |
+| `remember_server(address, port, account, password)` | void | 旧版最近服务器缓存（登录界面目前使用 `AppStorage`，此接口保留） |
+| `load_recent_servers()` | `Array[Dictionary]` | 同上 |
+
+### `SaveSlotInfo`（选档列表项）
+
+`slot_key`、`player_name`、`last_played_unix`、`play_time_seconds`、`play_time_text()`、`deck_count`、`gold`、`diamond`、`schema_version`、`active_deck_id`、`is_developer_save`。
+
+---
+
+## 3. 玩家存档数据 `PlayerProfile`
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `player_name` | String | 存档名称（创建时输入，不可为空） |
+| `gold` | int | 金币 |
+| `diamond` | int | 钻石 |
+| `play_time_seconds` | int | 累计游玩时长（秒），由 `GameState` 计时 |
+| `is_developer_save` | bool | 开发者存档标记 |
+| `profile_id` / `created_at_unix` / `last_played_unix` | String/int | 标识与时间戳 |
+| `owned_cards` | Dictionary[String,int] | 卡牌收藏 |
+| `decks` / `active_deck_id` | Array[DeckData] / String | 牌组 |
+| `campaign_progress` / `stats` | Dictionary | 进度 / 统计 |
+
+方法：`add_gold(n)`、`spend_gold(n) -> bool`、`add_diamond(n)`、`spend_diamond(n) -> bool`、`get_play_time_text() -> "HH:MM:SS"`、`add_card/remove_card/get_card_count`、`create_deck/remove_deck/find_deck`、`to_dict/from_dict`。
+
+> 旧版存档（schema 1，字段 `arcane_dust`）读取时会自动迁移为 `diamond`。
+
+---
+
+## 4. 全局状态 `GameState`
+
+| 信号 | 参数 | 用途 |
+|---|---|---|
+| `currency_changed` | `gold: int`, `diamond: int` | 货币变化时刷新全局 UI 顶部栏 |
+| `play_time_changed` | `total_seconds: int` | 游玩时长每秒变化（可选显示） |
+| `identity_changed` | `mode: int` | 单机/服务器身份切换（进入游戏后加载全局 UI 可监听它） |
+| `screen_changed` | `screen: int` | 场景切换 |
+
+| 方法 | 返回 | 说明 |
+|---|---|---|
+| `get_gold()` / `get_diamond()` / `get_currency(kind)` | int | 读取货币 |
+| `add_gold(n)` / `spend_gold(n)` / `add_diamond(n)` / `spend_diamond(n)` | bool | **添加上限/扣除货币**，自动发 `currency_changed`；余额不足返回 false 且不扣 |
+| `add_currency(kind, n)` / `spend_currency(kind, n)` | bool | 通用版本（`CURRENCY.GOLD/DIAMOND`） |
+| `emit_currency()` | void | 强制广播当前货币（UI 初始化后同步用） |
+| `save_active_profile()` | bool | **保存当前存档**（含游玩时长）；设置页「保存存档」按钮调用它 |
+| `enter_local_game(slot_key)` | bool | 底层：读档并进入主界面（一般用 `LoginFlow`） |
+| `leave_to_login()` | void | 保存并回到登录界面 |
+| `is_developer_save()` | bool | 当前存档是否开发者存档（全局 UI 决定是否显示测试按钮） |
+| `get_version()` | String | 当前版本号：`alpha0.1` |
+| `preload_main_scene()` | void | 预加载主界面（`LoginFlow.open_login_screen()` 已自动调用） |
+| `is_main_scene_preloaded()` | bool | 预加载是否完成 |
+| `go_to_main()` / `go_to_battle()` / `go_to_login()` | void | 场景切换（主界面优先用预加载资源，进入更快） |
+| `get_identity_text()` | String | 「单机身份 / 服务器身份 / 未登录」 |
+
+计时与自动保存：
+
+- 单机身份下 `GameState._process` 每秒累加 `play_time_seconds`；
+- 每 **30 秒**自动落盘一次；
+- 关闭窗口（`NOTIFICATION_WM_CLOSE_REQUEST`）、安卓返回键、`LoginFlow.quit_game()` 都会保存。
+
+---
+
+## 5. 全局本地数据 `AppStorage`
+
+文件：`user://global.json`（与任何存档无关，切档/删档不影响）。
+
+| 方法 | 返回 | 说明 |
+|---|---|---|
+| `get_last_slot_key()` / `set_last_slot_key(key)` | String / void | 「开始游戏」使用的最近存档 |
+| `get_server_login()` | `{ip, account, remember}` | 服务器登录页自动填写 |
+| `set_server_login(ip, account, remember)` | void | remember=false 时清空已保存信息 |
+| `get_master_volume()` / `set_master_volume(v)` | float / void | 主音量 0.0–1.0，立即作用于 Master 总线并持久化 |
+| `save_data()` | bool | 手动落盘（一般不需要） |
+
+---
+
+## 6. 弹出框 `ConfirmService`
+
+| 方法 | 返回 | 说明 |
+|---|---|---|
+| `ask_yes_no(message, title="确认", yes_text="是", no_text="否")` | **`await` → bool** | 是=true，否/ESC/关闭=false；同一时间只有一个确认框 |
+| `show_message(message, title="提示")` | void | 仅「确定」的提示框（如开发者的话） |
+
+```gdscript
+var confirmed: bool = await ConfirmService.ask_yes_no("确定删除？")
+ConfirmService.show_message(LoginFlow.get_developer_message(), "开发者的话")
+```
+
+---
+
+## 7. 开发者工具 `DeveloperTools`
+
+仅当当前存档 `is_developer_save == true` 时可用（否则所有操作返回 false / 0）。
+
+| 方法 | 返回 | 说明 |
+|---|---|---|
+| `is_enabled()` | bool | 是否开发者存档（全局 UI 的测试按钮据此显示） |
+| `add_gold(amount=100)` | bool | 加金币 |
+| `add_diamond(amount=100)` | bool | 加钻石 |
+| `set_currencies(gold, diamond)` | void | 直接设置两种货币 |
+| `unlock_all_cards()` | int | 解锁全部卡牌到持有上限，返回新增张数 |
+| `clear_all_cards()` | void | 清空卡牌收藏 |
+| `test_action_done`（信号） | `action`, `detail` | 每个操作完成后通知面板刷新 |
+
+---
+
+## 8. 卡牌与收藏（数据层已就绪）
+
+### `CardDatabase`（autoload）
+
+| 方法 | 返回 |
+|---|---|
+| `get_card(card_id)` | `CardData` / null |
+| `has_card(card_id)` | bool |
+| `all_card_ids()` | `Array[String]` |
+| `card_count()` | int |
+| `reload()` | void（重扫 `res://data/cards/*.json`） |
+
+卡牌定义见 `data/cards/base_set.json`（30 张基础卡）。
+
+### `CardData`
+
+字段：`card_id`、`display_name`、`description`、`card_type`、`rarity`、`card_class`、`cost`、`attack`、`health`、`keywords`、`art_path`（空）、`craft_cost`、`disenchant_value`。
+文本方法：`get_type_text()`、`get_class_text()`、`get_rarity_text()`、`get_keywords_text()`。
+
+### `CollectionManager`（autoload）
+
+| 方法 | 返回 | 说明 |
+|---|---|---|
+| `max_copies_for(card)` | int | 传说 1 张，其余 2 张 |
+| `can_craft(profile, card)` / `can_disenchant(profile, card)` | bool | 能否合成 / 分解 |
+| `craft_card(profile, card)` | `{ok, message}` | 消耗钻石合成一张 |
+| `disenchant_card(profile, card)` | `{ok, message}` | 分解一张获得钻石 |
+| `collection_changed`（信号） | — | 收藏变化通知 |
+
+> 货币数值单位与卡牌 `craft_cost` / `disenchant_value` 一致（钻石）。
+
+---
+
+## 9. 网络 `NetManager`（占位）
+
+| 枚举/常量 | 值 |
+|---|---|
+| `LOGIN_RESULT` | `OK=0`, `UNREACHABLE=1`, `BAD_CREDENTIALS=2`, `PROTOCOL_MISMATCH=3`, `NOT_IMPLEMENTED=4`, `FEATURE_DISABLED=5` |
+| `DEFAULT_SERVER_PORT` | 45770 |
+| `DISCOVERY_PORT` | 45771（局域网 UDP 发现） |
+
+| 方法/信号 | 说明 |
+|---|---|
+| `login_to_server(address, port, account, password)` | 登录入口；**当前未实现**，会立即以 `login_finished(NOT_IMPLEMENTED, ...)` 返回 |
+| `login_finished(result, message)`（信号） | 登录结果；`LoginFlow` 会转发为 `server_login_finished` |
+| `start_lan_search(timeout)` / `stop_lan_search()` | 局域网服务器搜索 |
+| `lan_server_found(server)` / `lan_search_finished(servers)` | 搜索结果回调 |
+
+---
+
+## 10. 需要 UI 侧接入的部分（本次未实现）
+
+1. LoginScreen 的各个面板（模式选择 / 单机菜单 / 新建存档页 / 选档列表 / 服务器表单）的显示与按钮绑定。
+2. 全局 UI 层（货币栏、开发者测试按钮、设置按钮、设置面板、版本号文字）。
+3. 设置页：音量滑块 → `AppStorage.set_master_volume()`；保存按钮 → `GameState.save_active_profile()`；退出按钮 → 关闭面板。
+4. 选档列表的 ScrollContainer/ScrollBar 布局（数据用 `LoginFlow.get_save_slots()`）。
+5. 主界面、牌组、收藏、社交、活动等场景与跳转。
+
+---
+
+## 11. 验证情况
+
+- 自动化测试：`tests/run_tests.gd`，6 个套件 **26 个用例 / 184 条断言**全通过（`godot --headless --script res://tests/run_tests.gd`）。
+- 运行时验证（编辑器内跑游戏 + 反射调用）：
+  - 模式/面板切换、新建存档页返回；
+  - 无最近存档时「开始游戏」→ 新建页；
+  - 空名称被拒绝；创建后直接进入 `MainScreen`，并标记开发者存档；
+  - 最近存档记录到 `global.json`；「开始游戏」复用最近存档；
+  - 选择存档、删除存档、货币增删、退出自动保存（退出后磁盘金币为修改值）；
+  - 主界面预加载完成、主音量 0.5 → Master 总线 -6.02 dB；
+  - 服务器登录返回未实现并保存 IP/账号（不存密码）。

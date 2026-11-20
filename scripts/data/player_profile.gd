@@ -1,10 +1,10 @@
 class_name PlayerProfile
 extends Resource
-## 一个玩家的完整单机存档数据。服务器身份下由服务器托管同类结构，本地不保存。
+## 单个存档的玩家数据（单机身份）。服务器身份下同类数据由服务器托管，本地不保存。
 
-const SCHEMA_VERSION: int = 1
+const SCHEMA_VERSION: int = 2
 const STARTING_GOLD: int = 100
-const STARTING_DUST: int = 0
+const STARTING_DIAMOND: int = 0
 
 var schema_version: int = SCHEMA_VERSION
 var profile_id: String = ""
@@ -12,11 +12,16 @@ var player_name: String = ""
 var created_at_unix: int = 0
 var last_played_unix: int = 0
 
-## 货币：gold = 通用金币（买卡包），arcane_dust = 特殊货币（合成/分解用）
-var gold: int = STARTING_GOLD
-var arcane_dust: int = STARTING_DUST
+## 累计游玩时长（秒）。由 GameState 计时写入，退出/定期自动保存。
+var play_time_seconds: int = 0
+## 开发者存档标记：在编辑器内运行时创建的存档为 true。
+var is_developer_save: bool = false
 
-## 收藏：card_id -> 拥有数量（0 表示没有，读取时按缺失处理）
+## 两种货币：gold = 金币（通用），diamond = 钻石（稀有，用于合成等）
+var gold: int = STARTING_GOLD
+var diamond: int = STARTING_DIAMOND
+
+## 收藏：card_id -> 拥有数量
 var owned_cards: Dictionary[String, int] = {}
 
 ## 牌组列表与当前启用牌组
@@ -26,23 +31,67 @@ var active_deck_id: String = ""
 ## 主线进度：level_id -> 是否通关
 var campaign_progress: Dictionary[String, bool] = {}
 
-## 统计：wins / losses / matches / packs_opened 等
+## 统计：wins / losses / matches 等
 var stats: Dictionary[String, int] = {}
 
 
-## 创建一个全新的本地存档档案。
-static func create_default(profile_name: String) -> PlayerProfile:
+## 创建全新存档数据。
+static func create_default(profile_name: String, is_developer: bool = false) -> PlayerProfile:
 	var profile := PlayerProfile.new()
 	profile.schema_version = SCHEMA_VERSION
 	profile.profile_id = "profile_%d" % int(Time.get_unix_time_from_system())
 	profile.player_name = profile_name
 	profile.created_at_unix = int(Time.get_unix_time_from_system())
 	profile.last_played_unix = profile.created_at_unix
+	profile.is_developer_save = is_developer
 	return profile
 
 
 func touch() -> void:
 	last_played_unix = int(Time.get_unix_time_from_system())
+
+
+# ----- 货币 -----
+
+func add_gold(amount: int) -> void:
+	if amount <= 0:
+		return
+	gold += amount
+	touch()
+
+
+func spend_gold(amount: int) -> bool:
+	if amount <= 0 or gold < amount:
+		return false
+	gold -= amount
+	touch()
+	return true
+
+
+func add_diamond(amount: int) -> void:
+	if amount <= 0:
+		return
+	diamond += amount
+	touch()
+
+
+func spend_diamond(amount: int) -> bool:
+	if amount <= 0 or diamond < amount:
+		return false
+	diamond -= amount
+	touch()
+	return true
+
+
+# ----- 游玩时长 -----
+
+## 把秒数格式化成 HH:MM:SS，供存档列表等 UI 展示。
+func get_play_time_text() -> String:
+	var total: int = maxi(play_time_seconds, 0)
+	var hours: int = total / 3600
+	var minutes: int = (total % 3600) / 60
+	var seconds: int = total % 60
+	return "%02d:%02d:%02d" % [hours, minutes, seconds]
 
 
 # ----- 收藏 -----
@@ -134,8 +183,10 @@ func to_dict() -> Dictionary:
 		"player_name": player_name,
 		"created_at_unix": created_at_unix,
 		"last_played_unix": last_played_unix,
+		"play_time_seconds": play_time_seconds,
+		"is_developer_save": is_developer_save,
 		"gold": gold,
-		"arcane_dust": arcane_dust,
+		"diamond": diamond,
 		"owned_cards": owned_cards.duplicate(),
 		"decks": deck_dicts,
 		"active_deck_id": active_deck_id,
@@ -151,8 +202,14 @@ static func from_dict(data: Dictionary) -> PlayerProfile:
 	profile.player_name = str(data.get("player_name", "玩家"))
 	profile.created_at_unix = int(data.get("created_at_unix", 0))
 	profile.last_played_unix = int(data.get("last_played_unix", 0))
+	profile.play_time_seconds = int(data.get("play_time_seconds", 0))
+	profile.is_developer_save = bool(data.get("is_developer_save", false))
 	profile.gold = int(data.get("gold", 0))
-	profile.arcane_dust = int(data.get("arcane_dust", 0))
+	# 旧版存档（schema v1）用 arcane_dust 表示特殊货币，迁移为 diamond
+	var diamond_value: int = int(data.get("diamond", -1))
+	if diamond_value < 0:
+		diamond_value = int(data.get("arcane_dust", 0))
+	profile.diamond = diamond_value
 	profile.active_deck_id = str(data.get("active_deck_id", ""))
 	var raw_owned: Variant = data.get("owned_cards", {})
 	if raw_owned is Dictionary:

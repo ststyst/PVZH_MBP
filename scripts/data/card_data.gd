@@ -34,6 +34,95 @@ var craft_cost: int = 0
 var disenchant_value: int = 0
 
 
+## 卡牌类型的中文名。
+func get_type_text() -> String:
+	match card_type:
+		CARD_TYPE.SPELL:
+			return "法术"
+		CARD_TYPE.WEAPON:
+			return "武器"
+		CARD_TYPE.HERO_POWER:
+			return "英雄技能"
+		CARD_TYPE.LOCATION:
+			return "地标"
+		_:
+			return "随从"
+
+
+## 稀有度的中文名。
+func get_rarity_text() -> String:
+	match rarity:
+		RARITY.FREE:
+			return "免费"
+		RARITY.RARE:
+			return "稀有"
+		RARITY.EPIC:
+			return "史诗"
+		RARITY.LEGENDARY:
+			return "传说"
+		_:
+			return "普通"
+
+
+## 职业的中文名。
+func get_class_text() -> String:
+	match card_class:
+		CARD_CLASS.WARRIOR:
+			return "战士"
+		CARD_CLASS.MAGE:
+			return "法师"
+		CARD_CLASS.HUNTER:
+			return "猎人"
+		CARD_CLASS.PRIEST:
+			return "牧师"
+		CARD_CLASS.ROGUE:
+			return "潜行者"
+		CARD_CLASS.DRUID:
+			return "德鲁伊"
+		CARD_CLASS.PALADIN:
+			return "圣骑士"
+		CARD_CLASS.SHAMAN:
+			return "萨满祭司"
+		CARD_CLASS.WARLOCK:
+			return "术士"
+		_:
+			return "中立"
+
+
+## 关键词的中文名列表，如「嘲讽、圣盾」。
+func get_keywords_text() -> String:
+	var names: Array[String] = []
+	for keyword_id: int in keywords:
+		names.append(_keyword_text(keyword_id))
+	return "、".join(names)
+
+
+static func _keyword_text(keyword_id: int) -> String:
+	match keyword_id:
+		KEYWORD.TAUNT:
+			return "嘲讽"
+		KEYWORD.CHARGE:
+			return "冲锋"
+		KEYWORD.RUSH:
+			return "突袭"
+		KEYWORD.DIVINE_SHIELD:
+			return "圣盾"
+		KEYWORD.LIFESTEAL:
+			return "吸血"
+		KEYWORD.POISONOUS:
+			return "剧毒"
+		KEYWORD.WINDFURY:
+			return "风怒"
+		KEYWORD.SPELL_DAMAGE:
+			return "法术伤害"
+		KEYWORD.BATTLE_CRY:
+			return "战吼"
+		KEYWORD.DEATH_RATTLE:
+			return "亡语"
+		_:
+			return ""
+
+
 ## 从 JSON/字典构造卡牌。缺失字段使用安全默认值，非法枚举回退到 fallback。
 static func from_dict(data: Dictionary) -> CardData:
 	var card := CardData.new()

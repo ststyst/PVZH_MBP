@@ -44,7 +44,7 @@ func _refresh_header() -> void:
 		return
 	player_label.text = profile.player_name
 	gold_label.text = "金币 %d" % profile.gold
-	dust_label.text = "奥术之尘 %d" % profile.arcane_dust
+	dust_label.text = "钻石 %d" % profile.diamond
 	identity_label.text = "%s　·　当前牌组：%s" % [
 		GameState.get_identity_text(),
 		_get_active_deck_name(profile),
@@ -75,7 +75,7 @@ func _on_deck_pressed() -> void:
 
 
 func _on_collection_pressed() -> void:
-	_show_placeholder("卡牌收藏", "下一步（M1）实现收藏网格、卡包、合成与分解。")
+	_show_placeholder("卡牌收藏", "收藏界面由 UI 实现后接入；数据 API 已就绪（CardDatabase / CollectionManager）。")
 
 
 func _on_social_pressed() -> void:

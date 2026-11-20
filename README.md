@@ -5,21 +5,22 @@
 > 需求、架构、编码规范、里程碑分别见：
 > [`docs/Charter.md`](docs/Charter.md)、[`docs/Architecture.md`](docs/Architecture.md)、
 > [`docs/Conventions.md`](docs/Conventions.md)、[`docs/Roadmap.md`](docs/Roadmap.md)。
+> **接口清单见 [`docs/Api.md`](docs/Api.md)**（供 UI 开发直接接入）。
 
-## 当前状态：M0 工程基座完成
+## 当前状态：M0 工程基座 + 登录/存档/全局 API
 
 已具备：
 
 - 1280×720 横屏 + `canvas_items` 拉伸，安卓横屏，GL Compatibility 渲染。
-- 全局单例：`GameState`（身份/场景切换）、`SaveManager`（本地多存档 + 服务器地址缓存）、
-  `CardDatabase`（卡表加载）、`NetManager`（局域网发现 + 登录入口）。
-- 数据模型：`CardData`、`DeckData`（30 张/同名 2 张规则）、`PlayerProfile`、`SaveSlotInfo`。
-- 登录界面：本地存档列表（新建/进入/删除）、服务器登录表单（地址/端口/账号/密码/记住）、
-  局域网服务器搜索入口。
-- 主界面：对战 / 牌组 / 收藏 / 社交 / 活动 / 设置；社交与活动在单机身份下禁用。
-- 单机存档读写（原子写、本地时区显示）与 MCP 测试套件。
+- 全局单例：`GameState`（身份/场景切换/货币/计时/自动保存）、`SaveManager`（本地多存档）、
+  `AppStorage`（最近存档 / 服务器账号 / 主音量）、`LoginFlow`（登录流程状态机）、
+  `ConfirmService`（是/否弹窗）、`DeveloperTools`（开发者存档测试功能）、
+  `CardDatabase`（卡表）、`CollectionManager`（合成/分解）、`NetManager`（局域网发现 + 登录占位）。
+- 数据模型：`CardData`、`DeckData`（30 张/同名 2 张规则）、`PlayerProfile`（金币/钻石/时长/开发者标记）、`SaveSlotInfo`。
+- 30 张基础卡数据（`data/cards/base_set.json`）。
+- 旧版占位界面（LoginScreen / MainScreen / Battle）；正式 UI 由后续开发替换。
 
-尚未实现：卡牌内容、牌组编辑器、战斗逻辑、联机协议、社交与活动（见路线图）。
+尚未实现：牌组编辑器、战斗逻辑、联机协议、社交与活动、正式 UI。
 
 ## 运行
 

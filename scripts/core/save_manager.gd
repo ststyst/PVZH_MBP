@@ -35,13 +35,30 @@ func has_any_slot() -> bool:
 
 
 ## 新建一个本地存档，返回 slot_key；失败返回空字符串。
+## 在编辑器内运行时创建的存档自动标记为开发者存档（is_developer_save = true）。
 func create_slot(display_name: String) -> String:
-	var profile := PlayerProfile.create_default(display_name)
+	return create_slot_with_flags(display_name, is_editor_build())
+
+
+## 新建存档并显式指定是否为开发者存档（用于测试或特殊流程）。
+func create_slot_with_flags(display_name: String, is_developer: bool) -> String:
+	var profile := PlayerProfile.create_default(display_name, is_developer)
 	profile.last_played_unix = int(Time.get_unix_time_from_system())
 	var slot_key: String = _generate_slot_key()
 	if not save_slot(slot_key, profile):
 		return ""
 	return slot_key
+
+
+## 当前是否运行在 Godot 编辑器内（编辑器里按 F5 / 插件运行也为 true）。
+func is_editor_build() -> bool:
+	return OS.has_feature("editor")
+
+
+func slot_exists(slot_key: String) -> bool:
+	if slot_key.is_empty():
+		return false
+	return FileAccess.file_exists(_profile_path(slot_key))
 
 
 ## 读取存档；文件缺失或损坏返回 null。
@@ -142,9 +159,12 @@ func _read_slot_info(slot_key: String) -> SaveSlotInfo:
 	info.slot_key = slot_key
 	info.player_name = str(data.get("player_name", "未命名"))
 	info.last_played_unix = int(data.get("last_played_unix", 0))
+	info.play_time_seconds = int(data.get("play_time_seconds", 0))
 	info.gold = int(data.get("gold", 0))
+	info.diamond = int(data.get("diamond", data.get("arcane_dust", 0)))
 	info.schema_version = int(data.get("schema_version", 0))
 	info.active_deck_id = str(data.get("active_deck_id", ""))
+	info.is_developer_save = bool(data.get("is_developer_save", false))
 	var raw_decks: Variant = data.get("decks", [])
 	if raw_decks is Array:
 		info.deck_count = raw_decks.size()
