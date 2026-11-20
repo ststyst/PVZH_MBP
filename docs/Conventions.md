@@ -16,7 +16,7 @@
 | 参数、局部变量、私有成员 | snake_case（私有加 `_` 前缀） | `slot_key`、`_slots` |
 | 信号 | snake_case | `identity_changed` |
 | 枚举 | 类型名与成员**全大写** | `enum CARD_TYPE { MINION, SPELL }` |
-| 常量 | UPPER_SNAKE_CASE | `const MAX_CARD_COUNT: int = 30` |
+| 常量 | UPPER_SNAKE_CASE | `const DEFAULT_MAX_CARD_COUNT: int = 40` |
 
 > 说明：用户需求原文「场景文件、类名、全局变量用驼峰」，工程既有占位场景为 `LoginScreen.tscn`/`MainScreen.tscn`，因此本项目统一按**大驼峰 PascalCase** 执行；`snake_case` 只用于其余对象。
 

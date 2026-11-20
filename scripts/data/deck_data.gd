@@ -1,18 +1,20 @@
 class_name DeckData
 extends Resource
-## 一套牌组。牌组只保存卡牌 ID 列表，**不拥有**卡牌：
-## 同一张卡可以同时编入多个牌组（收藏是全局的，牌组只是引用）。
+## 一套牌组。牌组只保存卡牌 ID 列表，不拥有卡牌（同一张卡可编入多个牌组）。
+## 张数上限、同名张数上限、职业限制由 DeckRules + 玩法配置校验，不写死在牌组里。
 
-const MIN_CARD_COUNT: int = 30
-const MAX_CARD_COUNT: int = 30
-const MAX_SAME_CARD_COUNT: int = 2
+## 参考值（默认玩法上限）；实际以 GameModeConfig.deck_max_size 为准
+const DEFAULT_MAX_CARD_COUNT: int = 40
+const TAG_DEFAULT: String = "default"
 
 var deck_id: String = ""
 var deck_name: String = "新牌组"
 var hero_id: String = ""
-## 这套牌组允许使用的职业（由英雄/规则决定）；中立牌始终允许。
+## 英雄允许职业的快照（实际校验以 HeroDatabase 的英雄数据为准）
 var allowed_classes: Array[String] = []
 var card_ids: Array[String] = []
+## 标签：default = 完全符合默认玩法要求
+var tags: Array[String] = []
 var updated_at_unix: int = 0
 
 
@@ -28,16 +30,16 @@ func count_of(card_id: String) -> int:
 	return total
 
 
-func can_add_card(card_id: String) -> bool:
-	if card_id.is_empty():
-		return false
-	if card_count() >= MAX_CARD_COUNT:
-		return false
-	return count_of(card_id) < MAX_SAME_CARD_COUNT
+## card_id -> 张数
+func get_card_counts() -> Dictionary:
+	var counts: Dictionary = {}
+	for card_id: String in card_ids:
+		counts[card_id] = int(counts.get(card_id, 0)) + 1
+	return counts
 
 
 func add_card(card_id: String) -> bool:
-	if not can_add_card(card_id):
+	if card_id.is_empty():
 		return false
 	card_ids.append(card_id)
 	_touch()
@@ -53,23 +55,28 @@ func remove_card(card_id: String) -> bool:
 	return true
 
 
-## 返回构成不合法的原因列表；空数组表示合法。
-func validate() -> Array[String]:
-	var errors: Array[String] = []
-	if card_count() < MIN_CARD_COUNT:
-		errors.append("牌组只有 %d 张，至少需要 %d 张。" % [card_count(), MIN_CARD_COUNT])
-	if card_count() > MAX_CARD_COUNT:
-		errors.append("牌组有 %d 张，最多允许 %d 张。" % [card_count(), MAX_CARD_COUNT])
-	var seen_counts: Dictionary = {}
-	for card_id: String in card_ids:
-		seen_counts[card_id] = int(seen_counts.get(card_id, 0)) + 1
-	for card_id: String in seen_counts.keys():
-		var copies: int = int(seen_counts[card_id])
-		if copies > MAX_SAME_CARD_COUNT:
-			errors.append("卡牌 %s 有 %d 张，最多 %d 张。" % [card_id, copies, MAX_SAME_CARD_COUNT])
-	if hero_id.is_empty():
-		errors.append("尚未选择英雄。")
-	return errors
+func clear_cards() -> void:
+	card_ids.clear()
+	_touch()
+
+
+func has_tag(tag: String) -> bool:
+	return tags.has(tag)
+
+
+func add_tag(tag: String) -> void:
+	if tag.is_empty() or tags.has(tag):
+		return
+	tags.append(tag)
+	_touch()
+
+
+func remove_tag(tag: String) -> void:
+	var index: int = tags.find(tag)
+	if index == -1:
+		return
+	tags.remove_at(index)
+	_touch()
 
 
 func to_dict() -> Dictionary:
@@ -79,6 +86,7 @@ func to_dict() -> Dictionary:
 		"hero_id": hero_id,
 		"allowed_classes": allowed_classes.duplicate(),
 		"card_ids": card_ids.duplicate(),
+		"tags": tags.duplicate(),
 		"updated_at_unix": updated_at_unix,
 	}
 
@@ -91,12 +99,16 @@ static func from_dict(data: Dictionary) -> DeckData:
 	deck.updated_at_unix = int(data.get("updated_at_unix", 0))
 	var raw_classes: Variant = data.get("allowed_classes", [])
 	if raw_classes is Array:
-		for raw_class in raw_classes:
+		for raw_class: Variant in raw_classes:
 			deck.allowed_classes.append(str(raw_class))
 	var raw_card_ids: Variant = data.get("card_ids", [])
 	if raw_card_ids is Array:
-		for raw_card_id in raw_card_ids:
+		for raw_card_id: Variant in raw_card_ids:
 			deck.card_ids.append(str(raw_card_id))
+	var raw_tags: Variant = data.get("tags", [])
+	if raw_tags is Array:
+		for raw_tag: Variant in raw_tags:
+			deck.tags.append(str(raw_tag))
 	return deck
 
 

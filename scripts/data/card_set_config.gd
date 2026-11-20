@@ -6,10 +6,13 @@ extends RefCounted
 var rarities: Array[String] = []
 var classes: Array[String] = []
 var tribes: Array[String] = []
+## 被视为“中立”的职业：牌组中不受英雄职业限制
+var neutral_classes: Array[String] = []
 
 var rarity_labels: Dictionary = {}
 var class_labels: Dictionary = {}
 var tribe_labels: Dictionary = {}
+var neutral_class_labels: Dictionary = {}
 
 const REQUIRED_COLUMNS: Array[String] = ["type", "name"]
 
@@ -56,8 +59,14 @@ func load_file(path: String) -> Array[String]:
 				_add_entry(classes, class_labels, entry_name, entry_label)
 			"tribe":
 				_add_entry(tribes, tribe_labels, entry_name, entry_label)
+			"neutral_class":
+				_add_entry(neutral_classes, neutral_class_labels, entry_name, entry_label)
 			_:
 				problems.append("配置第 %d 行类型未知：%s" % [row_index + 1, entry_type])
+	# 中立职业必须来自已有职业
+	for neutral_id: String in neutral_classes:
+		if not classes.has(neutral_id):
+			problems.append("中立职业不在职业列表中：%s" % neutral_id)
 	return problems
 
 
@@ -76,9 +85,15 @@ func add_entry(entry_type: String, entry_name: String, entry_label: String = "")
 			_add_entry(classes, class_labels, name, label)
 		"tribe":
 			_add_entry(tribes, tribe_labels, name, label)
+		"neutral_class":
+			_add_entry(neutral_classes, neutral_class_labels, name, label)
 		_:
 			return false
 	return true
+
+
+func has_neutral_class(class_id: String) -> bool:
+	return neutral_classes.has(class_id.strip_edges().to_lower())
 
 
 func has_rarity(rarity_id: String) -> bool:
@@ -118,9 +133,11 @@ func to_dict() -> Dictionary:
 		"rarities": rarities.duplicate(),
 		"classes": classes.duplicate(),
 		"tribes": tribes.duplicate(),
+		"neutral_classes": neutral_classes.duplicate(),
 		"rarity_labels": rarity_labels.duplicate(),
 		"class_labels": class_labels.duplicate(),
 		"tribe_labels": tribe_labels.duplicate(),
+		"neutral_class_labels": neutral_class_labels.duplicate(),
 	}
 
 
@@ -138,9 +155,14 @@ static func from_dict(data: Dictionary) -> CardSetConfig:
 	if raw_tribes is Array:
 		for entry: Variant in raw_tribes:
 			config.tribes.append(str(entry))
+	var raw_neutral_classes: Variant = data.get("neutral_classes", [])
+	if raw_neutral_classes is Array:
+		for entry: Variant in raw_neutral_classes:
+			config.neutral_classes.append(str(entry))
 	config.rarity_labels = data.get("rarity_labels", {}).duplicate()
 	config.class_labels = data.get("class_labels", {}).duplicate()
 	config.tribe_labels = data.get("tribe_labels", {}).duplicate()
+	config.neutral_class_labels = data.get("neutral_class_labels", {}).duplicate()
 	return config
 
 

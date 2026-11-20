@@ -195,6 +195,19 @@ func get_tribes() -> Array[String]:
 	return config.tribes.duplicate()
 
 
+## 被视为中立的职业（不受英雄职业限制）。
+func get_neutral_classes() -> Array[String]:
+	if config == null:
+		return []
+	return config.neutral_classes.duplicate()
+
+
+func is_neutral_class(class_id: String) -> bool:
+	if config == null:
+		return false
+	return config.has_neutral_class(class_id)
+
+
 ## 生成内部 ID 用的规范化英文名：小写、空格转下划线、只保留字母数字下划线。
 static func slugify(english_name: String) -> String:
 	var lowered: String = english_name.strip_edges().to_lower().replace(" ", "_")

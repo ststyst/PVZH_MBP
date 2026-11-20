@@ -1,4 +1,4 @@
-# 卡牌数据目录（CSV，数据驱动）
+﻿# 卡牌数据目录（CSV，数据驱动）
 
 ```
 data/cards/official/
@@ -22,7 +22,7 @@ tribe,pea,豌豆
 
 | 列 | 说明 |
 |---|---|
-| `type` | `rarity` / `class` / `tribe` |
+| `type` | `rarity` / `class` / `tribe` / `neutral_class` |
 | `name` | 内部名称（小写，供 CSV 卡牌引用） |
 | `label_zh` | 中文显示名（可省略，省略时用 `name`） |
 
@@ -31,6 +31,7 @@ tribe,pea,豌豆
 - 稀有度：normal / rare / super rare / legend / unknown
 - 职业：grow / bloom / solar / smarty / guardian / brainy / sneaky / hearty / beastly / crazy / neutral
 - 流派：pea / flower / pet / robot / universe / fruit
+- 中立职业（`neutral_class`）：默认 `neutral`（该职业的卡牌在牌组中不受英雄职业限制；只能填已有职业）
 
 ## 二、卡牌 `cards.csv`
 
@@ -104,7 +105,32 @@ when die: heal(hero, 3)
 - 未来模组卡牌：`<作者名>.<模组名>:<english_name>`，例如 `alice.better_cards:spore_shot`。
 - 由于命名空间不同，模组卡牌不会与官方卡牌重名；模组目录 `user://mods/...` 的载入接口已预留（`load_mod_card_set`），当前未启用。
 
-## 四、编译与快速载入（开发者测试界面）
+
+## 四、英雄 `heroes.csv`
+
+与 `cards.csv` 同目录：`data/cards/official/heroes.csv`。
+
+```csv
+english_name,chinese_name,faction,classes,special_cards
+green_knight,绿影骑士,p,"solar,guardian","fireball,armor_up"
+```
+
+| 列 | 说明 |
+|---|---|
+| `english_name` | 英雄英文名（内部 ID 由它规范化，如 `green_knight`） |
+| `chinese_name` | 中文名 |
+| `faction` | 阵营：`p` 或 `z` |
+| `classes` | 正好两个职业，逗号分隔，必须在全局配置的职业列表中 |
+| `special_cards` | 专属卡牌英文名，逗号分隔；必须是 `cards.csv` 里存在的卡 |
+
+英雄不是卡牌。牌组先选英雄，英雄的两个职业限制牌组可用的卡（中立职业除外，专属卡无视限制）。
+英雄生命值、初始费用、初始抽牌等由玩法配置决定（p 阵营用“我方”数值，z 阵营用“敌方”数值）。
+
+## 五、玩法配置
+
+默认文件：`data/modes/default_mode.json`；可用 `user://modes/default_mode.json` 覆盖（服务器管理员可改）。
+字段说明见 `data/modes/README.md`。未配置任何玩法文件时全部使用内置默认值。
+## 六、编译与快速载入（开发者测试界面）
 
 - 待编译目录：`user://card_packs/import/`（放 `config.csv` / `cards.csv`）。
 - 调用 `DeveloperTools.compile_card_set()`（源码目录可指定）：
@@ -116,7 +142,7 @@ when die: heal(hero, 3)
   删除该文件或调用 `clear_compiled_official_pack()` 即回退 CSV。
 - 模组同样走编译流程：内部 ID 使用 `<作者.模组>:<英文名>` 命名空间，产物可随模组分发。
 
-## 五、经济数值（按稀有度）
+## 七、经济数值（按稀有度）
 
 | 稀有度 | 合成（钻石） | 分解（钻石） | 最大持有 |
 |---|---|---|---|

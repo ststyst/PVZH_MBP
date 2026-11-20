@@ -1,4 +1,4 @@
-# 游戏 API 文档（供 UI 接入）
+﻿# 游戏 API 文档（供 UI 接入）
 
 > 版本：alpha0.1　|　对应 Godot 4.7.2 工程 `PVZH_MBP`
 > 本文只描述**接口层**（autoload 单例与数据模型），不包含任何场景/按钮/布局实现——这些由后续 UI 开发完成。
@@ -272,16 +272,73 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 `set_self_target / set_event_target / resolve_selector / describe_entity` + 原语；
 `RecordingEffectContext` 是现成测试实现。
 
-### 牌组规则 `DeckValidator`
+### 英雄数据 `HeroDatabase`（autoload）
+
+数据文件：`data/cards/official/heroes.csv`
+列：`english_name,chinese_name,faction,classes,special_cards`
+
+- `faction`：`p` 或 `z`
+- `classes`：正好两个职业（必须在全局配置中，逗号分隔）
+- `special_cards`：专属卡牌英文名，逗号分隔（载入时解析为内部卡牌 ID）
 
 | 方法 | 返回 | 说明 |
 |---|---|---|
-| `validate(deck, database)` | `Array[String]` | 错误列表；空数组 = 合法 |
-| `can_add_card(deck, card, database)` | bool | 牌组编辑器高亮/禁用 |
+| `get_hero(hero_id)` | `HeroData` / null | hero_id 为英文名规范化（如 `green_knight`） |
+| `all_hero_ids()` | `Array[String]` | |
+| `heroes_by_faction(faction)` | `Array[HeroData]` | `p` / `z` |
+| `load_errors` | `Array[String]` | 职业/专属卡牌等加载问题 |
+| `reload()` / `reload_from(path, card_database)` | void | 载入官方 / 指定文件 |
 
-校验内容：正好 30 张；同名张数（传说 1、其余 2）；职业必须在 `deck.allowed_classes` 内（中立始终允许）；
-卡牌必须存在；`deck_includable == false` 的卡牌不可编入；`allowed_classes` 为空时报错。
+`HeroData` 字段：`hero_id`、`english_name`、`chinese_name`、`faction`、`classes`、`class_labels`、
+`special_card_names`、`special_card_ids`；方法：`display_name()`、`has_class()`、`is_special_card()`。
 
+### 玩法配置 `GameModeConfig` / `ModeManager`
+
+默认文件：`data/modes/default_mode.json`（可由 `user://modes/default_mode.json` 覆盖；服务器可运行时加载任意玩法文件）。
+
+字段（省略则用默认值）：`deck_max_size`(40)、`enforce_full_deck`(true)、
+`max_copies_by_rarity`([4,4,4,4,1,4,4,4]，按全局稀有度顺序，超出数组默认 1)、
+`player_hero_max_health`(20)、`enemy_hero_max_health`(20)、
+`player_initial_energy`(1)、`enemy_initial_energy`(1)、
+`player_initial_draw`(4)、`enemy_initial_draw`(4)。
+
+| API | 说明 |
+|---|---|
+| `ModeManager.get_mode()` | 当前 `GameModeConfig` |
+| `ModeManager.load_mode_file(path)` | 运行时载入玩法文件 |
+| `ModeManager.reset_to_default()` | 回到默认玩法 |
+| `ModeManager.get_hero_max_health(faction)` / `get_initial_energy` / `get_initial_draw` | 按阵营取我方/敌方数值（p=我方，z=敌方） |
+| `GameModeConfig.from_file(path)` / `from_dict(data)` / `default_config()` | 构造与加载 |
+| `max_copies_for_rarity_index(index)` | 按稀有度序号取单卡上限 |
+
+### 牌组管理 `DeckManager`（autoload）
+
+| API | 返回 | 说明 |
+|---|---|---|
+| `get_decks()` / `get_deck(deck_id)` | `Array[DeckData]` / DeckData | 当前玩家牌组 |
+| `create_deck(hero_id, deck_name="")` | `{ok, message, deck_id, deck}` | 新牌组；空名称自动生成「英雄名#三位数字」并去重 |
+| `delete_deck(deck_id)` | `{ok, message}` | 删除牌组 |
+| `begin_edit(deck_id)` / `end_edit()` / `get_editing_deck()` / `get_editing_deck_id()` | DeckData / void | 当前编辑的牌组 |
+| `rename_deck(deck_id, new_name)` | `{ok, message}` | 自定义名称重名时返回 `{ok:false, message:"牌组重名"}` |
+| `set_deck_hero(deck_id, hero_id)` | `{ok, message, errors, tags}` | 切换英雄并刷新标签 |
+| `add_card(deck_id, card_id)` | `{ok, message, count}` | 校验张数/稀有度上限/职业/专属/可编入 |
+| `remove_card(deck_id, card_id)` | `{ok, message, count}` | 移除一张 |
+| `save_deck(deck_id)` | `{ok, message, errors, tags}` | 按玩法配置刷新 `default` 标签并落盘 |
+
+`DeckData` 字段：`deck_id`、`deck_name`、`hero_id`、`allowed_classes`、`card_ids`、`tags`、`updated_at_unix`；
+方法：`card_count()`、`count_of()`、`get_card_counts()`、`add_card()`、`remove_card()`、`clear_cards()`、
+`has_tag()`、`add_tag()`、`remove_tag()`、`to_dict()/from_dict()`。
+
+### 牌组规则 `DeckRules`
+
+| 方法 | 返回 | 说明 |
+|---|---|---|
+| `validate(deck, card_database, hero_database, mode)` | `Array[String]` | 空数组 = 完全符合要求 |
+| `can_add_card(deck, card, card_database, hero_database, mode)` | bool | 牌组编辑器置灰/高亮 |
+| `refresh_tags(...)` | `Array[String]` | 合法则打 `default` 标签，否则移除 |
+
+规则：张数 ≤ `deck_max_size`（`enforce_full_deck` 时必须正好等于）；单卡张数按稀有度数组；
+职业必须属于英雄两个职业（中立职业无视限制、英雄专属卡无视限制）；`deck_includable=0` 的卡不可编入。
 ### `CollectionManager`（autoload）
 
 | 方法 | 返回 | 说明 |

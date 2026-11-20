@@ -26,6 +26,8 @@ func test_csv_set_loaded() -> void:
 	assert_gt(database.card_count(), 20, "官方 CSV 卡牌应已加载")
 	assert_true(database.has_card("pvzh:fireball"))
 	assert_eq(database.load_errors.size(), 0, "默认卡牌数据不应有加载错误")
+	assert_true(database.config.has_neutral_class("neutral"), "中立职业配置应加载")
+	assert_true(database.get_neutral_classes().has("neutral"))
 
 
 func test_card_fields() -> void:

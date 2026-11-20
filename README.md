@@ -15,9 +15,13 @@
 - 全局单例：`GameState`（身份/场景切换/货币/计时/自动保存）、`SaveManager`（本地多存档）、
   `AppStorage`（最近存档 / 服务器账号 / 主音量 / 显示预设）、`LoginFlow`（登录流程状态机）、
   `DisplayService`（竖屏显示适配与分辨率预设）、`ConfirmService`（是/否弹窗）、
-  `DeveloperTools`（开发者存档测试功能）、`CardDatabase`（卡表）、`CollectionManager`（合成/分解）、
+  `DeveloperTools`（开发者存档测试功能）、`CardDatabase`（卡表）、`HeroDatabase`（英雄）、
+  `ModeManager`（玩法配置）、`DeckManager`（牌组管理）、`CollectionManager`（合成/分解）、
   `NetManager`（局域网发现 + 登录占位）。
-- 数据模型：`CardData`、`DeckData`（30 张/同名 2 张规则）、`PlayerProfile`（金币/钻石/时长/开发者标记）、`SaveSlotInfo`。
+- 数据模型：`CardData`、`DeckData`（牌组名/英雄/卡牌列表/标签）、`PlayerProfile`、`SaveSlotInfo`、`HeroData`、`GameModeConfig`。
+- 英雄数据：`data/cards/official/heroes.csv`（p/z 阵营、双职业、专属卡牌）。
+- 玩法配置：`data/modes/default_mode.json`（牌组上限/满编/稀有度张数/英雄生命/初始费用与抽牌；可被 `user://modes/default_mode.json` 覆盖）。
+- 牌组管理 API：新建/删除/编辑/加牌/去牌/改名/换英雄、重名规则、`default` 标签。
 - 30 张示例卡数据（`data/cards/official/cards.csv`，CSV 数据驱动）+ 能力 DSL
   （`docs/EffectDsl.md`：变量、四则运算、条件目标、实体事件与过滤）。
 - 旧版占位界面（LoginScreen / MainScreen / Battle）；正式 UI 由后续开发替换。

@@ -15,6 +15,7 @@ class,hearty,健壮
 class,beastly,野兽
 class,crazy,疯狂
 class,neutral,中立
+neutral_class,neutral,中立
 tribe,pea,豌豆
 tribe,flower,花朵
 tribe,pet,宠物

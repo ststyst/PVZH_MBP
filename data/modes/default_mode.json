@@ -1,0 +1,11 @@
+{
+  "deck_max_size": 40,
+  "enforce_full_deck": true,
+  "max_copies_by_rarity": [4, 4, 4, 4, 1, 4, 4, 4],
+  "player_hero_max_health": 20,
+  "enemy_hero_max_health": 20,
+  "player_initial_energy": 1,
+  "enemy_initial_energy": 1,
+  "player_initial_draw": 4,
+  "enemy_initial_draw": 4
+}
