@@ -29,20 +29,18 @@ func add_diamond(amount: int = 100) -> bool:
 	return ok
 
 
-## 解锁全部卡牌到持有上限（仅开发者存档），返回新增张数。
+## 让每张卡至少拥有 2 张（仅开发者存档），返回新增张数。
+## 收藏本身已无上限；这里只是补一个方便测试的基数。
 func unlock_all_cards() -> int:
 	if not is_enabled() or GameState.profile == null:
 		return 0
 	var added: int = 0
+	var minimum: int = 2
 	for card_id: String in CardDatabase.all_card_ids():
-		var card: CardData = CardDatabase.get_card(card_id)
-		if card == null:
-			continue
-		var max_copies: int = CollectionManager.max_copies_for(card)
 		var owned: int = GameState.profile.get_card_count(card_id)
-		if owned < max_copies:
-			GameState.profile.add_card(card_id, max_copies - owned)
-			added += max_copies - owned
+		if owned < minimum:
+			GameState.profile.add_card(card_id, minimum - owned)
+			added += minimum - owned
 	GameState.save_active_profile()
 	test_action_done.emit("unlock_all_cards", "+%d" % added)
 	return added

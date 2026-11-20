@@ -1,17 +1,17 @@
 extends Node
 ## 收藏操作：合成卡牌 / 分解卡牌（消耗与产出钻石）。
+## 收藏数量不设上限：可以合成任意多张（只受钻石数量限制）。
 ## 所有函数只操作传入的 PlayerProfile 与 CardData，不依赖其他单例，便于测试。
 
-const MAX_COPIES_DEFAULT: int = 2
-const MAX_COPIES_LEGENDARY: int = 1
+## 0 表示“不限制持有张数”（UI 可显示为 ∞）。
+const UNLIMITED_COPIES: int = 0
 
 signal collection_changed()
 
-## 该卡牌允许持有的最大张数（传说 1 张，其余 2 张）。
+
+## 收藏不再有上限；固定返回 0，供 UI 判断“无限制”。
 func max_copies_for(card: CardData) -> int:
-	if card == null:
-		return 0
-	return card.max_copies()
+	return UNLIMITED_COPIES
 
 
 func owned_count(profile: PlayerProfile, card: CardData) -> int:
@@ -22,8 +22,6 @@ func owned_count(profile: PlayerProfile, card: CardData) -> int:
 
 func can_craft(profile: PlayerProfile, card: CardData) -> bool:
 	if profile == null or card == null:
-		return false
-	if owned_count(profile, card) >= max_copies_for(card):
 		return false
 	return profile.diamond >= card.craft_cost()
 
@@ -38,9 +36,6 @@ func can_disenchant(profile: PlayerProfile, card: CardData) -> bool:
 func craft_card(profile: PlayerProfile, card: CardData) -> Dictionary:
 	if profile == null or card == null:
 		return {"ok": false, "message": "数据缺失，无法合成。"}
-	var owned: int = profile.get_card_count(card.card_id)
-	if owned >= max_copies_for(card):
-		return {"ok": false, "message": "已达到可持有的最大张数。"}
 	if profile.diamond < card.craft_cost():
 		return {
 			"ok": false,

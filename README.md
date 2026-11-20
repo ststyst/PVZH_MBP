@@ -22,6 +22,7 @@
 - 英雄数据：`data/cards/official/heroes.csv`（p/z 阵营、双职业、专属卡牌）。
 - 玩法配置：`data/modes/default_mode.json`（牌组上限/满编/稀有度张数/英雄生命/初始费用与抽牌；可被 `user://modes/default_mode.json` 覆盖）。
 - 牌组管理 API：新建/删除/编辑/加牌/去牌/改名/换英雄、重名规则、`default` 标签。
+- 收藏合成/分解：收藏数量无上限（只看钻石），`max_copies_for()` 返回 0 表示不限。
 - 牌组编辑界面（`scenes/deck/DeckEditor.tscn`）：可选卡牌列表、选中/移除/信息下拉菜单、卡牌信息弹窗。
 - 卡牌美术：稀有度卡牌背景（`assets/cards/backgrounds/`）+ CSV `art_path` 外观图；缺图回退纯色外观。
 - 单机战斗：`scenes/battle/BattlePrep.tscn` 准备 + `Battle.tscn` 对战；推荐卡组 CSV（`data/battle`）；简单 AI。

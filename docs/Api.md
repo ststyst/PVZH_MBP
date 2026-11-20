@@ -218,7 +218,7 @@ ConfirmService.show_message(LoginFlow.get_developer_message(), "开发者的话"
 | `add_gold(amount=100)` | bool | 加金币 |
 | `add_diamond(amount=100)` | bool | 加钻石 |
 | `set_currencies(gold, diamond)` | void | 直接设置两种货币 |
-| `unlock_all_cards()` | int | 解锁全部卡牌到持有上限，返回新增张数 |
+| `unlock_all_cards()` | int | 让每张卡至少拥有 2 张（仅开发者存档），返回新增张数 |
 | `add_all_cards(count=10)` | int | 给所有卡牌各增加 `count` 张（不受收藏上限限制），返回新增张数 |
 | `clear_all_cards()` | void | 清空卡牌收藏 |
 | `test_action_done`（信号） | `action`, `detail` | 每个操作完成后通知面板刷新 |
@@ -410,9 +410,9 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 
 | 方法 | 返回 | 说明 |
 |---|---|---|
-| `max_copies_for(card)` | int | 传说 1 张，其余 2 张 |
-| `can_craft(profile, card)` / `can_disenchant(profile, card)` | bool | 能否合成 / 分解 |
-| `craft_card(profile, card)` | `{ok, message}` | 消耗钻石合成一张 |
+| `max_copies_for(card)` | int | 固定 0，表示收藏**不限持有张数**（UI 可显示为 ∞） |
+| `can_craft(profile, card)` / `can_disenchant(profile, card)` | bool | 能否合成（只看钻石） / 分解 |
+| `craft_card(profile, card)` | `{ok, message}` | 消耗钻石合成一张，**不设收藏上限** |
 | `disenchant_card(profile, card)` | `{ok, message}` | 分解一张获得钻石 |
 | `collection_changed`（信号） | — | 收藏变化通知 |
 

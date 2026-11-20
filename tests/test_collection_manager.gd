@@ -56,17 +56,19 @@ func test_insufficient_diamond() -> void:
 	assert_eq(profile.diamond, 10)
 
 
-func test_max_copies() -> void:
-	var profile := PlayerProfile.create_default("满")
+func test_unlimited_collection() -> void:
+	var profile := PlayerProfile.create_default("无上限")
 	profile.diamond = 10000
 	var common: CardData = _make_card("c3", "normal")
-	assert_true(bool(manager.craft_card(profile, common).get("ok", false)))
-	assert_true(bool(manager.craft_card(profile, common).get("ok", false)))
-	assert_false(manager.can_craft(profile, common), "普通卡最多持有 2 张")
+	for _index: int in range(5):
+		assert_true(bool(manager.craft_card(profile, common).get("ok", false)), "收藏无上限，应能继续合成")
+	assert_eq(profile.get_card_count("c3"), 5)
+	assert_true(manager.can_craft(profile, common), "收藏取消上限后仍可合成")
+	assert_eq(manager.max_copies_for(common), 0, "0 表示不限张数")
 	var legend: CardData = _make_card("c4", "legend")
 	assert_true(bool(manager.craft_card(profile, legend).get("ok", false)))
-	assert_false(manager.can_craft(profile, legend), "传说卡最多持有 1 张")
-	assert_eq(profile.get_card_count("c4"), 1)
+	assert_true(bool(manager.craft_card(profile, legend).get("ok", false)))
+	assert_eq(profile.get_card_count("c4"), 2)
 
 
 func test_disenchant_without_copy() -> void:

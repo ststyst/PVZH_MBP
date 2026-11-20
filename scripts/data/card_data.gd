@@ -115,7 +115,7 @@ func has_ability() -> bool:
 	return ability_script != null and ability_script.has_effect() and not ability_script.has_errors()
 
 
-## 该稀有度允许持有的最大张数：传说 1 张，其余 2 张。
+## 推荐持有张数（传说 1、其余 2），仅用于展示/旧接口；收藏实际不限张数。
 func max_copies() -> int:
 	if rarity == "legend":
 		return 1
