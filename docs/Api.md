@@ -63,24 +63,24 @@
 
 ```gdscript
 func _ready() -> void:
-    LoginFlow.open_login_screen()
-    LoginFlow.panel_changed.connect(_on_panel_changed)
-    LoginFlow.start_result.connect(_on_start_result)
-    LoginFlow.server_login_finished.connect(_on_server_login_finished)
-    LoginFlow.save_list_changed.connect(_refresh_save_list)
+	LoginFlow.open_login_screen()
+	LoginFlow.panel_changed.connect(_on_panel_changed)
+	LoginFlow.start_result.connect(_on_start_result)
+	LoginFlow.server_login_finished.connect(_on_server_login_finished)
+	LoginFlow.save_list_changed.connect(_refresh_save_list)
 
 func _on_start_pressed() -> void:
-    LoginFlow.request_start_game()
+	LoginFlow.request_start_game()
 
 func _on_delete_pressed(slot_key: String) -> void:
-    var confirmed: bool = await ConfirmService.ask_yes_no("删除后无法恢复，确定删除该存档吗？")
-    if confirmed:
-        LoginFlow.delete_save(slot_key)
+	var confirmed: bool = await ConfirmService.ask_yes_no("删除后无法恢复，确定删除该存档吗？")
+	if confirmed:
+		LoginFlow.delete_save(slot_key)
 
 func _on_create_confirm_pressed() -> void:
-    var result: Dictionary = LoginFlow.create_save_and_start(name_edit.text)
-    if not bool(result.get("ok", false)):
-        status_label.text = str(result.get("message", ""))
+	var result: Dictionary = LoginFlow.create_save_and_start(name_edit.text)
+	if not bool(result.get("ok", false)):
+		status_label.text = str(result.get("message", ""))
 ```
 
 > 说明：`request_start_game()` 内部会直接切换场景到主界面，无需 UI 再跳转。
@@ -173,6 +173,7 @@ func _on_create_confirm_pressed() -> void:
 | `get_server_login()` | `{ip, account, remember}` | 服务器登录页自动填写 |
 | `set_server_login(ip, account, remember)` | void | remember=false 时清空已保存信息 |
 | `get_master_volume()` / `set_master_volume(v)` | float / void | 主音量 0.0–1.0，立即作用于 Master 总线并持久化 |
+| `get_display_preset()` / `set_display_preset(id)` | String / void | 显示预设（由 `DisplayService` 读写） |
 | `save_data()` | bool | 手动落盘（一般不需要） |
 
 ---
@@ -257,17 +258,57 @@ ConfirmService.show_message(LoginFlow.get_developer_message(), "开发者的话"
 
 ---
 
-## 10. 需要 UI 侧接入的部分（本次未实现）
+## 10. 显示适配 `DisplayService`
+
+游戏为竖屏 9:16：基准视口 720×1280，拉伸 `canvas_items` + 宽高比 `keep`
+（窗口比例不是 9:16 时自动留黑边，画面永不裁切）。
+
+| 枚举 | 取值 |
+|---|---|
+| `DEVICE` | `DESKTOP=0`, `MOBILE=1` |
+
+| 信号 | 参数 | 说明 |
+|---|---|---|
+| `display_changed` | `preset_id: String`, `width: int`, `height: int` | 应用预设后通知 UI 刷新 |
+
+| 方法 | 返回 | 说明 |
+|---|---|---|
+| `get_device_type()` / `get_device_label()` | int / String | 电脑窗口 / 手机屏幕 |
+| `get_presets()` | `Array[Dictionary]` | 当前设备可用预设：`id`、`label`、`description`、`width`、`height`、`auto` |
+| `apply_preset(preset_id)` | bool | 应用并持久化（桌面改窗口大小；手机改逻辑分辨率） |
+| `apply_device_default()` | bool | 重新应用「自动」预设 |
+| `get_current_preset_id()` | String | 已保存的预设 id（默认 `auto`） |
+| `set_window_size(w, h)` / `get_window_size()` | void / Vector2i | 桌面窗口像素尺寸（自动限制在屏幕可用区域内） |
+| `set_content_resolution(w, h)` / `get_content_resolution()` | void / Vector2i | 逻辑分辨率（手机清晰度） |
+
+预设列表：
+
+- **电脑**：`auto`（自动适配窗口）、`540x960`（标准窗口）、`720x1280`（屏幕不够高会自动等比缩小）、`405x720`（小巧窗口）。
+- **手机**：`auto`（跟随设备屏幕）、`720x1280`、`1080x1920`、`1440x2560`（逻辑分辨率）。
+
+设置界面接法：
+
+```gdscript
+var presets: Array[Dictionary] = DisplayService.get_presets()
+for preset in presets:
+    display_option.add_item(str(preset["label"]))
+# 选项变化时：
+DisplayService.apply_preset(str(presets[selected_index]["id"]))
+```
+
+> 桌面默认按屏幕可用高度自动缩放（最多占 92%），窗口完整可见；玩家手动拉伸窗口时按 9:16 等比缩放、多余区域留黑边，画面始终完整。
+
+## 11. 需要 UI 侧接入的部分（本次未实现）
 
 1. LoginScreen 的各个面板（模式选择 / 单机菜单 / 新建存档页 / 选档列表 / 服务器表单）的显示与按钮绑定。
 2. 全局 UI 层（货币栏、开发者测试按钮、设置按钮、设置面板、版本号文字）。
-3. 设置页：音量滑块 → `AppStorage.set_master_volume()`；保存按钮 → `GameState.save_active_profile()`；退出按钮 → 关闭面板。
+3. 设置页：音量滑块 → `AppStorage.set_master_volume()`；显示预设下拉框 → `DisplayService.get_presets()/apply_preset()`；保存按钮 → `GameState.save_active_profile()`；退出按钮 → 关闭面板。
 4. 选档列表的 ScrollContainer/ScrollBar 布局（数据用 `LoginFlow.get_save_slots()`）。
 5. 主界面、牌组、收藏、社交、活动等场景与跳转。
 
 ---
 
-## 11. 验证情况
+## 12. 验证情况
 
 - 自动化测试：`tests/run_tests.gd`，6 个套件 **26 个用例 / 184 条断言**全通过（`godot --headless --script res://tests/run_tests.gd`）。
 - 运行时验证（编辑器内跑游戏 + 反射调用）：
@@ -277,4 +318,5 @@ ConfirmService.show_message(LoginFlow.get_developer_message(), "开发者的话"
   - 最近存档记录到 `global.json`；「开始游戏」复用最近存档；
   - 选择存档、删除存档、货币增删、退出自动保存（退出后磁盘金币为修改值）；
   - 主界面预加载完成、主音量 0.5 → Master 总线 -6.02 dB；
-  - 服务器登录返回未实现并保存 IP/账号（不存密码）。
+  - 服务器登录返回未实现并保存 IP/账号（不存密码）；
+  - 竖屏窗口（独立进程实测）：默认 533×947（9:16，屏幕可用高度 92% 内）；窗口拉成 722×893 时画面居中、左右黑边、完整可见；持久化预设 `405x720` 启动即生效；逻辑分辨率 720×1280 ↔ 1080×1920 切换正常。

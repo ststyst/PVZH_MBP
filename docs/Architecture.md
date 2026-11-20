@@ -6,8 +6,10 @@
 
 - Godot 4.7.2 / GDScript。
 - 渲染：`gl_compatibility`（Android 兼容面最大，2D 卡牌游戏足够）。
-- 分辨率基准 1280×720 横屏，`window/stretch/mode=canvas_items`、`aspect=expand`。
-- Android 方向：`sensor_landscape`；桌面开启 `emulate_touch_from_mouse` 便于触屏交互调试。
+- 分辨率基准 720×1280 竖屏（9:16），`window/stretch/mode=canvas_items`、`aspect=keep`（非 9:16 窗口留黑边，画面不裁切）。
+- Android 方向：竖屏（`orientation=1`）；桌面开启 `emulate_touch_from_mouse` 便于触屏交互调试。
+- 桌面窗口由 `DisplayService` 在启动时按屏幕可用高度（≤92%）自适应缩放，保证窗口完整可见；窗口可自由拉伸。
+- 显示预设（窗口大小 / 逻辑分辨率）持久化在 `user://global.json` 的 `display_preset`。
 - 单工程同时导出 Windows / Android。
 
 ## 2. 目录结构
@@ -47,6 +49,7 @@ addons/          第三方插件（godot_ai 用于编辑器联调）
 | `SaveManager` | scripts/core/save_manager.gd | 本地多存档 CRUD、服务器地址/账号缓存 |
 | `CardDatabase` | scripts/core/card_database.gd | 扫描 `res://data/cards/*.json` 构建卡表，预留模组路径 |
 | `NetManager` | scripts/core/net_manager.gd | 局域网 UDP 发现、登录请求（M5 接 ENet）、网络信号总线 |
+| `DisplayService` | scripts/core/display_service.gd | 竖屏显示适配：桌面窗口自适应、手机逻辑分辨率、显示预设持久化 |
 
 ## 5. 存档模型（身份分离）
 

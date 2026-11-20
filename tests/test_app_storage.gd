@@ -68,3 +68,10 @@ func test_master_volume_clamped() -> void:
 	assert_eq(storage.get_master_volume(), 0.0)
 	storage.set_master_volume(0.5)
 	assert_eq(storage.get_master_volume(), 0.5)
+
+
+func test_display_preset_roundtrip() -> void:
+	storage.set_display_preset("540x960")
+	assert_eq(storage.get_display_preset(), "540x960")
+	storage.load_data()
+	assert_eq(storage.get_display_preset(), "540x960", "显示预设应持久化")

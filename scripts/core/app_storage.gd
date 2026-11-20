@@ -22,6 +22,7 @@ func load_data() -> void:
 		"server_account": "",
 		"remember_server": false,
 		"master_volume": SETTINGS_DEFAULT_VOLUME,
+		"display_preset": "",
 	}
 	if not FileAccess.file_exists(FILE_PATH):
 		return
@@ -89,6 +90,17 @@ func get_master_volume() -> float:
 func set_master_volume(volume: float) -> void:
 	data["master_volume"] = clampf(volume, 0.0, 1.0)
 	_apply_master_volume()
+	save_data()
+
+
+# ----- 显示预设（由 DisplayService 读写） -----
+
+func get_display_preset() -> String:
+	return str(data.get("display_preset", ""))
+
+
+func set_display_preset(preset_id: String) -> void:
+	data["display_preset"] = preset_id
 	save_data()
 
 

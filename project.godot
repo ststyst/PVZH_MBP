@@ -26,16 +26,18 @@ CollectionManager="*res://scripts/core/collection_manager.gd"
 NetManager="*res://scripts/core/net_manager.gd"
 ConfirmService="*res://scripts/core/confirm_service.gd"
 LoginFlow="*res://scripts/core/login_flow.gd"
+DisplayService="*res://scripts/core/display_service.gd"
 DeveloperTools="*res://scripts/core/developer_tools.gd"
 _mcp_game_helper="*res://addons/godot_ai/runtime/game_helper.gd"
 
 [display]
 
-window/size/viewport_width=1280
-window/size/viewport_height=720
+window/size/viewport_width=720
+window/size/viewport_height=1280
+window/size/window_width_override=540
+window/size/window_height_override=960
 window/stretch/mode="canvas_items"
-window/stretch/aspect="expand"
-window/handheld/orientation=4
+window/handheld/orientation=1
 
 [editor_plugins]
 
