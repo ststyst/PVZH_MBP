@@ -12,6 +12,7 @@ const RARITY_COLORS: Dictionary = {
 }
 
 @onready var card_frame: PanelContainer = %CardFrame
+@onready var art_texture: TextureRect = %CardArt
 @onready var cost_label: Label = %CostLabel
 @onready var name_label: Label = %NameLabel
 @onready var meta_label: Label = %MetaLabel
@@ -43,8 +44,15 @@ func show_card(card: CardData) -> void:
 	tribes_label.text = card.get_tribes_text()
 	tribes_label.visible = not tribes_label.text.is_empty()
 	description_label.text = card.description
+	_apply_art(card)
 	_apply_rarity_style(card.rarity)
 	popup_centered()
+
+
+func _apply_art(card: CardData) -> void:
+	var texture: Texture2D = CardArt.get_texture(card.art_path)
+	art_texture.visible = texture != null
+	art_texture.texture = texture
 
 
 func _apply_rarity_style(rarity: String) -> void:

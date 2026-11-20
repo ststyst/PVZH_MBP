@@ -45,6 +45,8 @@ var deck_includable: bool = true
 
 ## 伪代码形式的具体能力（由解释器执行）
 var ability: String = ""
+## 卡面贴图路径（res:// 或 user://）；空 = 纯色占位外观
+var art_path: String = ""
 ## 编译后的能力脚本（CSV 载入时解析；语法错误见 CardDatabase.load_errors）
 var ability_script: CardEffectScript = null
 
@@ -136,6 +138,7 @@ func to_pack_dict() -> Dictionary:
 		"keywords": keywords.duplicate(),
 		"tribes": tribes.duplicate(),
 		"ability": ability,
+		"art_path": art_path,
 		"class_label": class_label,
 		"rarity_label": rarity_label,
 		"keyword_labels": keyword_labels.duplicate(),
@@ -163,6 +166,7 @@ static func from_pack_dict(data: Dictionary, card_namespace: String = "") -> Car
 	card.rarity = str(data.get("rarity", "unknown"))
 	card.deck_includable = bool(data.get("deck_includable", true))
 	card.ability = str(data.get("ability", ""))
+	card.art_path = str(data.get("art_path", ""))
 	card.class_label = str(data.get("class_label", ""))
 	card.rarity_label = str(data.get("rarity_label", ""))
 	var raw_keywords: Variant = data.get("keywords", [])

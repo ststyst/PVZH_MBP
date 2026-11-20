@@ -16,6 +16,7 @@ var card_id: String = ""
 @onready var meta_label: Label = %CardMeta
 @onready var desc_label: Label = %CardDesc
 @onready var owned_label: Label = %CardOwned
+@onready var art_texture: TextureRect = %CardArt
 
 
 ## 注入卡牌数据与拥有数量。必须在 add_child 之后调用（依赖 @onready 节点）。
@@ -26,6 +27,7 @@ func setup(card: CardData, owned_count: int, status_text: String = "") -> void:
 	name_label.add_theme_color_override("font_color", _rarity_color(card.rarity))
 	meta_label.text = _build_meta_text(card)
 	desc_label.text = card.description
+	_apply_art(card)
 	if status_text.is_empty():
 		_update_owned_text(owned_count)
 	else:
@@ -46,6 +48,12 @@ func _build_meta_text(card: CardData) -> String:
 			stats += " 盾%d" % card.shield
 		parts.append(stats)
 	return " · ".join(parts)
+
+
+func _apply_art(card: CardData) -> void:
+	var texture: Texture2D = CardArt.get_texture(card.art_path)
+	art_texture.visible = texture != null
+	art_texture.texture = texture
 
 
 func _update_owned_text(owned_count: int) -> void:

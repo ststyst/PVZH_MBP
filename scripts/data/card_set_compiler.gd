@@ -111,6 +111,9 @@ static func compile_pack(
 			row, header, "deck_includable", "deck_includable（是否可编入牌组）", row_label, errors
 		)
 		var ability: String = _cell(row, header, "ability").strip_edges()
+		var art_path: String = _cell(row, header, "art_path").strip_edges()
+		if not art_path.is_empty() and not FileAccess.file_exists(art_path):
+			errors.append("%s：美术素材不存在（%s）。" % [row_label, art_path])
 		var ability_script: CardEffectScript = CardEffectScript.parse(ability)
 		for problem: String in ability_script.errors:
 			errors.append("%s：能力语法错误：%s" % [row_label, problem])
@@ -143,6 +146,7 @@ static func compile_pack(
 		card.tribes = tribes
 		card.deck_includable = deck_includable
 		card.ability = ability
+		card.art_path = art_path
 		card.ability_script = ability_script
 		card.class_label = config.class_label(card_class)
 		card.rarity_label = config.rarity_label(rarity)

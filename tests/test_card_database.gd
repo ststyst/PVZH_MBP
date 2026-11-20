@@ -21,6 +21,12 @@ func teardown() -> void:
 	database = null
 
 
+func test_card_art_loader() -> void:
+	assert_true(CardArt.get_texture("res://icon.svg") != null, "存在的美术文件应能加载")
+	assert_true(CardArt.get_texture("") == null, "空路径应返回 null")
+	assert_true(CardArt.get_texture("res://missing_art.png") == null, "缺失文件应返回 null")
+
+
 func test_csv_set_loaded() -> void:
 	database.reload()
 	assert_gt(database.card_count(), 20, "官方 CSV 卡牌应已加载")
@@ -47,6 +53,7 @@ func test_card_fields() -> void:
 	assert_eq(fireball.ability, "deal_damage(chosen, 6)")
 	assert_true(fireball.deck_includable, "默认应可被编入牌组")
 	assert_true(fireball.is_deck_includable())
+	assert_eq(fireball.art_path, "", "示例卡未配置美术路径")
 
 
 func test_namespacing() -> void:

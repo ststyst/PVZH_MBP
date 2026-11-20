@@ -169,6 +169,38 @@ func test_namespace_required() -> void:
 	assert_false(bool(result.get("ok", true)), "空命名空间应报错")
 
 
+func test_art_path_roundtrip_and_validation() -> void:
+	var dir_path: String = TEST_ROOT.path_join("art")
+	var header: String = HEADER.trim_suffix("\n") + ",art_path\n"
+	_write_text(dir_path.path_join("config.csv"), CONFIG_TEXT)
+	_write_text(
+		dir_path.path_join("cards.csv"),
+		header + 'art_card,美术卡,entity,1,1,1,0,neutral,normal,"","","","",res://icon.svg\n'
+	)
+	var result: Dictionary = _compile("art")
+	assert_true(bool(result.get("ok", false)), "有效美术路径应能编译：%s" % [result.get("errors", [])])
+	var database: Node = CardDatabaseScript.new()
+	database.reload(false)
+	database.load_pack_file(str(result.get("pack_path", "")), "", true)
+	var card: CardData = database.get_card("testmod:art_card")
+	assert_true(card != null)
+	if card != null:
+		assert_eq(card.art_path, "res://icon.svg")
+	if is_instance_valid(database):
+		database.free()
+
+	var bad_dir: String = TEST_ROOT.path_join("art_bad")
+	_write_text(bad_dir.path_join("config.csv"), CONFIG_TEXT)
+	_write_text(
+		bad_dir.path_join("cards.csv"),
+		header + 'art_bad,坏美术,entity,1,1,1,0,neutral,normal,"","","","",res://missing_art.png\n'
+	)
+	var bad: Dictionary = _compile("art_bad")
+	assert_false(bool(bad.get("ok", true)), "缺失美术文件应编译失败")
+	var joined: String = "\n".join(bad.get("errors", []))
+	assert_true(joined.find("美术素材不存在") != -1, "应报告美术素材缺失：%s" % joined)
+
+
 func test_deck_includable_flag_roundtrip() -> void:
 	var dir_path: String = TEST_ROOT.path_join("flag")
 	var header: String = HEADER.trim_suffix("\n") + ",deck_includable\n"

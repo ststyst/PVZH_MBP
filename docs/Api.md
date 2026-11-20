@@ -249,9 +249,13 @@ ConfirmService.show_message(LoginFlow.get_developer_message(), "开发者的话"
 ### `CardData`
 
 字段：`card_id`、`card_namespace`、`english_name`、`chinese_name`、`description`、`kind`（entity/spell）、
-`cost`、`attack`、`health`、`shield`、`card_class`、`rarity`、`keywords`、`tribes`、`ability`（伪代码），
+`cost`、`attack`、`health`、`shield`、`card_class`、`rarity`、`keywords`、`tribes`、`ability`（伪代码）、
+`art_path`（卡面贴图路径，空 = 纯色占位外观）、
 `deck_includable`（是否可被牌组编入，默认 true），
 以及加载时解析的 `class_label` / `rarity_label` / `keyword_labels` / `tribe_labels`。
+
+卡面加载：`CardArt.get_texture(path)`（带缓存；空/缺失返回 null，回退纯色外观），
+列表格子与详情弹窗在 `art_path` 非空时显示图片。
 
 方法：`display_name()`、`is_entity()`、`get_type_text()`、`get_class_text()`、`get_rarity_text()`、
 `get_keywords_text()`、`get_tribes_text()`、`has_keyword()`、`max_copies()`、`craft_cost()`、`disenchant_value()`。

@@ -1,4 +1,4 @@
-﻿# 卡牌数据目录（CSV，数据驱动）
+# 卡牌数据目录（CSV，数据驱动）
 
 ```
 data/cards/official/
@@ -55,6 +55,7 @@ english_name,chinese_name,kind,cost,attack,health,shield,class,rarity,keywords,t
 | `tribes` | string | 流派，逗号分隔；必须是配置中的 tribe |
 | `ability` | string | 特殊能力，伪代码（见下） |
 | `description` | string | 中文简介，卡牌详情页底部显示 |
+| `art_path` | string | 卡牌美术贴图路径（如 `res://assets/textures/cards/fireball.png`）；留空回退纯色外观 |
 | `deck_includable` | int | 是否可被牌组编入：`1` 可（默认），`0` 不可 |
 
 ### 词缀（由代码决定）
