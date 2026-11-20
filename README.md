@@ -18,7 +18,8 @@
   `DeveloperTools`（开发者存档测试功能）、`CardDatabase`（卡表）、`CollectionManager`（合成/分解）、
   `NetManager`（局域网发现 + 登录占位）。
 - 数据模型：`CardData`、`DeckData`（30 张/同名 2 张规则）、`PlayerProfile`（金币/钻石/时长/开发者标记）、`SaveSlotInfo`。
-- 30 张示例卡数据（`data/cards/official/cards.csv`，CSV 数据驱动，含伪代码能力列）。
+- 30 张示例卡数据（`data/cards/official/cards.csv`，CSV 数据驱动）+ 能力 DSL
+  （`docs/EffectDsl.md`：变量、四则运算、条件目标、实体事件与过滤）。
 - 旧版占位界面（LoginScreen / MainScreen / Battle）；正式 UI 由后续开发替换。
 
 尚未实现：牌组编辑器、战斗逻辑、联机协议、社交与活动、正式 UI。

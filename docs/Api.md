@@ -1,4 +1,4 @@
-﻿# 游戏 API 文档（供 UI 接入）
+# 游戏 API 文档（供 UI 接入）
 
 > 版本：alpha0.1　|　对应 Godot 4.7.2 工程 `PVZH_MBP`
 > 本文只描述**接口层**（autoload 单例与数据模型），不包含任何场景/按钮/布局实现——这些由后续 UI 开发完成。
@@ -240,6 +240,22 @@ ConfirmService.show_message(LoginFlow.get_developer_message(), "开发者的话"
 
 方法：`display_name()`、`is_entity()`、`get_type_text()`、`get_class_text()`、`get_rarity_text()`、
 `get_keywords_text()`、`get_tribes_text()`、`has_keyword()`、`max_copies()`、`craft_cost()`、`disenchant_value()`。
+
+### 能力脚本 `CardEffectScript`
+
+CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见 `docs/EffectDsl.md`）。
+
+| 方法/属性 | 说明 |
+|---|---|
+| `CardEffectScript.parse(ability)` | 编译伪代码；语法错误在 `.errors` |
+| `script.validate_for_kind(kind)` | 实体/锦囊语义校验（实体必须写 when 块，锦囊不能用 when） |
+| `script.run_on_play(context)` | 锦囊打出时执行，返回运行期错误数组 |
+| `script.run_event(context, event_name, handle)` | 实体触发事件时执行 |
+| `script.has_effect()` / `script.has_errors()` | 是否有能力 / 是否有语法错误 |
+
+战斗层实现 `EffectContext`（`scripts/data/effects/effect_context.gd`）：
+`set_self_target / set_event_target / resolve_selector / describe_entity` + 原语；
+`RecordingEffectContext` 是现成测试实现。
 
 ### 牌组规则 `DeckValidator`
 

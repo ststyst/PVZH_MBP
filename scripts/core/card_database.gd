@@ -1,4 +1,4 @@
-﻿extends Node
+extends Node
 ## 卡牌数据库：从 CSV 载入全局配置与卡牌数据（数据驱动）。
 ##
 ## 官方卡牌目录：res://data/cards/official/
@@ -179,6 +179,11 @@ func _load_row(
 	card.card_class = card_class
 	card.rarity = rarity
 	card.ability = _cell(row, header, "ability").strip_edges()
+	card.ability_script = CardEffectScript.parse(card.ability)
+	for problem: String in card.ability_script.errors:
+		load_errors.append("卡牌 %s 能力语法错误：%s" % [english_name, problem])
+	for problem: String in card.ability_script.validate_for_kind(kind):
+		load_errors.append("卡牌 %s 能力语义错误：%s" % [english_name, problem])
 	card.class_label = config.class_label(card_class)
 	card.rarity_label = config.rarity_label(rarity)
 	_parse_keywords(card, row, header, english_name, row_number)

@@ -1,4 +1,4 @@
-﻿class_name CardData
+class_name CardData
 extends Resource
 ## 一张卡牌的静态定义（由 CSV 载入，数据驱动）。
 ## 内部唯一标识 card_id 带命名空间前缀：官方 "pvzh:<英文名>"，模组 "<作者.模组>:<英文名>"。
@@ -42,6 +42,8 @@ var tribes: Array[String] = []
 
 ## 伪代码形式的具体能力（由解释器执行）
 var ability: String = ""
+## 编译后的能力脚本（CSV 载入时解析；语法错误见 CardDatabase.load_errors）
+var ability_script: CardEffectScript = null
 
 ## 展示用中文名（加载时由全局配置解析）
 var class_label: String = ""
@@ -80,6 +82,11 @@ func get_tribes_text() -> String:
 
 func has_keyword(keyword: String) -> bool:
 	return keywords.has(CardKeywords.normalize(keyword))
+
+
+## 是否写有可执行的能力（非空且编译无语法错误）。
+func has_ability() -> bool:
+	return ability_script != null and ability_script.has_effect() and not ability_script.has_errors()
 
 
 ## 该稀有度允许持有的最大张数：传说 1 张，其余 2 张。

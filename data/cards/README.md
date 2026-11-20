@@ -62,10 +62,40 @@ english_name,chinese_name,kind,cost,attack,health,shield,class,rarity,keywords,t
 
 完整定义见 `scripts/data/card_keywords.gd`。
 
-### 特殊能力（伪代码）
+### 特殊能力（伪代码，方案 D）
 
-`ability` 列写这张牌的具体效果，由后续实现的解释器执行抽象原语（召唤、抽牌、造成伤害、治疗、加护甲等）。
-语法形式待定稿，示例见 `docs/EffectDsl.md`。
+`ability` 列写这张牌的具体效果（函数调用 + 缩进块 + 变量/四则运算/条件目标/事件块），
+载入时编译到 `CardData.ability_script`；语法/语义错误记入 `CardDatabase.load_errors`。
+
+- **锦囊（spell）**：顶层语句在打出时执行一次；不能用 `when` 块。
+- **实体（entity）**：能力属于召唤出的实体，必须写在 `when` 事件块里；实体牌本身没有锦囊式打出效果。
+
+```csv
+# 锦囊：对选中目标造成 6 点伤害
+deal_damage(chosen, 6)
+
+# 锦囊：随机 3 次 1 点伤害
+repeat(3): deal_damage(random_enemy, 1)
+
+# 锦囊：条件目标
+destroy(chosen_if(attack <= 3))
+
+# 实体：入场获得 2 点费用
+when enter: gain_energy(2)
+
+# 实体：其他敌方实体（攻击力 > 3）入场时抽 1 张
+when enter(side == 'enemy' and attack > 3):
+    draw_cards(1)
+
+# 实体：亡语治疗英雄
+when die: heal(hero, 3)
+```
+
+事件：`enter / die / attack / attacked / healed / attack_changed / health_changed`；
+过滤字段：`side`（`self/ally/enemy`，`any` 通配）、`class`、`has_tribe("pea")`、`attack/health/shield`。
+不写过滤 = 只响应自己。
+
+完整语法见 `docs/EffectDsl.md`。
 
 ## 三、内部命名与模组
 

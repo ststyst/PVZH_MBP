@@ -1,151 +1,164 @@
-# 卡牌能力伪代码（Effect DSL）方案
+# 卡牌能力 DSL（已定稿：方案 D）
 
-> 状态：**待你选择语法**。当前 CSV 的 `ability` 列是我用「候选 A（函数调用式）」写的占位示例，
-> 选定后会实现对应解析器与静态校验，再统一改写示例数据。
+> 采用**函数调用 + 缩进块**的混合语法；支持变量、四则运算、条件、循环、条件目标与事件块。
+> 解析器：`scripts/data/effects/effect_parser.gd`；执行器：`effect_runner.gd`；
+> 编译产物：`CardEffectScript`（挂在 `CardData.ability_script` 上）。
+> CSV 的能力列在载入时编译，语法/语义错误会写进 `CardDatabase.load_errors`（不阻断其他卡）。
 
-设计前提：
+## 一、实体与锦囊的语义区别
 
-- 代码只提供**抽象原语**（`scripts/data/effects/effect_context.gd`），战斗层实现它；伪代码解释器只调用原语。
-- 卡牌引用使用**英文名**（如 `summon("Peashooter")`），解释器通过 `CardDatabase.find_by_english()` 解析，
-  官方/模组卡牌靠内部 ID 的命名空间自动区分，伪代码里不用写 `pvzh:` 前缀。
-- 能力默认在「打出时（on play）」执行；触发类能力需要事件包装（见下）。
-- 未知函数、未知目标选择器应在**加载期**报错，而不是运行时静默失败。
+- **锦囊（spell）**：能力属于这张牌，**打出时执行一次**顶层语句；**不允许** `when` 事件块。
+- **实体（entity）**：能力属于**召唤出来的实体**，必须写在 `when` 事件块中（例如 `when enter:` 表示该实体入场）；
+  实体牌本身被“打出”时没有任何锦囊式效果。顶层语句会被判定为非法。
+- 事件块**默认只响应自己**（触发事件的实体 == 技能拥有者）。要监听其他实体，用过滤条件（见事件一节）。
+- 技能拥有者用 `self` 表示；触发事件的实体用 `event` 表示。
 
----
-
-## 一、可用原语
+## 二、可用原语（语句）
 
 | 原语 | 参数 | 说明 |
 |---|---|---|
-| `summon(card_name, count = 1)` | 英文名、数量 | 召唤实体（实体牌打出也走它） |
-| `draw_cards(count)` | int | 抽牌 |
-| `deal_damage(target, amount)` | 选择器、数值 | 造成伤害 |
-| `heal(target, amount)` | 选择器、数值 | 治疗 |
-| `gain_shield(target, amount)` | 选择器、数值 | 加护甲/防御力 |
-| `buff_stats(target, atk, hp)` | 选择器、两个增减值 | 修改攻/血 |
-| `gain_energy(amount)` | int | 获得费用 |
-| `give_keyword(target, keyword)` | 选择器、词缀 id | 赋予词缀（如 `"taunt"`） |
-| `destroy(target)` | 选择器 | 消灭 |
-| `get_attack(target)` / `get_health(target)` / `get_shield(target)` | 选择器 | 供条件/表达式取值 |
+| `summon(card_name, count = 1)` | 英文名、数量 | 召唤实体（实体牌入场也走它） |
+| `draw_cards(count)` | 数值 | 抽牌 |
+| `deal_damage(target, amount)` | 目标、数值 | 造成伤害 |
+| `heal(target, amount)` | 目标、数值 | 治疗 |
+| `gain_shield(target, amount)` | 目标、数值 | 加护甲 |
+| `buff_stats(target, attack, health)` | 目标、两个增减值 | 修改攻/血 |
+| `gain_energy(amount)` | 数值 | 获得费用 |
+| `give_keyword(target, keyword)` | 目标、词缀 id（字符串） | 赋予词缀 |
+| `destroy(target)` | 目标 | 消灭 |
 
-**目标选择器**（字符串）：`self`（这张牌/它的实体）、`chosen`（玩家本次选中的目标）、
-`hero`（我方英雄）、`enemy_hero`、`all_enemies`、`random_enemy`、`all_allies`、`random_ally`。
+多目标选择器（`all_enemies` / `all_allies`）会被解释器**逐个**调用原语。
 
-**事件钩子**（需要解释器支持）：`when_play`（默认，可省略）、`when_damaged`、`when_destroyed`、
-`when_hero_attacked`、`when_any_damage`。
+## 三、表达式与变量
 
----
+- 变量：`x = 2 + 3 * 2`（后续语句可用 `x`）
+- 四则运算：`+ - * /`（整数运算，除数为 0 会记录运行错误）
+- 比较：`== != < <= > >=`；逻辑：`and` `or` `not`
+- 查询函数：`attack(target)`、`health(target)`、`shield(target)`、`min(a,b)`、`max(a,b)`、`has_tribe("pea")`（仅事件过滤/条件目标中有意义）
+- 字符串可用单引号或双引号：`side == 'enemy'` / `side == "enemy"`
 
-## 二、候选语法（同一组能力对比）
+## 四、目标选择器
 
-示例能力（涵盖简单伤害、循环、条件、触发、获得费用）：
+| 选择器 | 含义 |
+|---|---|
+| `self` | 技能拥有者（实体自己） |
+| `event` | 触发本次事件的实体 |
+| `chosen` | 玩家本次选中的目标 |
+| `chosen_if(<条件>)` | 选中目标中满足条件的（没有则本次原语跳过） |
+| `hero` / `enemy_hero` | 我方 / 敌方英雄 |
+| `all_enemies` / `all_allies` | 所有敌方 / 友方实体 |
+| `random_enemy` / `random_ally` | 随机敌方 / 友方实体 |
 
-1. 对选中目标造成 3 点伤害
-2. 随机对敌人造成 1 点伤害，重复 3 次
-3. 若选中目标攻击力 ≤ 3，则消灭它
-4. 每当任意角色受到伤害，随机对敌人造成 1 点伤害
-5. 打出时获得 2 点费用
+条件目标示例：`destroy(chosen_if(attack <= 3))`、`deal_damage(chosen_if(has_tribe('pea') and side == 'enemy'), 4)`。
 
-### 候选 A · 函数调用式
+## 五、事件
 
-```
-deal_damage(chosen, 3)
+目前支持：
 
-repeat(3) { deal_damage(random_enemy, 1) }
+`enter`（入场）、`die`（死亡）、`attack`（攻击）、`attacked`（受击）、`healed`（被治疗）、
+`attack_changed`（攻击力变化）、`health_changed`（生命值变化）。
 
-if get_attack(chosen) <= 3 { destroy(chosen) }
+> 后续还会扩展更多事件（你提到“之后再说”），扩展点只需改 `EffectParser.EVENTS` 与战斗层触发点。
 
-when(any_damage) { deal_damage(random_enemy, 1) }
-
-gain_energy(2)
-```
-
-- 优点：解析器最简单、性能好、最容易做静态校验；与代码原语一一对应。
-- 缺点：可读性一般，复杂卡写起来像代码。
-- 实现成本：**低**。
-
-### 候选 B · 中文自然语序
+### 事件过滤
 
 ```
-对 选中目标 造成 3 点伤害
-重复 3 次：对 随机敌人 造成 1 点伤害
-若 选中目标 的攻击力 ≤ 3，则 消灭 它
-每当 任意角色 受到伤害：对 随机敌人 造成 1 点伤害
-获得 2 点费用
+when enter(side == 'enemy' and attack > 3):
+    deal_damage(event, 2)
 ```
 
-- 优点：你写卡时最直观，接近卡面描述。
-- 缺点：要处理分词、同义词、语序、歧义；写错时报错定位困难；国际化困难。
-- 实现成本：**高**。
+过滤条件可用的字段：
 
-### 候选 C · Lua 风格脚本（变量/条件/循环/事件）
+| 字段 | 说明 |
+|---|---|
+| `side` | `'self'` / `'ally'` / `'enemy'`；`side == 'any'` 表示不过滤阵营 |
+| `class` | 职业 id，如 `'solar'` |
+| `tribes` + `has_tribe("pea")` | 流派检测 |
+| `attack` / `health` / `shield` | 数值检测（支持四则/比较） |
 
-```
-local t = choose(enemy, attack <= 3)
-if t then destroy(t) end
+默认（不写过滤）= 只响应自己。监听其他实体请显式写条件，例如 `side != 'self'`、`side == 'enemy'`、`side == 'any'`。
 
-for i = 1, 3 do
-    deal_damage(random_enemy(), 1)
-end
+## 六、示例
 
-on(any_damage, function(e)
-    deal_damage(random_enemy(), 1)
-end)
-```
-
-- 优点：表达力最强，复杂卡也能写；方便未来模组扩展。
-- 缺点：需要完整解析器 + 沙箱（安全执行、限制函数白名单），模组作者门槛高。
-- 实现成本：**高**。
-
-### 候选 D · 混合式（函数调用 + 块结构）
+实体（入场获得 2 费）：
 
 ```
-target = chosen
-deal_damage(target, 3)
-
-repeat(3):
-    deal_damage(random_enemy, 1)
-
-if attack(chosen) <= 3:
-    destroy(chosen)
-
-when any_damage:
-    deal_damage(random_enemy, 1)
-
-gain_energy(2)
+when enter: gain_energy(2)
 ```
 
-- 优点：比 A 可读、比 C 简单；有变量/条件/循环/事件块，覆盖绝大多数卡牌。
-- 缺点：解析器比 A 复杂一些。
-- 实现成本：**中**。
+实体（其他敌方实体入场且攻击力 > 3 时，抽 1 张牌）：
 
----
+```
+when enter(side == 'enemy' and attack > 3):
+    draw_cards(1)
+```
 
-## 三、对比
+实体（亡语治疗英雄）：
 
-| 维度 | A 函数调用 | B 中文语序 | C 脚本式 | D 混合式 |
-|---|---|---|---|---|
-| 编写门槛 | 中 | 低 | 高 | 中 |
-| 可读性 | 中 | 高 | 中 | 中高 |
-| 解析器成本 | 低 | 高 | 高 | 中 |
-| 静态校验 | 易 | 难 | 中 | 易 |
-| 复杂卡支持 | 中（需扩展括号语法） | 差 | 强 | 强 |
-| 模组友好度 | 中 | 低 | 高 | 高 |
+```
+when die: heal(hero, 3)
+```
 
-## 四、我的建议
+锦囊（对选中目标造成 6 点伤害）：
 
-**选 D（混合式）**：用函数调用做原语、用 `if` / `repeat` / `when` 做结构，变量可选；
-可读性和实现成本平衡最好，也最适合未来模组。
+```
+deal_damage(chosen, 6)
+```
 
-如果你更看重「写卡像写卡面描述」，选 B；如果只想尽快跑通简单卡，选 A（后续再升级到 D 也兼容——D 是 A 的超集）。
+锦囊（随机 3 次 1 点伤害）：
 
----
+```
+repeat(3): deal_damage(random_enemy, 1)
+```
 
-## 五、待你决定
+锦囊（条件目标）：
 
-1. 语法选 A / B / C / D（或提出你的变体，比如 `对目标造成伤害` 的中英混合）。
-2. 能力触发方式：默认「打出时」+ `when(...)` 事件块，是否够用？
-3. 是否需要变量（`x = ...`）与四则运算（如 `deal_damage(chosen, cost * 2)`）？
-4. 是否需要「条件选择目标」，如 `chosen_if(attack <= 3)`？
+```
+destroy(chosen_if(attack <= 3))
+```
 
-选定后我会：实现解析器 + 静态校验 → 加单元测试 → 把 30 张示例卡的 `ability` 列统一改成最终语法。
+锦囊（两条语句）：
+
+```
+deal_damage(all_enemies, 2); heal(all_allies, 2)
+```
+
+## 七、书写规则
+
+- 块可以用两种写法：
+  - 多行缩进（推荐）：
+    ```
+    if attack(chosen) > 3:
+        destroy(chosen)
+    ```
+  - 冒号后单个语句（CSV 一行很方便）：`repeat(3): deal_damage(random_enemy, 1)`
+- `#` 是注释；`;` 等价于换行分隔语句。
+- 缩进用空格（Tab 按 4 空格计），同一块内必须一致。
+- 未定义变量、除以 0、未知函数/事件、参数数量错误都会记录错误；**运行期错误不会中断战斗**。
+
+## 八、战斗层接入（实现 `EffectContext`）
+
+战斗层需要实现 `scripts/data/effects/effect_context.gd`：
+
+```gdscript
+func set_self_target(handle) -> void          # 设置技能拥有者实体
+func set_event_target(handle) -> void         # 由解释器调用，设置事件实体
+func resolve_selector(selector: String) -> Array   # 返回句柄数组
+func describe_entity(handle) -> Dictionary    # { side, class, tribes, attack, health, shield }
+func summon(card_name, count) / draw_cards(n) / deal_damage(handle, n) / heal(...) / ...
+```
+
+调用方式：
+
+```gdscript
+# 实体能力
+var ctx := MyBattleEffectContext.new()
+ctx.set_self_target(entity_handle)
+card.ability_script.run_event(ctx, "enter", entity_handle)
+
+# 锦囊
+var ctx2 := MyBattleEffectContext.new()
+card.ability_script.run_on_play(ctx2)
+```
+
+`RecordingEffectContext` 是现成的测试实现，可直接断言原语调用。

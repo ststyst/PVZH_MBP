@@ -1,4 +1,4 @@
-﻿@tool
+@tool
 extends McpTestSuite
 ## CSV 卡牌数据加载测试。suite = "cards"。
 
@@ -106,3 +106,23 @@ func test_find_by_english() -> void:
 	assert_true(card != null, "英文名查找应忽略大小写")
 	if card != null:
 		assert_eq(card.card_id, "pvzh:fireball")
+
+
+func test_abilities_compiled() -> void:
+	database.reload()
+	var fireball: CardData = database.get_card("pvzh:fireball")
+	assert_true(fireball.ability_script != null)
+	if fireball.ability_script != null:
+		assert_false(fireball.ability_script.has_errors(), "火球术能力应无语法错误")
+		assert_eq(fireball.ability_script.on_play.size(), 1)
+		assert_eq(fireball.ability_script.events.size(), 0)
+	var wolf: CardData = database.get_card("pvzh:wolf")
+	assert_true(wolf.ability_script != null)
+	if wolf.ability_script != null:
+		assert_false(wolf.ability_script.has_errors())
+		assert_eq(wolf.ability_script.events.size(), 1, "实体能力应写在 when 事件块中")
+		if not wolf.ability_script.events.is_empty():
+			assert_eq(str(wolf.ability_script.events[0].get("event", "")), "enter")
+	var spell_nova: CardData = database.get_card("pvzh:nova")
+	assert_true(spell_nova.has_ability())
+	assert_true(spell_nova.ability_script.on_play.size() >= 2, "神圣新星应有两条语句")
