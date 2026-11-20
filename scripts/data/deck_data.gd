@@ -10,6 +10,8 @@ const MAX_SAME_CARD_COUNT: int = 2
 var deck_id: String = ""
 var deck_name: String = "新牌组"
 var hero_id: String = ""
+## 这套牌组允许使用的职业（由英雄/规则决定）；中立牌始终允许。
+var allowed_classes: Array[String] = []
 var card_ids: Array[String] = []
 var updated_at_unix: int = 0
 
@@ -75,6 +77,7 @@ func to_dict() -> Dictionary:
 		"deck_id": deck_id,
 		"deck_name": deck_name,
 		"hero_id": hero_id,
+		"allowed_classes": allowed_classes.duplicate(),
 		"card_ids": card_ids.duplicate(),
 		"updated_at_unix": updated_at_unix,
 	}
@@ -86,6 +89,10 @@ static func from_dict(data: Dictionary) -> DeckData:
 	deck.deck_name = str(data.get("deck_name", "新牌组"))
 	deck.hero_id = str(data.get("hero_id", ""))
 	deck.updated_at_unix = int(data.get("updated_at_unix", 0))
+	var raw_classes: Variant = data.get("allowed_classes", [])
+	if raw_classes is Array:
+		for raw_class in raw_classes:
+			deck.allowed_classes.append(str(raw_class))
 	var raw_card_ids: Variant = data.get("card_ids", [])
 	if raw_card_ids is Array:
 		for raw_card_id in raw_card_ids:

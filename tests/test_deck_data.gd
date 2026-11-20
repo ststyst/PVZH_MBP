@@ -42,11 +42,15 @@ func test_serialization() -> void:
 	deck.deck_id = "deck_test"
 	deck.deck_name = "序列化"
 	deck.hero_id = "hero_mage"
+	var allowed: Array[String] = ["smarty", "sneaky"]
+	deck.allowed_classes = allowed
 	assert_true(deck.add_card("a"))
 	assert_true(deck.add_card("b"))
 	var restored := DeckData.from_dict(deck.to_dict())
 	assert_eq(restored.deck_id, "deck_test")
 	assert_eq(restored.deck_name, "序列化")
 	assert_eq(restored.hero_id, "hero_mage")
+	assert_eq(restored.allowed_classes.size(), 2)
+	assert_eq(restored.allowed_classes[0], "smarty")
 	assert_eq(restored.card_ids.size(), 2)
 	assert_eq(restored.card_ids[0], "a")

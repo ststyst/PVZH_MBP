@@ -1,0 +1,23 @@
+type,name,label_zh
+rarity,normal,普通
+rarity,rare,稀有
+rarity,super rare,超稀有
+rarity,legend,传说
+rarity,unknown,未知
+class,grow,成长
+class,bloom,绽放
+class,solar,光能
+class,smarty,聪明
+class,guardian,守护
+class,brainy,大脑
+class,sneaky,鬼祟
+class,hearty,健壮
+class,beastly,野兽
+class,crazy,疯狂
+class,neutral,中立
+tribe,pea,豌豆
+tribe,flower,花朵
+tribe,pet,宠物
+tribe,robot,机器人
+tribe,universe,宇宙
+tribe,fruit,水果

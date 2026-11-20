@@ -18,7 +18,7 @@
   `DeveloperTools`（开发者存档测试功能）、`CardDatabase`（卡表）、`CollectionManager`（合成/分解）、
   `NetManager`（局域网发现 + 登录占位）。
 - 数据模型：`CardData`、`DeckData`（30 张/同名 2 张规则）、`PlayerProfile`（金币/钻石/时长/开发者标记）、`SaveSlotInfo`。
-- 30 张基础卡数据（`data/cards/base_set.json`）。
+- 30 张示例卡数据（`data/cards/official/cards.csv`，CSV 数据驱动，含伪代码能力列）。
 - 旧版占位界面（LoginScreen / MainScreen / Battle）；正式 UI 由后续开发替换。
 
 尚未实现：牌组编辑器、战斗逻辑、联机协议、社交与活动、正式 UI。
@@ -57,7 +57,7 @@ scenes/main/    LoginScreen / MainScreen / Battle
 scripts/core/    autoload 单例
 scripts/data/    Resource 数据模型
 scripts/ui/      界面逻辑
-data/cards/      卡牌 JSON（当前为空，格式见其 README）
+data/cards/      卡牌 CSV（config.csv + cards.csv，格式见其 README；能力语法见 docs/EffectDsl.md）
 tests/           MCP 测试套件 + 开发辅助脚本
 docs/            需求章程 / 架构 / 规范 / 路线图
 assets/          美术素材（当前留空）

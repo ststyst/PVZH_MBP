@@ -1,4 +1,4 @@
-# 游戏 API 文档（供 UI 接入）
+﻿# 游戏 API 文档（供 UI 接入）
 
 > 版本：alpha0.1　|　对应 Godot 4.7.2 工程 `PVZH_MBP`
 > 本文只描述**接口层**（autoload 单例与数据模型），不包含任何场景/按钮/布局实现——这些由后续 UI 开发完成。
@@ -208,24 +208,48 @@ ConfirmService.show_message(LoginFlow.get_developer_message(), "开发者的话"
 
 ---
 
-## 8. 卡牌与收藏（数据层已就绪）
+## 8. 卡牌与牌组（CSV 数据驱动）
+
+### 数据文件
+
+- `data/cards/official/config.csv`：全局配置（稀有度 / 职业 / 流派，带中文标签）
+- `data/cards/official/cards.csv`：每行一张卡（列名见 `data/cards/README.md`）
+
+官方卡牌内部 ID：`pvzh:<英文名>`；未来模组：`<作者.模组>:<英文名>`，互不冲突。
+未知词缀/流派会被忽略并记入 `CardDatabase.load_errors`。
 
 ### `CardDatabase`（autoload）
 
-| 方法 | 返回 |
-|---|---|
-| `get_card(card_id)` | `CardData` / null |
-| `has_card(card_id)` | bool |
-| `all_card_ids()` | `Array[String]` |
-| `card_count()` | int |
-| `reload()` | void（重扫 `res://data/cards/*.json`） |
-
-卡牌定义见 `data/cards/base_set.json`（30 张基础卡）。
+| 方法 | 返回 | 说明 |
+|---|---|---|
+| `get_card(card_id)` | `CardData` / null | 按内部 ID 取卡 |
+| `find_by_english(english_name)` | `CardData` / null | 供伪代码按英文名引用 |
+| `has_card(card_id)` | bool | |
+| `all_card_ids()` | `Array[String]` | |
+| `card_count()` | int | |
+| `get_classes()` / `get_rarities()` / `get_tribes()` | `Array[String]` | 全局配置 |
+| `load_errors` | `Array[String]` | 加载错误/警告 |
+| `reload()` | void | 重新扫描官方 CSV |
+| `load_mod_card_set(namespace, dir)` | int | 模组接口预留 |
 
 ### `CardData`
 
-字段：`card_id`、`display_name`、`description`、`card_type`、`rarity`、`card_class`、`cost`、`attack`、`health`、`keywords`、`art_path`（空）、`craft_cost`、`disenchant_value`。
-文本方法：`get_type_text()`、`get_class_text()`、`get_rarity_text()`、`get_keywords_text()`。
+字段：`card_id`、`card_namespace`、`english_name`、`chinese_name`、`description`、`kind`（entity/spell）、
+`cost`、`attack`、`health`、`shield`、`card_class`、`rarity`、`keywords`、`tribes`、`ability`（伪代码），
+以及加载时解析的 `class_label` / `rarity_label` / `keyword_labels` / `tribe_labels`。
+
+方法：`display_name()`、`is_entity()`、`get_type_text()`、`get_class_text()`、`get_rarity_text()`、
+`get_keywords_text()`、`get_tribes_text()`、`has_keyword()`、`max_copies()`、`craft_cost()`、`disenchant_value()`。
+
+### 牌组规则 `DeckValidator`
+
+| 方法 | 返回 | 说明 |
+|---|---|---|
+| `validate(deck, database)` | `Array[String]` | 错误列表；空数组 = 合法 |
+| `can_add_card(deck, card, database)` | bool | 牌组编辑器高亮/禁用 |
+
+校验内容：正好 30 张；同名张数（传说 1、其余 2）；职业必须在 `deck.allowed_classes` 内（中立始终允许）；
+卡牌必须存在；`allowed_classes` 为空时报错。
 
 ### `CollectionManager`（autoload）
 
@@ -237,10 +261,7 @@ ConfirmService.show_message(LoginFlow.get_developer_message(), "开发者的话"
 | `disenchant_card(profile, card)` | `{ok, message}` | 分解一张获得钻石 |
 | `collection_changed`（信号） | — | 收藏变化通知 |
 
-> 货币数值单位与卡牌 `craft_cost` / `disenchant_value` 一致（钻石）。
-
----
-
+> 合成/分解数值由稀有度决定（normal 40/5、rare 100/20、super rare 400/100、legend 1600/400）。
 ## 9. 网络 `NetManager`（占位）
 
 | 枚举/常量 | 值 |
@@ -291,7 +312,7 @@ ConfirmService.show_message(LoginFlow.get_developer_message(), "开发者的话"
 ```gdscript
 var presets: Array[Dictionary] = DisplayService.get_presets()
 for preset in presets:
-    display_option.add_item(str(preset["label"]))
+	display_option.add_item(str(preset["label"]))
 # 选项变化时：
 DisplayService.apply_preset(str(presets[selected_index]["id"]))
 ```

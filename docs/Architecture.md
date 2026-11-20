@@ -21,7 +21,7 @@ scripts/
   data/          数据模型（Resource：CardData、DeckData、PlayerProfile、SaveSlotInfo）
   ui/            界面逻辑
   net/           网络实现（M5 起）
-data/cards/      卡牌 JSON 定义（数据驱动）
+data/cards/      卡牌 CSV（official/config.csv + cards.csv，数据驱动）
 assets/          美术 / 音频（当前留空）
 tests/           MCP 测试套件（McpTestSuite）
 docs/            需求、架构、规范、路线图
@@ -47,7 +47,7 @@ addons/          第三方插件（godot_ai 用于编辑器联调）
 |---|---|---|
 | `GameState` | scripts/core/game_state.gd | 当前身份（NONE/LOCAL/SERVER）、当前存档、玩家资料、场景切换 |
 | `SaveManager` | scripts/core/save_manager.gd | 本地多存档 CRUD、服务器地址/账号缓存 |
-| `CardDatabase` | scripts/core/card_database.gd | 扫描 `res://data/cards/*.json` 构建卡表，预留模组路径 |
+| `CardDatabase` | scripts/core/card_database.gd | 扫描 `res://data/cards/official/*.csv` 构建卡表，预留模组命名空间 |
 | `NetManager` | scripts/core/net_manager.gd | 局域网 UDP 发现、登录请求（M5 接 ENet）、网络信号总线 |
 | `DisplayService` | scripts/core/display_service.gd | 竖屏显示适配：桌面窗口自适应、手机逻辑分辨率、显示预设持久化 |
 
@@ -98,8 +98,8 @@ addons/          第三方插件（godot_ai 用于编辑器联调）
 
 ## 7. 模组预留
 
-- 卡牌、牌组规则、关键词均为数据驱动（JSON + 资源）。
-- `CardDatabase` 预留 `user://mods/<mod_id>/cards/*.json` 扫描入口。
+- 卡牌、牌组规则、关键词均为数据驱动（CSV + 代码内词缀注册表）。
+- `CardDatabase` 预留 `user://mods/<作者.模组>/cards.csv` 载入入口（`load_mod_card_set`），模组 ID 使用 `<作者.模组>:` 命名空间。
 - ID 命名空间：`mod_id:card_id`，避免与官方卡牌冲突。
 - 模组不得修改核心逻辑脚本（仅数据与资源覆盖）。
 
