@@ -74,10 +74,13 @@ func _exec_primitive(statement: Dictionary) -> void:
 	match primitive_name:
 		"summon":
 			var card_name: String = _as_string(_eval(arguments[0], {}))
-			var summon_count: int = 1
+			var summon_column: Variant = null
+			var summon_max_column: Variant = null
 			if arguments.size() > 1:
-				summon_count = maxi(_as_int(_eval(arguments[1], {})), 1)
-			context.summon(card_name, summon_count)
+				summon_column = _eval(arguments[1], {})
+			if arguments.size() > 2:
+				summon_max_column = _eval(arguments[2], {})
+			context.summon(card_name, summon_column, summon_max_column)
 		"draw_cards":
 			context.draw_cards(_as_int(_eval(arguments[0], {})))
 		"gain_energy":

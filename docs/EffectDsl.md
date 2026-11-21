@@ -18,7 +18,9 @@
 
 | 原语 | 参数 | 说明 |
 |---|---|---|
-| `summon(card_name, count = 1)` | 英文名、数量 | 召唤实体（实体牌入场也走它） |
+| `summon(card_name)` | 英文名 | 在合法位置召唤一个实体；每次语句只召唤一个 |
+| `summon(card_name, column)` | 英文名、列 | 法术/环境：绝对列 1~5；实体异能：相对自身列 -4~4（0=本列） |
+| `summon(card_name, min_column, max_column)` | 英文名、范围 | 在范围内随机尝试一个合法列；坐标含义同上 |
 | `draw_cards(count)` | 数值 | 抽牌 |
 | `deal_damage(target, amount)` | 目标、数值 | 造成伤害 |
 | `heal(target, amount)` | 目标、数值 | 治疗 |
@@ -240,10 +242,25 @@ move_entity(chosen)
 
 - 单参数 `move_entity(target)` 会要求玩家选择位置；位置候选来自**被移动实体所属阵营**的半场
 - 候选位置排除该实体当前所在位置
-- 目标阵营的合法位置与打出实体牌一致：空格可放；已有同阵营实体时，移动实体必须具备 `team_up`
+- 目标阵营的合法位置与打出实体牌一致：空格可放；已有同阵营实体时，只要**该列已有实体或新实体至少一方有 `team_up`**，就可以挤压到另一格
+- 移动实体本身不需要具备 `team_up`；若目标格是已有 `team_up` 实体，普通实体也能触发挤压
 - 移动实体带 `team_up` 移入已有友方实体格时，原实体会被挤到同列另一格；这属于放置挤压，**不触发** `position_changed`
 - 被移动的实体本身会触发一次 `position_changed`
 - 不能把实体移动到另一阵营半场
+
+### 召唤位置
+
+```text
+summon("gnoll", 1)          # 法术：绝对第 1 列
+summon("gnoll", -1)         # 实体异能：相对自身左一列
+summon("gnoll", 2, 4)       # 在范围内随机尝试合法列
+```
+
+- 法术/环境中的数字是绝对列，合法范围 1~5
+- 实体异能中的数字是相对列，合法范围 -4~4；0 表示自身所在列
+- 范围形式会在范围内随机选择列，并逐个尝试；全部不合法则放弃召唤
+- 召唤不会挤开已有实体；列满或不满足组队条件时该列召唤失败
+- 每一条 `summon(...)` 语句只召唤一个实体；需要多个实体就写多条语句
 
 固定位置形式也遵循上述阵营、当前位置、组队和挤压规则。
 
@@ -288,7 +305,7 @@ func set_self_target(handle) -> void          # 设置技能拥有者实体
 func set_event_target(handle) -> void         # 由解释器调用，设置事件实体
 func resolve_selector(selector: String) -> Array   # 返回句柄数组
 func describe_entity(handle) -> Dictionary    # { side, class, tribes, attack, health, shield }
-func summon(card_name, count) / draw_cards(n) / deal_damage(handle, n) / heal(...) / ...
+func summon(card_name, column = null, max_column = null) / draw_cards(n) / deal_damage(handle, n) / heal(...) / ...
 ```
 
 调用方式：

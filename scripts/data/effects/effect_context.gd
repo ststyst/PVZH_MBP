@@ -49,7 +49,7 @@ func describe_entity(_handle) -> Dictionary:
 
 # ----- 原语（以单个实体句柄为参数） -----
 
-func summon(_card_name: String, _count: int = 1) -> Array:
+func summon(_card_name: String, _column: Variant = null, _max_column: Variant = null) -> Array:
 	push_warning("EffectContext.summon 未实现：需要战斗层提供")
 	return []
 

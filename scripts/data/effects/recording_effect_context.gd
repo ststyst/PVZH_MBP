@@ -50,8 +50,13 @@ func describe_entity(handle) -> Dictionary:
 	return entity_facts.get(handle, {})
 
 
-func summon(card_name: String, count: int = 1) -> Array:
-	calls.append({"op": "summon", "card": card_name, "count": count})
+func summon(card_name: String, column: Variant = null, max_column: Variant = null) -> Array:
+	calls.append({
+		"op": "summon",
+		"card": card_name,
+		"column": column,
+		"max_column": max_column,
+	})
 	return []
 
 

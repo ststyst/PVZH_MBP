@@ -429,11 +429,15 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 | API | 说明 |
 |---|---|
 | `confirm_mulligan(side)` / `replace_mulligan_card(side, index)` | 起手调度（每张限换一次） |
-| `play_card(side, hand_index, target)` | target：实体 `{column,slot}`（组队实体可指向已有友方实体格，挤开原实体）；环境 `{column}`；需要目标 `{handle}`；移动实体牌额外带 `{column,slot}` 作为目标位置 |
+| `play_card(side, hand_index, target)` | target：实体 `{column,slot}`（目标列至少一方有组队时可挤开原实体）；环境 `{column}`；需要目标 `{handle}`；移动实体牌额外带 `{column,slot}` 作为目标位置 |
 | `end_phase(side)` / `advance_phase()` | 结束当前阶段 / 推进阶段 |
 | `valid_slots(side, card)` / `target_candidates(card, side)` | UI 高亮与 AI 选目标；`valid_slots` 的 `displace` 字段表示会挤开哪个实体 |
+| `summon(card_name, column)` | 召唤一个实体；法术用绝对列 1~5，实体异能用相对列 -4~4 |
+| `summon(card_name, min_column, max_column)` | 在范围内随机尝试一个合法列，一条语句只召唤一个 |
+| `can_summon_in_column(side, card, column)` | 指定列是否可召唤（不挤压已有实体） |
+| `summon_card_in_column(side, card, column)` | 在合法列召唤一个实体 |
 | `move_entity(entity, column, slot)` | 卡牌效果移动实体；合法位置仅限该实体所属阵营，触发 `position_changed` |
-| `valid_move_slots(entity)` | 返回该实体可移动的列/位置；排除当前位置，目标格有友方实体时需 `team_up` |
+| `valid_move_slots(entity)` | 返回可移动的列/位置；排除当前位置；目标格有友方时该列至少一方需 `team_up` |
 | `CardEffectScript.move_requires_position()` | 卡牌顶层是否存在单参数 `move_entity(target)`，供 UI 进入位置选择 |
 | `damage_handle / heal_handle / buff_handle / ...` | 效果原语入口 |
 | `changed` / `game_finished(winner)` 信号 | 状态变化 / 胜负 |

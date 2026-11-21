@@ -43,7 +43,7 @@ const SELECTORS: Array[String] = [
 
 ## 原语（只能作为语句调用）
 const PRIMITIVES: Dictionary = {
-	"summon": {"min": 1, "max": 2},
+	"summon": {"min": 1, "max": 3},
 	"draw_cards": {"min": 1, "max": 1},
 	"deal_damage": {"min": 2, "max": 2},
 	"heal": {"min": 2, "max": 2},

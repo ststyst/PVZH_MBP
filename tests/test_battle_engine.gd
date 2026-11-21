@@ -441,6 +441,70 @@ func test_keyword_values_stack_and_respect_whitelist() -> void:
 		assert_eq(played_entity.keyword_value("first_strike"), 2, "手牌词缀应转为实体词缀")
 
 
+func test_summon_absolute_column_and_range() -> void:
+	var engine: BattleEngine = _started_engine()
+	var spell: CardData = _make_test_card(
+		"pvzh:test_summon_spell",
+		"summon(\"gnoll\", 1)"
+	)
+	spell.kind = "spell"
+	spell.cost = 1
+	var state: BattlePlayerState = engine.players["p"]
+	_set_hand(engine, "p", [spell.card_id])
+	state.energy = 10
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "p"
+	var result: Dictionary = engine.play_card("p", 0, {})
+	assert_true(bool(result.get("ok", false)))
+	assert_eq(engine._entity_at(0, "p", BattleEngine.SLOT_NORMAL).card.card_id, "pvzh:gnoll")
+	var range_spell: CardData = _make_test_card(
+		"pvzh:test_summon_range",
+		"summon(\"gnoll\", 2, 4)"
+	)
+	range_spell.kind = "spell"
+	range_spell.cost = 1
+	_set_hand(engine, "p", [range_spell.card_id])
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "p"
+	var before: int = engine.entities.size()
+	var range_result: Dictionary = engine.play_card("p", 0, {})
+	assert_true(bool(range_result.get("ok", false)))
+	assert_eq(engine.entities.size(), before + 1, "一条 summon 语句只召唤一个实体")
+	var summoned: BattleEntity = engine.entities[engine.entities.size() - 1]
+	assert_true(summoned.column >= 1 and summoned.column <= 3, "范围召唤应落在第 2~4 列")
+
+
+func test_summon_entity_relative_column() -> void:
+	var engine: BattleEngine = _started_engine()
+	var source_card: CardData = _make_test_card(
+		"pvzh:test_summon_relative",
+		"when enter:\n    summon(\"gnoll\", -1)"
+	)
+	var source: BattleEntity = engine.summon_card_in_column("p", source_card, 2)
+	assert_true(source != null)
+	var summoned: BattleEntity = engine._entity_at(1, "p", BattleEngine.SLOT_NORMAL)
+	assert_true(summoned != null, "实体异能应以自身列为基准相对召唤")
+	assert_eq(summoned.card.card_id, "pvzh:gnoll")
+
+
+func test_non_team_entity_can_displace_team_occupant() -> void:
+	var engine: BattleEngine = _started_engine()
+	var team_card: CardData = _make_test_card("pvzh:test_team_occupant", "")
+	team_card.keywords.append("team_up")
+	var normal_card: CardData = _make_test_card("pvzh:test_normal_new", "")
+	var occupant: BattleEntity = engine.summon_card("p", team_card, 0, BattleEngine.SLOT_NORMAL)
+	var state: BattlePlayerState = engine.players["p"]
+	_set_hand(engine, "p", [normal_card.card_id])
+	state.energy = 10
+	engine.phase = BattleEngine.PHASE_HAND
+	engine.active_side = "p"
+	var result: Dictionary = engine.play_card("p", 0, {
+		"column": 0, "slot": BattleEngine.SLOT_NORMAL,
+	})
+	assert_true(bool(result.get("ok", false)), "已占用格有组队实体时，普通实体也可挤压放置")
+	assert_eq(occupant.slot, BattleEngine.SLOT_TEAM_UP)
+
+
 func test_team_up_placement_displaces_existing() -> void:
 	var engine: BattleEngine = _started_engine()
 	var team_card: CardData = _make_test_card("pvzh:test_team", "")
@@ -488,6 +552,18 @@ func test_move_entity_team_up_displaces_without_displacement_event() -> void:
 	assert_eq(mover.slot, 0)
 	assert_eq(occupant.slot, 1, "目标格原实体应被挤到同列另一格")
 	assert_eq(state.marker_count("moved"), 0, "被挤开的实体不应触发 position_changed")
+
+
+func test_non_team_entity_can_move_onto_team_occupant() -> void:
+	var engine: BattleEngine = _started_engine()
+	var team_card: CardData = _make_test_card("pvzh:test_move_team_occupant", "")
+	team_card.keywords.append("team_up")
+	var normal_card: CardData = _make_test_card("pvzh:test_move_normal_mover", "")
+	var occupant: BattleEntity = engine.summon_card("p", team_card, 0, BattleEngine.SLOT_NORMAL)
+	var mover: BattleEntity = engine.summon_card("p", normal_card, 1, BattleEngine.SLOT_NORMAL)
+	assert_true(engine.move_entity(mover, 0, 0))
+	assert_eq(occupant.slot, BattleEngine.SLOT_TEAM_UP)
+	assert_eq(mover.slot, BattleEngine.SLOT_NORMAL)
 
 
 func test_move_entity_chosen_position_dsl() -> void:

@@ -524,8 +524,8 @@ func valid_slots(side: String, card: CardData) -> Array[Dictionary]:
 			var occupant: BattleEntity = _entity_at(column, side, candidate_slot)
 			if occupant == null:
 				result.append({"column": column, "slot": candidate_slot})
-			elif comes_with_team_up and occupant.side == side:
-				# 组队实体可以点已有友方实体所在的格子；该实体被挪到本列另一空格。
+			elif occupant != null and occupant.side == side and (comes_with_team_up or occupant.team_up):
+				# 目标格已有组队实体时，新实体本身可以不带组队；原实体被挪到本列另一空格。
 				var other_slot: int = SLOT_NORMAL if candidate_slot == SLOT_TEAM_UP else SLOT_TEAM_UP
 				if _entity_at(column, side, other_slot) == null:
 					result.append({
@@ -641,8 +641,8 @@ func play_card(side: String, hand_index: int, target: Dictionary = {}) -> Dictio
 		# 组队实体放到已有友方实体所在格：把原实体移到本列另一空格（不触发位置变动事件）。
 		var occupant: BattleEntity = _entity_at(column, side, slot)
 		if occupant != null:
-			if not card.has_keyword("team_up"):
-				return _fail("只有组队实体可以占用已有友方实体的格子。")
+			if not (card.has_keyword("team_up") or occupant.team_up):
+				return _fail("这一列需要至少一个实体拥有组队词缀。")
 			var other_slot: int = SLOT_NORMAL if slot == SLOT_TEAM_UP else SLOT_TEAM_UP
 			if _entity_at(column, side, other_slot) != null:
 				return _fail("这一列已经满员。")
@@ -765,21 +765,61 @@ func summon_card(side: String, card: CardData, column: int, slot: int, attack_bo
 	return entity
 
 
-func summon_card_by_name(side: String, card_name: String, count: int = 1) -> Array:
+func summon_card_by_name(side: String, card_name: String) -> Array:
 	var result: Array = []
 	var card: CardData = get_card_by_english(card_name)
 	if card == null or not card.is_entity():
 		return result
-	for _index: int in range(count):
-		var slot_info: Dictionary = find_free_slot(side, card)
-		if slot_info.is_empty():
-			break
-		var entity: BattleEntity = summon_card(
-			side, card, int(slot_info.get("column", 0)), int(slot_info.get("slot", SLOT_NORMAL))
-		)
-		_fire_event("enter", entity)
-		result.append(entity)
+	var slot_info: Dictionary = find_free_slot(side, card)
+	if slot_info.is_empty():
+		return result
+	var entity: BattleEntity = summon_card(
+		side, card, int(slot_info.get("column", 0)), int(slot_info.get("slot", SLOT_NORMAL))
+	)
+	_fire_event("enter", entity)
+	result.append(entity)
 	return result
+
+
+## 指定列是否还能召唤（召唤不会挤开已有实体）。
+func can_summon_in_column(side: String, card: CardData, column: int) -> bool:
+	if card == null or not card.is_entity() or column < 0 or column >= COLUMN_COUNT:
+		return false
+	var occupants: Array[BattleEntity] = []
+	for entity: BattleEntity in entities:
+		if entity.alive and entity.side == side and entity.column == column:
+			occupants.append(entity)
+	if occupants.size() >= 2:
+		return false
+	if occupants.size() == 1:
+		var other_slot: int = SLOT_NORMAL if occupants[0].slot == SLOT_TEAM_UP else SLOT_TEAM_UP
+		if _entity_at(column, side, other_slot) != null:
+			return false
+		return card.has_keyword("team_up") or occupants[0].team_up
+	return true
+
+
+## 在指定列召唤一个实体；列已满或组队条件不满足时返回 null。
+func summon_card_in_column(side: String, card: CardData, column: int) -> BattleEntity:
+	if not can_summon_in_column(side, card, column):
+		return null
+	var slot: int = SLOT_NORMAL
+	var occupants: Array[BattleEntity] = []
+	for entity: BattleEntity in entities:
+		if entity.alive and entity.side == side and entity.column == column:
+			occupants.append(entity)
+	if occupants.size() == 1:
+		slot = SLOT_NORMAL if occupants[0].slot == SLOT_TEAM_UP else SLOT_TEAM_UP
+	var summoned: BattleEntity = summon_card(side, card, column, slot)
+	_fire_event("enter", summoned)
+	return summoned
+
+
+func summon_card_by_name_in_column(side: String, card_name: String, column: int) -> BattleEntity:
+	var card: CardData = get_card_by_english(card_name)
+	if card == null or not card.is_entity():
+		return null
+	return summon_card_in_column(side, card, column)
 
 
 func find_free_slot(side: String, card: CardData, preferred_column: int = -1) -> Dictionary:
@@ -792,7 +832,7 @@ func find_free_slot(side: String, card: CardData, preferred_column: int = -1) ->
 
 
 ## 移动实体时可选择的合法位置：只能在该实体所属阵营的半场，排除当前位置。
-## 目标格已有同阵营实体时，移动实体必须具备组队词缀，原实体被挤到同列另一格。
+## 目标格已有同阵营实体时，只要移动实体或目标实体至少一个有组队，原实体就会被挤到同列另一格。
 func valid_move_slots(entity: BattleEntity) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	if entity == null or not entity.alive:
@@ -816,7 +856,7 @@ func valid_move_slots(entity: BattleEntity) -> Array[Dictionary]:
 					continue
 				result.append({"column": column, "slot": slot})
 			else:
-				if not entity.team_up:
+				if not (entity.team_up or occupant.team_up):
 					continue
 				var other_slot: int = SLOT_NORMAL if slot == SLOT_TEAM_UP else SLOT_TEAM_UP
 				var displaced_to: BattleEntity = _entity_at(column, side, other_slot)
@@ -830,7 +870,7 @@ func valid_move_slots(entity: BattleEntity) -> Array[Dictionary]:
 	return result
 
 
-## 位置移动（卡牌效果）：移动到空位；若目标格已有同阵营实体，需移动实体带“组队”。
+## 位置移动（卡牌效果）：移动到空位；目标格已有同阵营实体时，该列至少一方需有“组队”。
 ## 成功后会触发 position_changed 事件；被挤开的实体不触发。
 func move_entity(entity: BattleEntity, column: int, slot: int, fire_event: bool = true) -> bool:
 	if entity == null or not entity.alive:

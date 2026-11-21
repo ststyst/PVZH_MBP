@@ -94,8 +94,45 @@ func describe_entity(handle) -> Dictionary:
 	return {}
 
 
-func summon(card_name: String, count: int = 1) -> Array:
-	return engine.summon_card_by_name(caster_side, card_name, count)
+func summon(card_name: String, column: Variant = null, max_column: Variant = null) -> Array:
+	var card: CardData = engine.get_card_by_english(card_name)
+	if card == null or not card.is_entity():
+		return []
+	var relative: bool = _self_handle is BattleEntity
+	var base_column: int = _self_handle.column if relative else 0
+	var columns: Array[int] = []
+	if column == null:
+		for index: int in range(BattleEngine.COLUMN_COUNT):
+			columns.append(index)
+	elif max_column != null:
+		var first: int = int(column)
+		var last: int = int(max_column)
+		if first > last:
+			var swap_value: int = first
+			first = last
+			last = swap_value
+		var limit: int = 4 if relative else BattleEngine.COLUMN_COUNT
+		first = clampi(first, -limit if relative else 1, limit)
+		last = clampi(last, -limit if relative else 1, limit)
+		for value: int in range(first, last + 1):
+			var target_column: int = base_column + value if relative else value - 1
+			if target_column >= 0 and target_column < BattleEngine.COLUMN_COUNT:
+				columns.append(target_column)
+	else:
+		var value: int = int(column)
+		var target_column: int = base_column + value if relative else value - 1
+		if target_column >= 0 and target_column < BattleEngine.COLUMN_COUNT:
+			columns.append(target_column)
+	for index: int in range(columns.size() - 1, 0, -1):
+		var swap_index: int = engine.rng.randi_range(0, index)
+		var temp: int = columns[index]
+		columns[index] = columns[swap_index]
+		columns[swap_index] = temp
+	for target_column: int in columns:
+		var entity: BattleEntity = engine.summon_card_in_column(caster_side, card, target_column)
+		if entity != null:
+			return [entity]
+	return []
 
 
 func draw_cards(count: int) -> int:
