@@ -189,6 +189,30 @@ func test_first_strike_damages_hero_then_normal_attack() -> void:
 	assert_eq(striker.attack, 1)
 
 
+func test_spell_multi_target_handles() -> void:
+	var engine: BattleEngine = _started_engine()
+	var spell: CardData = _make_test_card(
+		"pvzh:test_multi_spell",
+		"choose(2, \"all_enemies\")\ndeal_damage(chosen, 1)"
+	)
+	spell.kind = "spell"
+	spell.cost = 1
+	var first: BattleEntity = engine.summon_card("z", cards.get_card("pvzh:gnoll"), 0, 0)
+	var second: BattleEntity = engine.summon_card("z", cards.get_card("pvzh:gnoll"), 1, 0)
+	var state: BattlePlayerState = engine.players["p"]
+	_set_hand(engine, "p", [spell.card_id])
+	state.energy = 10
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "p"
+	var requirement: Dictionary = spell.ability_script.target_requirement()
+	assert_eq(int(requirement.get("count", 0)), 2)
+	assert_eq(str(requirement.get("selector", "")), "all_enemies")
+	var result: Dictionary = engine.play_card("p", 0, {"handles": [first, second]})
+	assert_true(bool(result.get("ok", false)), "多目标锦囊应接受 handles：%s" % [result.get("message", "")])
+	assert_false(first.alive)
+	assert_false(second.alive)
+
+
 func test_effect_chain_resolves_before_play_ends() -> void:
 	var engine: BattleEngine = _started_engine()
 	var reactor_card: CardData = _make_test_card(

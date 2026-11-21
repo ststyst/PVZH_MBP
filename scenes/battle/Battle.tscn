@@ -323,6 +323,13 @@ layout_mode = 2
 custom_minimum_size = Vector2(120, 36)
 text = "结束阶段"
 
+[node name="ConfirmTargetsButton" type="Button" parent="Margin/Root/CenterBar"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+custom_minimum_size = Vector2(120, 36)
+text = "确认目标"
+
 [node name="LogLabel" type="Label" parent="Margin/Root"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 42)

@@ -85,6 +85,20 @@ when ally_die(zone == 'hand'):
 
 > 扩展事件只需改 `EffectParser.EVENTS` 与战斗层触发点。
 
+### 多目标锦囊
+
+锦囊可以在顶层声明多目标选择，`chosen` 随后是目标数组：
+
+```text
+choose(2, "all_enemies")
+deal_damage(chosen, 2)
+```
+
+- `count` 是最多选择数量
+- 可用选择器：`all_enemies` / `all_allies` / `other_allies` 等候选实体
+- UI 使用与实体入场相同的 `handles` 数组；选完后点击“确认目标”
+- 引擎 `play_card` 的 `target.handles` 会校验数量与候选范围
+
 ### 事件过滤
 
 ```

@@ -35,6 +35,7 @@ var _ai_accum: float = 0.0
 @onready var _log_label: Label = %LogLabel
 @onready var _status_label: Label = %StatusLabel
 @onready var _end_phase_button: Button = %EndPhaseButton
+@onready var _confirm_targets_button: Button = %ConfirmTargetsButton
 @onready var _hand_row: HBoxContainer = %HandRow
 @onready var _mulligan_overlay: Control = %MulliganOverlay
 @onready var _mulligan_row: HBoxContainer = %MulliganRow
@@ -66,6 +67,7 @@ func _ready() -> void:
 	_enemy_hero_button.pressed.connect(_on_enemy_hero_pressed)
 	_player_hero_button.pressed.connect(_on_player_hero_pressed)
 	_end_phase_button.pressed.connect(_on_end_phase_pressed)
+	_confirm_targets_button.pressed.connect(_on_confirm_targets_pressed)
 	_mulligan_confirm_button.pressed.connect(_on_mulligan_confirm_pressed)
 	_game_over_back_button.pressed.connect(_on_return_after_game_pressed)
 	_special_play_button.pressed.connect(_on_special_play_pressed)
@@ -265,6 +267,15 @@ func _on_hand_pressed(index: int) -> void:
 		_pending_candidates.clear()
 		_set_status("请选择一列，将其环境变为这张环境牌。")
 		_refresh_all()
+	elif _card_multi_target_requirement(card).get("count", 0) > 0:
+		_pending_card_index = index
+		_pending_mode = "choose_spell"
+		_pending_handles.clear()
+		var requirement: Dictionary = _card_multi_target_requirement(card)
+		var selector: String = str(requirement.get("selector", ""))
+		_pending_candidates = engine.choose_candidates(selector, player_side)
+		_set_status("最多选择 %d 个目标，然后点击“确认目标”。" % int(requirement.get("count", 0)))
+		_refresh_all()
 	elif engine.card_needs_target(card):
 		_pending_card_index = index
 		_pending_mode = "target"
@@ -277,6 +288,21 @@ func _on_hand_pressed(index: int) -> void:
 
 func _on_slot_pressed(side: String, column: int, slot: int) -> void:
 	if not _started or engine == null:
+		return
+	if _pending_mode == "choose_spell" and side == player_side:
+		var target_entity: BattleEntity = _entity_at(column, side, slot)
+		if target_entity != null and _pending_candidates.has(target_entity):
+			var limit: int = int(_card_multi_target_requirement(
+				engine.hand_card(player_side, _pending_card_index)
+			).get("count", 0))
+			if _pending_handles.has(target_entity):
+				_pending_handles.erase(target_entity)
+			elif _pending_handles.size() < limit:
+				_pending_handles.append(target_entity)
+			_set_status("已选择 %d/%d 个目标；点击“确认目标”结算。" % [_pending_handles.size(), limit])
+			_refresh_all()
+			return
+		_set_status("请选择高亮的实体目标。", true)
 		return
 	if _pending_mode == "choose" and side == player_side:
 		var choose_entity: BattleEntity = _entity_at(column, side, slot)
@@ -376,6 +402,27 @@ func _clear_pending() -> void:
 	_pending_candidates.clear()
 	_pending_handles.clear()
 	_special_target_mode = false
+	_confirm_targets_button.visible = false
+
+
+func _card_multi_target_requirement(card: CardData) -> Dictionary:
+	if card == null or card.ability_script == null:
+		return {}
+	return card.ability_script.target_requirement()
+
+
+func _update_confirm_targets_button() -> void:
+	_confirm_targets_button.visible = _pending_mode == "choose_spell"
+
+
+func _on_confirm_targets_pressed() -> void:
+	if _pending_mode != "choose_spell":
+		return
+	var target: Dictionary = {"handles": _pending_handles.duplicate()}
+	if _special_target_mode:
+		_resolve_special_target(target)
+	else:
+		_play_pending(target)
 
 
 func _pending_choose_limit() -> int:
@@ -409,6 +456,7 @@ func _refresh_all() -> void:
 	_rebuild_hand()
 	_update_labels()
 	_update_log()
+	_update_confirm_targets_button()
 	_refresh_special_overlay()
 
 
@@ -480,6 +528,8 @@ func _update_slot_button(
 				actionable = _pending_candidates.has(entity)
 	else:
 		actionable = false
+	if _pending_mode == "choose_spell":
+		actionable = entity != null and _pending_candidates.has(entity)
 	if entity == null:
 		if _entity_views.has(button):
 			var hidden_view: BattleEntityView = _entity_views[button] as BattleEntityView
@@ -503,6 +553,7 @@ func _update_slot_button(
 			or _pending_mode == "column"
 			or _pending_mode == "place"
 			or (_pending_mode == "choose" and _pending_candidates.has(entity))
+			or (_pending_mode == "choose_spell" and _pending_candidates.has(entity))
 		)
 	)
 	button.text = ""
@@ -796,6 +847,16 @@ func _on_special_play_pressed() -> void:
 	var index: int = state.find_hand_index(state.special_offer_id)
 	var card: CardData = engine.hand_card(player_side, index)
 	if card == null:
+		return
+	var requirement: Dictionary = _card_multi_target_requirement(card)
+	if int(requirement.get("count", 0)) > 0:
+		_special_target_mode = true
+		_pending_mode = "choose_spell"
+		_pending_handles.clear()
+		_pending_candidates = engine.choose_candidates(str(requirement.get("selector", "")), player_side)
+		_special_overlay.visible = false
+		_set_status("最多选择 %d 个超能力目标，然后点击“确认目标”。" % int(requirement.get("count", 0)))
+		_refresh_all()
 		return
 	if engine.card_needs_target(card):
 		_special_target_mode = true

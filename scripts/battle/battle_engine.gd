@@ -589,6 +589,23 @@ func target_candidates(card: CardData, caster_side: String) -> Array:
 	return handles
 
 
+## 多目标锦囊 choose(count, selector) 的候选实体。
+func choose_candidates(selector: String, caster_side: String) -> Array:
+	var wanted_side: String = caster_side
+	match selector:
+		"all_enemies", "random_enemy":
+			wanted_side = opposite_side(caster_side)
+		"all_allies", "other_allies", "random_ally":
+			wanted_side = caster_side
+		_:
+			return []
+	var handles: Array = []
+	for entity: BattleEntity in entities:
+		if entity.is_alive() and entity.side == wanted_side:
+			handles.append(entity)
+	return handles
+
+
 func play_card(side: String, hand_index: int, target: Dictionary = {}) -> Dictionary:
 	_begin_effect_resolution()
 	if winner != "":
@@ -651,7 +668,19 @@ func play_card(side: String, hand_index: int, target: Dictionary = {}) -> Dictio
 			_run_script(card, side, [])
 	else:
 		var chosen: Array = target_handles
-		if card_needs_target(card):
+		var requirement: Dictionary = {}
+		if card.ability_script != null:
+			requirement = card.ability_script.target_requirement()
+		var choose_count: int = int(requirement.get("count", 0))
+		if choose_count > 0:
+			if chosen.size() > choose_count:
+				return _fail("最多选择 %d 个目标。" % choose_count)
+			var choose_selector: String = str(requirement.get("selector", ""))
+			var choose_pool: Array = choose_candidates(choose_selector, side)
+			for handle: Variant in chosen:
+				if not choose_pool.has(handle):
+					return _fail("目标无效。")
+		elif card_needs_target(card):
 			if chosen.is_empty():
 				return _fail("这张牌需要选择目标。")
 			var candidates: Array = target_candidates(card, side)

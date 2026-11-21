@@ -58,10 +58,14 @@ func has_event(event_name: String) -> bool:
 ## 检查入场事件是否声明了多目标选择（choose），供 UI/服务器生成目标需求。
 ## 返回 {} 或 {"count": int, "selector": String}。
 func target_requirement() -> Dictionary:
+	# 锦囊的多目标 choose 写在顶层；实体入场 choose 写在 when enter 内。
+	var found: Dictionary = _find_choose(on_play)
+	if not found.is_empty():
+		return found
 	for trigger: Dictionary in events:
 		if str(trigger.get("event", "")) != "enter":
 			continue
-		var found: Dictionary = _find_choose(trigger.get("body", []))
+		found = _find_choose(trigger.get("body", []))
 		if not found.is_empty():
 			return found
 	return {}

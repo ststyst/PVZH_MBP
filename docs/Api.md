@@ -440,7 +440,8 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 | `animation_cue(trigger, actor, target)` 信号 | 攻击/能力触发/死亡时发出动画请求（UI 排队播放，不阻塞逻辑） |
 | `effective_hand_cost(side, index)` / `effective_hand_attack(side, index)` | 应用手牌实例修正后的有效费用/攻击 |
 | `hand_card_display(side, index)` | 给 UI 的手牌显示副本（已带有效费用/攻击） |
-| `play_card(..., target.handles)` | 多目标选择；`handles` 为实体数组 |
+| `play_card(..., target.handles)` | 多目标选择；`handles` 为实体数组；锦囊的 `choose` 也使用该字段 |
+| `choose_candidates(selector, side)` | 多目标锦囊的候选实体列表 |
 | `execute_command(side, command)` | 服务器权威命令入口：play_card/end_phase/起手/特殊回合 |
 | `special_resolve_play(side, target)` / `special_resolve_hand(side)` | 特殊回合：打出临时超能力 / 移入手牌 |
 | `give_keyword_handle(handle, keyword, value)` | 给实体叠加词缀数值；受卡牌种类白名单限制 |
