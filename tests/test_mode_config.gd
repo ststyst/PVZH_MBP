@@ -43,6 +43,7 @@ func test_defaults() -> void:
 	assert_eq(config.phase_time_limit_seconds, 40)
 	assert_eq(config.player_draw_per_turn, 1)
 	assert_eq(config.enemy_draw_per_turn, 1)
+	assert_eq(config.team_up_swap_cooldown_seconds, 0.35)
 
 
 func test_from_dict_overrides() -> void:
@@ -61,6 +62,7 @@ func test_from_dict_overrides() -> void:
 		"phase_time_limit_seconds": 15,
 		"player_draw_per_turn": 2,
 		"enemy_draw_per_turn": 0,
+		"team_up_swap_cooldown_seconds": 0.8,
 	})
 	assert_eq(config.deck_max_size, 30)
 	assert_false(config.enforce_full_deck)
@@ -78,6 +80,7 @@ func test_from_dict_overrides() -> void:
 	assert_eq(config.phase_time_limit_seconds, 15)
 	assert_eq(config.player_draw_per_turn, 2)
 	assert_eq(config.enemy_draw_per_turn, 0)
+	assert_eq(config.team_up_swap_cooldown_seconds, 0.8)
 
 
 func test_from_default_file() -> void:

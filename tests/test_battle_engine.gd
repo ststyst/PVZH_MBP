@@ -186,14 +186,23 @@ func test_team_up_swap() -> void:
 	assert_eq(normal.slot, BattleEngine.SLOT_TEAM_UP)
 	var enemy_swap: Dictionary = engine.execute_command("z", {
 		"type": "swap_team_up", "entity_id": team.entity_id,
-	})
+	}, 1000)
 	assert_false(bool(enemy_swap.get("ok", true)), "服务器命令应拒绝敌方实体的换位")
 	var own_swap: Dictionary = engine.execute_command("p", {
 		"type": "swap_team_up", "entity_id": team.entity_id,
-	})
+	}, 1000)
 	assert_true(bool(own_swap.get("ok", false)), "服务器命令应允许自己的组队换位")
 	assert_eq(team.slot, BattleEngine.SLOT_TEAM_UP)
 	assert_eq(normal.slot, BattleEngine.SLOT_NORMAL)
+	var cooldown_block: Dictionary = engine.execute_command("p", {
+		"type": "swap_team_up", "entity_id": team.entity_id,
+	}, 1000)
+	assert_false(bool(cooldown_block.get("ok", true)), "冷却内换位命令应被拒绝")
+	var cooldown_ms: int = int(round(engine.mode.team_up_swap_cooldown_seconds * 1000.0))
+	var after_cooldown: Dictionary = engine.execute_command("p", {
+		"type": "swap_team_up", "entity_id": team.entity_id,
+	}, 1000 + cooldown_ms + 1)
+	assert_true(bool(after_cooldown.get("ok", false)), "冷却结束后应可再次换位")
 
 
 func test_spell_damage() -> void:

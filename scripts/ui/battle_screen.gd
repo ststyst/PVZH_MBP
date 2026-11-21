@@ -308,11 +308,12 @@ func _on_slot_pressed(side: String, column: int, slot: int) -> void:
 		return
 	var own_entity: BattleEntity = _entity_at(column, side, slot)
 	if side == player_side and own_entity != null and own_entity.team_up:
-		if engine.swap_team_up(player_side, own_entity):
-			_set_status("已交换位置。")
+		var swap_result: Dictionary = engine.try_swap_team_up(player_side, own_entity)
+		if bool(swap_result.get("ok", false)):
+			_set_status(str(swap_result.get("message", "已交换位置。")))
 			_refresh_all()
 		else:
-			_set_status("这一列没有可交换的另一实体。", true)
+			_set_status(str(swap_result.get("message", "换位失败。")), true)
 		return
 	_set_status("先点击手牌选择要打出的牌。")
 

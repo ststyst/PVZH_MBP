@@ -325,7 +325,7 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 `player_initial_energy`(1)、`enemy_initial_energy`(1)、
 `player_initial_draw`(4)、`enemy_initial_draw`(4)、
 `hand_limit`(10)、`energy_cap`(99)、`phase_time_limit_seconds`(40)、
-`player_draw_per_turn`(1)、`enemy_draw_per_turn`(1)。
+`player_draw_per_turn`(1)、`enemy_draw_per_turn`(1)、`team_up_swap_cooldown_seconds`(0.35)。
 
 | API | 说明 |
 |---|---|
@@ -405,6 +405,7 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 | `hand_card_display(side, index)` | 给 UI 的手牌显示副本（已带有效费用/攻击） |
 | `play_card(..., target.handles)` | 多目标选择；`handles` 为实体数组 |
 | `execute_command(side, command)` | 服务器权威命令入口：play_card/end_phase/swap_team_up/起手 |
+| `try_swap_team_up(side, entity, now_msec)` | 带冷却的组队换位（UI 与服务器命令共用；冷却来自玩法配置） |
 | `swap_team_up_by_id(side, entity_id)` | 按实体 ID 校验并交换组队位置（联机命令用） |
 | `get_markers(side)` | 返回玩家特殊标志物 `{名字: 数量}` 副本 |
 

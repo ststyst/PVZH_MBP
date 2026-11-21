@@ -12,5 +12,6 @@
   "energy_cap": 99,
   "phase_time_limit_seconds": 40,
   "player_draw_per_turn": 1,
-  "enemy_draw_per_turn": 1
+  "enemy_draw_per_turn": 1,
+  "team_up_swap_cooldown_seconds": 0.35
 }

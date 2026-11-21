@@ -44,6 +44,7 @@ var card_database: Object = null
 
 var _next_entity_id: int = 1
 var _next_card_instance_id: int = 1
+var _swap_ready_at_msec: Dictionary = {}
 var _emitting_game_over: bool = false
 
 
@@ -74,6 +75,7 @@ func setup(
 	active_side = ""
 	_next_entity_id = 1
 	_next_card_instance_id = 1
+	_swap_ready_at_msec = {SIDE_P: 0, SIDE_Z: 0}
 	environments.clear()
 	environment_labels.clear()
 	for entry: Variant in DEFAULT_ENVIRONMENTS:
@@ -567,8 +569,26 @@ func swap_team_up(side: String, entity: BattleEntity) -> bool:
 	return true
 
 
+## 带冷却的组队换位：UI 与服务器命令都走这里，避免高频点击/高频命令。
+func try_swap_team_up(side: String, entity: BattleEntity, now_msec: int = 0) -> Dictionary:
+	var now: int = now_msec if now_msec > 0 else Time.get_ticks_msec()
+	var ready_at: int = int(_swap_ready_at_msec.get(side, 0))
+	if now < ready_at:
+		return {
+			"ok": false,
+			"message": "换位冷却中，请稍后。",
+			"remaining_ms": ready_at - now,
+		}
+	if not swap_team_up(side, entity):
+		return _fail("这一列没有可交换的另一实体。")
+	var cooldown_ms: int = int(round(mode.team_up_swap_cooldown_seconds * 1000.0))
+	if cooldown_ms > 0:
+		_swap_ready_at_msec[side] = now + cooldown_ms
+	return {"ok": true, "message": "已交换位置。"}
+
+
 ## 联机命令用：按 entity_id 校验并交换组队实体位置。
-func swap_team_up_by_id(side: String, entity_id: int) -> Dictionary:
+func swap_team_up_by_id(side: String, entity_id: int, now_msec: int = 0) -> Dictionary:
 	for entity: BattleEntity in entities:
 		if entity.entity_id != entity_id:
 			continue
@@ -576,14 +596,12 @@ func swap_team_up_by_id(side: String, entity_id: int) -> Dictionary:
 			return _fail("不能操作敌方实体。")
 		if not entity.team_up:
 			return _fail("该实体没有组队词缀。")
-		if not swap_team_up(side, entity):
-			return _fail("这一列没有可交换的另一实体。")
-		return {"ok": true, "message": "已交换位置。"}
+		return try_swap_team_up(side, entity, now_msec)
 	return _fail("实体不存在。")
 
 
 ## 服务器权威命令入口：所有客户端意图都应通过这里校验后执行。
-func execute_command(side: String, command: Dictionary) -> Dictionary:
+func execute_command(side: String, command: Dictionary, now_msec: int = 0) -> Dictionary:
 	var command_type: String = str(command.get("type", command.get("command", "")))
 	match command_type:
 		"play_card":
@@ -595,7 +613,7 @@ func execute_command(side: String, command: Dictionary) -> Dictionary:
 			end_phase(side)
 			return {"ok": true, "message": "阶段结束。"}
 		"swap_team_up":
-			return swap_team_up_by_id(side, int(command.get("entity_id", -1)))
+			return swap_team_up_by_id(side, int(command.get("entity_id", -1)), now_msec)
 		"mulligan_replace":
 			if replace_mulligan_card(side, int(command.get("hand_index", -1))):
 				return {"ok": true, "message": "已换牌。"}
