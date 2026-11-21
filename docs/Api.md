@@ -440,6 +440,7 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 | `animation_cue(trigger, actor, target)` 信号 | 攻击/能力触发/死亡时发出动画请求（UI 排队播放，不阻塞逻辑） |
 | `effective_hand_cost(side, index)` / `effective_hand_attack(side, index)` | 应用手牌实例修正后的有效费用/攻击 |
 | `hand_card_display(side, index)` | 给 UI 的手牌显示副本（已带有效费用/攻击） |
+| `CardTile.setup(card, owned, status, show_owned)` | 通用卡牌显示；`show_owned=false` 时隐藏“拥有/未拥有”行（战斗手牌用） |
 | `play_card(..., target.handles)` | 多目标选择；`handles` 为实体数组；锦囊的 `choose` 也使用该字段 |
 | `choose_candidates(selector, side)` | 多目标锦囊的候选实体列表 |
 | `execute_command(side, command)` | 服务器权威命令入口：play_card/end_phase/起手/特殊回合 |
@@ -463,6 +464,9 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 - `BattlePlayerState.hero_shield` 为英雄护盾；`hero_damage_immune` 为伤害免疫标记（预留）
 - `BattlePlayerState.charge_shield` / `charge_shield_durability` / `charge_shield_emergency_uses` 为充能护盾状态
 - `BattlePlayerState.superpower_pool` / `special_offer_id` 为超能力牌池与特殊回合临时牌
+- 超能力在双方完成起手重选后发放；第一回合不触发每回合固定抽牌，超能力不进入起手重选
+- 战斗棋盘长按任意在场实体，弹出与牌组界面相同的 `CardInfoDialog`
+- 战斗手牌调用 `CardTile.setup(..., false)`，不显示收藏拥有状态
 - `first_strike` 伤害与普通英雄伤害共用 `damage_hero`，会经过免疫、护盾并触发 `hero_damaged`
 - 充能护盾在真实受击后结算；满充能触发免疫、耐久 -1，并给该英雄发放随机超能力进入特殊回合
 - 必中（`bullseye`）伤害不增加充能护盾充能

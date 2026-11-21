@@ -30,7 +30,7 @@ var card_id: String = ""
 
 ## 注入卡牌数据与拥有数量。必须在 add_child 之后调用（依赖 @onready 节点）。
 ## status_text 非空时替换左下角状态文字（例如“拥有 2 · 编入 1”）。
-func setup(card: CardData, owned_count: int, status_text: String = "") -> void:
+func setup(card: CardData, owned_count: int, status_text: String = "", show_owned: bool = true) -> void:
 	card_id = card.card_id
 	_apply_background_sprite(card.rarity)
 	_apply_art_sprite(card)
@@ -40,8 +40,13 @@ func setup(card: CardData, owned_count: int, status_text: String = "") -> void:
 	meta_label.text = _build_meta_text(card)
 	desc_label.text = card.description
 	if status_text.is_empty():
-		_update_owned_text(owned_count)
+		owned_label.visible = show_owned
+		if show_owned:
+			_update_owned_text(owned_count)
+		else:
+			owned_label.text = ""
 	else:
+		owned_label.visible = true
 		owned_label.text = status_text
 		owned_label.add_theme_color_override("font_color", Color(0.72, 0.78, 0.90))
 	tooltip_text = "%s\n%s" % [card.display_name(), card.description]

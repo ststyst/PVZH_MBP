@@ -104,7 +104,6 @@ func setup(
 	for side: String in [SIDE_P, SIDE_Z]:
 		var initial_draw: int = mode.initial_draw_for_faction(side)
 		draw_cards(side, initial_draw)
-	_grant_initial_superpowers()
 	mulligan_ready = {SIDE_P: false, SIDE_Z: false}
 	_log("对局开始：%s vs %s" % [player_hero.display_name(), enemy_hero.display_name()])
 	changed.emit()
@@ -397,6 +396,8 @@ func _begin_first_turn() -> void:
 	_resolve_turn_start()
 	if winner != "":
 		return
+	# 起手调度全部完成、四张起手牌已经确定后，才发放随机超能力。
+	_grant_initial_superpowers()
 	phase = PHASE_HAND
 	active_side = SIDE_Z
 	_log("第 1 回合：z 阵营出牌阶段")

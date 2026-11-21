@@ -102,8 +102,8 @@ func _started_engine(p_card: String = "pvzh:gnoll", z_card: String = "pvzh:hound
 func test_initial_draw_and_mulligan() -> void:
 	var engine: BattleEngine = _new_engine()
 	assert_eq(engine.phase, BattleEngine.PHASE_MULLIGAN)
-	assert_eq(int(engine.players["p"].hand.size()), 5, "初始手牌包含一张超能力")
-	assert_eq(int(engine.players["z"].hand.size()), 5, "初始手牌包含一张超能力")
+	assert_eq(int(engine.players["p"].hand.size()), 4, "起手调度阶段只有四张起手牌")
+	assert_eq(int(engine.players["z"].hand.size()), 4, "起手调度阶段只有四张起手牌")
 	var before: int = int(engine.players["p"].deck.size())
 	assert_eq(before, 8)
 	var seen_ids: Dictionary = {}
@@ -111,9 +111,9 @@ func test_initial_draw_and_mulligan() -> void:
 		seen_ids[instance.instance_id] = true
 	for instance: BattleCardInstance in engine.players["p"].deck:
 		seen_ids[instance.instance_id] = true
-	assert_eq(seen_ids.size(), 13, "每张卡实例应有唯一 instance_id（含初始超能力）")
+	assert_eq(seen_ids.size(), 12, "起手阶段每张卡实例应有唯一 instance_id")
 	assert_true(engine.replace_mulligan_card("p", 0), "调度应可用")
-	assert_eq(int(engine.players["p"].hand.size()), 5, "初始手牌包含一张超能力")
+	assert_eq(int(engine.players["p"].hand.size()), 4, "起手调度阶段只有四张起手牌")
 	assert_eq(int(engine.players["p"].deck.size()), 8)
 
 
@@ -320,8 +320,20 @@ func test_charge_shield_rules_and_bullseye() -> void:
 	assert_eq(z_state.hero_health, 13, "必中伤害仍应正常扣血")
 
 
-func test_initial_superpower_is_in_hand() -> void:
+func test_initial_superpower_waits_for_mulligan() -> void:
 	var engine: BattleEngine = _new_engine()
+	var state: BattlePlayerState = engine.players["p"]
+	var pool_before: int = state.superpower_pool.size()
+	assert_eq(state.hand.size(), 4)
+	assert_false(state.superpower_pool.is_empty())
+	engine.confirm_mulligan("p")
+	engine.confirm_mulligan("z")
+	assert_eq(state.hand.size(), 5, "调度完成后才追加超能力")
+	assert_eq(state.superpower_pool.size(), pool_before - 1)
+
+
+func test_initial_superpower_is_in_hand() -> void:
+	var engine: BattleEngine = _started_engine()
 	var p_state: BattlePlayerState = engine.players["p"]
 	var hero: HeroData = heroes.get_hero("green_knight")
 	var found: bool = false

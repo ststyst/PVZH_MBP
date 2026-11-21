@@ -83,7 +83,8 @@ english_name,chinese_name,kind,cost,attack,health,shield,class,rarity,keywords,t
 英雄数据 `special_cards` 列出的法术牌就是该英雄的超能力牌池来源。超能力牌在 `tribes` 中带有 `superpower` 流派标记：
 
 - 每个英雄的池子按 `special_card_ids` 生成，每个卡牌 ID 一份
-- 开局初始抽牌后随机发放一张到该英雄手牌
+- 开局先进行正常的四张起手与重选；双方都确认后，才从池中随机发放一张超能力到该英雄手牌
+- 第一回合开始时不触发每回合固定抽牌；超能力也不会进入四张起手的重选
 - 充能护盾触发免疫时再随机发放一张，并进入超能力特殊回合
 - 英雄之间可以共用同一张超能力牌
 

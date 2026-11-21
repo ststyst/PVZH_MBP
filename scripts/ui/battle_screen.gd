@@ -48,6 +48,7 @@ var _ai_accum: float = 0.0
 @onready var _special_card_slot: Control = %SpecialCardSlot
 @onready var _special_play_button: Button = %SpecialPlayButton
 @onready var _special_hand_button: Button = %SpecialHandButton
+@onready var _card_info_dialog: CardInfoDialog = %CardInfoDialog
 
 var _board_columns: Array[Dictionary] = []
 var _mulligan_used: Array[bool] = []
@@ -59,6 +60,11 @@ var _empty_slot_style: StyleBoxEmpty = null
 var _highlight_slot_style: StyleBoxFlat = null
 var _special_target_mode: bool = false
 var _special_card_tile: CardTile = null
+const LONG_PRESS_SECONDS: float = 0.45
+var _long_press_entity: BattleEntity = null
+var _long_press_elapsed: float = 0.0
+var _long_press_fired: bool = false
+var _suppress_slot_click: bool = false
 
 
 func _ready() -> void:
@@ -72,6 +78,8 @@ func _ready() -> void:
 	_game_over_back_button.pressed.connect(_on_return_after_game_pressed)
 	_special_play_button.pressed.connect(_on_special_play_pressed)
 	_special_hand_button.pressed.connect(_on_special_hand_pressed)
+	_card_info_dialog.confirmed.connect(_on_card_info_closed)
+	_card_info_dialog.canceled.connect(_on_card_info_closed)
 	var setup: Dictionary = BattleManager.current_battle
 	if setup.is_empty():
 		_show_fatal("没有进行中的对局，请返回准备界面重新开始。")
@@ -123,13 +131,21 @@ func _collect_board_columns() -> void:
 		var z_normal: Button = column.get_node("ZNormalButton") as Button
 		var p_normal: Button = column.get_node("PNormalButton") as Button
 		var p_team: Button = column.get_node("PTeamButton") as Button
-		z_team.pressed.connect(_on_slot_pressed.bind("z", index, BattleEngine.SLOT_TEAM_UP))
-		z_normal.pressed.connect(_on_slot_pressed.bind("z", index, BattleEngine.SLOT_NORMAL))
-		p_normal.pressed.connect(_on_slot_pressed.bind("p", index, BattleEngine.SLOT_NORMAL))
-		p_team.pressed.connect(_on_slot_pressed.bind("p", index, BattleEngine.SLOT_TEAM_UP))
+		z_team.pressed.connect(_on_slot_button_pressed.bind("z", index, BattleEngine.SLOT_TEAM_UP))
+		z_normal.pressed.connect(_on_slot_button_pressed.bind("z", index, BattleEngine.SLOT_NORMAL))
+		p_normal.pressed.connect(_on_slot_button_pressed.bind("p", index, BattleEngine.SLOT_NORMAL))
+		p_team.pressed.connect(_on_slot_button_pressed.bind("p", index, BattleEngine.SLOT_TEAM_UP))
 		for button: Button in [z_team, z_normal, p_normal, p_team]:
 			button.text = ""
 			_apply_empty_slot_style(button)
+		z_team.button_down.connect(_on_slot_button_down.bind("z", index, BattleEngine.SLOT_TEAM_UP))
+		z_normal.button_down.connect(_on_slot_button_down.bind("z", index, BattleEngine.SLOT_NORMAL))
+		p_normal.button_down.connect(_on_slot_button_down.bind("p", index, BattleEngine.SLOT_NORMAL))
+		p_team.button_down.connect(_on_slot_button_down.bind("p", index, BattleEngine.SLOT_TEAM_UP))
+		z_team.button_up.connect(_on_slot_button_up)
+		z_normal.button_up.connect(_on_slot_button_up)
+		p_normal.button_up.connect(_on_slot_button_up)
+		p_team.button_up.connect(_on_slot_button_up)
 		_board_columns.append({
 			"env": environment_label,
 			"z_team": z_team,
@@ -198,7 +214,7 @@ func _rebuild_mulligan_row() -> void:
 		_mulligan_row.add_child(column)
 		var tile: CardTile = CARD_TILE_SCENE.instantiate()
 		column.add_child(tile)
-		tile.setup(card, 0, "")
+		tile.setup(card, 0, "", false)
 		var refresh := Button.new()
 		refresh.text = "刷新"
 		refresh.disabled = index < _mulligan_used.size() and _mulligan_used[index]
@@ -284,6 +300,56 @@ func _on_hand_pressed(index: int) -> void:
 		_refresh_all()
 	else:
 		_play_pending({})
+
+
+func _on_slot_button_pressed(side: String, column: int, slot: int) -> void:
+	if _suppress_slot_click:
+		_suppress_slot_click = false
+		return
+	_on_slot_pressed(side, column, slot)
+
+
+func _on_slot_button_down(side: String, column: int, slot: int) -> void:
+	if not _started or engine == null:
+		return
+	var entity: BattleEntity = _entity_at(column, side, slot)
+	if entity == null:
+		_long_press_entity = null
+		_long_press_fired = false
+		return
+	_long_press_entity = entity
+	_long_press_elapsed = 0.0
+	_long_press_fired = false
+
+
+func _on_slot_button_up() -> void:
+	if _long_press_fired:
+		_suppress_slot_click = true
+	_long_press_entity = null
+	_long_press_fired = false
+
+
+func _update_long_press(delta: float) -> void:
+	if _long_press_entity == null:
+		return
+	if not is_instance_valid(_long_press_entity) or not _long_press_entity.alive:
+		_long_press_entity = null
+		_long_press_fired = false
+		return
+	if _long_press_fired:
+		return
+	_long_press_elapsed += delta
+	if _long_press_elapsed < LONG_PRESS_SECONDS:
+		return
+	_long_press_fired = true
+	var card: CardData = _long_press_entity.card
+	_long_press_entity = null
+	if card != null:
+		_card_info_dialog.show_card(card)
+
+
+func _on_card_info_closed() -> void:
+	_suppress_slot_click = false
 
 
 func _on_slot_pressed(side: String, column: int, slot: int) -> void:
@@ -558,7 +624,7 @@ func _update_slot_button(
 	)
 	button.text = ""
 	_apply_empty_slot_style(button)
-	button.disabled = not actionable
+	button.disabled = false
 
 
 func _rebuild_hand() -> void:
@@ -574,7 +640,7 @@ func _rebuild_hand() -> void:
 			continue
 		var tile: CardTile = CARD_TILE_SCENE.instantiate()
 		_hand_row.add_child(tile)
-		tile.setup(card, 0, "")
+		tile.setup(card, 0, "", false)
 		tile.pressed.connect(_on_hand_pressed.bind(index))
 		var disabled: bool = not _can_player_act()
 		if engine.phase == BattleEngine.PHASE_SPELL and not (card.is_spell() or card.is_environment()):
@@ -661,6 +727,7 @@ func _phase_key() -> String:
 
 
 func _process(delta: float) -> void:
+	_update_long_press(delta)
 	if engine == null or not _started:
 		return
 	var key: String = _phase_key()
