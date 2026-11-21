@@ -669,6 +669,89 @@ func test_neutral_environment_rejects_side_effects() -> void:
 	assert_true(neutral.entities_in_column(0, 0, "enemy").is_empty(), "中立环境拒绝判断敌方")
 
 
+func test_evolve_play_and_filter() -> void:
+	var engine: BattleEngine = _started_engine()
+	var old_entity: BattleEntity = engine.summon_card("p", cards.get_card("pvzh:gnoll"), 0, 0)
+	var evolve_card: CardData = _make_test_card(
+		"pvzh:test_evolve",
+		"evolve(\"name == 'gnoll'\")\nwhen evolved:\n    add_marker(\"evolved\", 1)"
+	)
+	evolve_card.health = 3
+	var state: BattlePlayerState = engine.players["p"]
+	_set_hand(engine, "p", [evolve_card.card_id])
+	state.energy = 10
+	engine.phase = BattleEngine.PHASE_HAND
+	engine.active_side = "p"
+	var slots: Array[Dictionary] = engine.valid_slots("p", evolve_card)
+	var has_evolve_slot: bool = false
+	for slot_info: Dictionary in slots:
+		if int(slot_info.get("column", -1)) == 0 and int(slot_info.get("slot", -1)) == 0:
+			has_evolve_slot = true
+	assert_true(has_evolve_slot, "进化实体应能选择已有友方实体位置")
+	var result: Dictionary = engine.play_card("p", 0, {"column": 0, "slot": 0})
+	assert_true(bool(result.get("ok", false)))
+	assert_false(old_entity.alive, "进化应移除原实体")
+	var evolved: BattleEntity = engine._entity_at(0, "p", 0)
+	assert_true(evolved != null and evolved.card.card_id == evolve_card.card_id)
+	assert_eq(state.marker_count("evolved"), 1, "进化筛选匹配时应触发后续效果")
+
+
+func test_base_mount_transfers_stats_and_runs_ability() -> void:
+	var engine: BattleEngine = _started_engine()
+	var base_card: CardData = _make_test_card(
+		"pvzh:test_base",
+		"base()\nwhen mounted:\n    apply_buff(mounted, \"frozen\")\n    add_marker(\"mounted\", 1)"
+	)
+	base_card.attack = 2
+	base_card.health = 4
+	base_card.shield = 1
+	var base_entity: BattleEntity = engine.summon_card("p", base_card, 0, 0)
+	var rider: CardData = _make_test_card("pvzh:test_rider", "")
+	rider.attack = 1
+	rider.health = 2
+	var state: BattlePlayerState = engine.players["p"]
+	_set_hand(engine, "p", [rider.card_id])
+	state.energy = 10
+	engine.phase = BattleEngine.PHASE_HAND
+	engine.active_side = "p"
+	var result: Dictionary = engine.play_card("p", 0, {"column": 0, "slot": 0})
+	assert_true(bool(result.get("ok", false)))
+	assert_false(base_entity.alive, "放置到基地上时基地应被移除")
+	var mounted: BattleEntity = engine._entity_at(0, "p", 0)
+	assert_true(mounted != null)
+	assert_eq(mounted.attack, 3, "骑乘实体应继承基地攻击")
+	assert_eq(mounted.health, 6, "骑乘实体应继承基地生命")
+	assert_eq(mounted.shield, 1, "骑乘实体应继承基地防御")
+	assert_true(mounted.is_frozen(), "基地的 mounted 能力应能指定新实体")
+	assert_eq(state.marker_count("mounted"), 1)
+
+
+func test_remove_entity_does_not_trigger_death() -> void:
+	var engine: BattleEngine = _started_engine()
+	var entity_card: CardData = _make_test_card(
+		"pvzh:test_remove",
+		"when die:\n    add_marker(\"died\", 1)"
+	)
+	var entity: BattleEntity = engine.summon_card("p", entity_card, 0, 0)
+	assert_true(engine.remove_entity_handle(entity))
+	assert_false(entity.alive)
+	assert_eq(engine.players["p"].marker_count("died"), 0, "移除不应触发死亡事件/亡语")
+
+
+func test_extra_attack_event() -> void:
+	var engine: BattleEngine = _started_engine()
+	var attacker_card: CardData = _make_test_card(
+		"pvzh:test_extra_attack",
+		"when extra_attack:\n    add_marker(\"extra_attack\", 1)"
+	)
+	attacker_card.attack = 1
+	attacker_card.health = 5
+	var attacker: BattleEntity = engine.summon_card("p", attacker_card, 0, 0)
+	engine.summon_card("z", cards.get_card("pvzh:gnoll"), 0, 0)
+	assert_true(engine.force_entity_attack(attacker))
+	assert_eq(engine.players["p"].marker_count("extra_attack"), 1, "额外攻击应触发事件")
+
+
 func test_column_event_relative_condition_and_query() -> void:
 	var engine: BattleEngine = _started_engine()
 	var source_card: CardData = _make_test_card(

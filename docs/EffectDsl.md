@@ -24,7 +24,10 @@
 | `place_environment(offset, card_name)` | 相对列偏移、环境英文名 | 在基准列偏移位置尝试放置环境；受保护环境不可覆盖 |
 | `apply_buff(target, buff_id, amount = 1)` | 实体、Buff id、层数 | 施加内置 Buff/Debuff |
 | `remove_buff(target, buff_id)` | 实体、Buff id | 解除内置 Buff/Debuff |
-| `force_attack(target)` | 实体 | 让实体按当前列目标攻击一次；冰冻时失败 |
+| `force_attack(target)` | 实体 | 让实体按当前列目标攻击一次；冰冻时失败；触发额外攻击事件 |
+| `remove_entity(target)` | 实体 | 将实体移出战场；不触发死亡/亡语 |
+| `evolve(filter)` | 卡牌筛选表达式 | 实体牌专属：可放置到已有友方实体位置并移除原实体；筛选匹配时触发 `evolved` |
+| `base()` | — | 实体牌专属：允许其他非底座实体放置到自身位置；触发 `mounted` |
 | `add_random_cards_to_deck(target, count, filter)` | 目标、数量、筛选条件 | 从卡牌数据库筛选随机牌，塞入目标阵营牌库随机位置 |
 | `add_random_cards_to_hand(target, count, filter)` | 目标、数量、筛选条件 | 从卡牌数据库筛选随机牌，塞入目标阵营手牌随机位置 |
 | `choose_column()` | — | 锦囊打出时要求玩家选择一列；`chosen_column` 生效 |
@@ -345,6 +348,26 @@ when buff_removed:
 - 相关实体词缀：双重打击、狂热、锦囊免疫、克制英雄、穿透、致命、无敌、捕猎、两栖、溅射、寒霜、反伤、免疫负面
 - `debuff_immune` 会阻止冰冻等 Debuff 被施加
 - 词缀定义在 `scripts/data/card_keywords.gd`，Buff 定义在 `scripts/data/card_buffs.gd`，战斗实现在 `scripts/battle/battle_engine.gd`
+
+### 进化、底座与额外攻击
+
+```text
+evolve("name == 'gnoll'")
+when evolved:
+    apply_buff(self, "invincible")
+
+base()
+when mounted:
+    apply_buff(mounted, "frozen")
+```
+
+- `evolve(filter)` 只允许实体牌；可放置在已有友方实体位置，原实体被移除但不触发死亡
+- 只有被移除的原实体满足筛选条件时，才触发新实体的 `evolved` 事件
+- 进化放置对“已有实体位置”的判定优先于环境词缀限制
+- `base()` 只允许实体牌；非底座实体打出到该位置时移除底座，并继承底座当前攻击/生命/防御
+- 底座 `when mounted` 的 `mounted` / `event` 指向刚放上去的实体
+- 底座和进化的“放到已有实体上”只对**打出**生效；移动仍走普通组队/合法位置/挤压规则
+- `force_attack` 与狂热触发的额外攻击会触发 `extra_attack`；双重打击第二次攻击和普通战斗攻击不触发
 
 ### 随机塞牌与筛选条件
 

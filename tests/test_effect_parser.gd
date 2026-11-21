@@ -106,3 +106,13 @@ func test_multiple_when_blocks_newline() -> void:
 	)
 	assert_false(script.has_errors(), "多事件块（换行）应可解析：%s" % [script.errors])
 	assert_eq(script.events.size(), 2)
+
+func test_evolve_and_base_are_entity_only() -> void:
+	var evolve: CardEffectScript = CardEffectScript.parse("evolve(\"name == 'gnoll'\")\nwhen evolved: add_marker(\"x\", 1)")
+	assert_true(evolve.validate_for_kind("entity").is_empty())
+	assert_false(evolve.validate_for_kind("spell").is_empty(), "锦囊不能声明进化")
+	assert_true(evolve.is_evolve_ability)
+	var base: CardEffectScript = CardEffectScript.parse("base()\nwhen mounted: add_marker(\"x\", 1)")
+	assert_true(base.validate_for_kind("entity").is_empty())
+	assert_false(base.validate_for_kind("environment").is_empty(), "环境不能声明底座")
+	assert_true(base.is_base_ability)

@@ -82,6 +82,22 @@ english_name,chinese_name,kind,cost,attack,health,shield,class,rarity,keywords,t
 
 Buff/Debuff（只存在于实体上，不是卡牌词缀）见 `scripts/data/card_buffs.gd`。
 
+实体牌可以在 `ability` 顶层声明特殊放置能力：
+
+```text
+evolve("name == 'gnoll'")
+when evolved:
+    ...
+```
+
+```text
+base()
+when mounted:
+    ...
+```
+
+`evolve` / `base` 出现在锦囊或环境牌上会导致 CSV 编译失败；它们只影响“打出到已有友方实体位置”，移动仍遵循普通组队与位置规则。
+
 完整定义见 `scripts/data/card_keywords.gd`。
 
 ### 超能力与英雄专属牌

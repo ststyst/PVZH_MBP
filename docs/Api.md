@@ -442,6 +442,8 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 | `entities_in_column(min, max, side, min_attack)` | 相对基准列范围查询实体数组 |
 | `apply_buff_handle(entity, buff_id, amount)` / `remove_buff_handle` | 施加/解除内置 Buff/Debuff |
 | `force_entity_attack(entity)` | 让实体按当前列目标攻击一次；冰冻时失败 |
+| `remove_entity_handle(entity)` | 移除实体但不触发死亡/亡语 |
+| `CardEffectScript.evolve_filter_text` / `is_base_ability` | 进化筛选与底座声明，供 UI/放置逻辑使用 |
 | `CardFilter.parse(text)` / `matches(card)` | 支持 and/or/not 的卡牌筛选表达式 |
 | `move_entity(entity, column, slot)` | 卡牌效果移动实体；合法位置仅限该实体所属阵营，触发 `position_changed` |
 | `valid_move_slots(entity)` | 返回可移动的列/位置；排除当前位置；目标格有友方时该列至少一方需 `team_up` |
@@ -483,6 +485,8 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 - 服务器 `match.protected_environments` 默认 `["highground","water"]`，这些环境不可被环境牌覆盖
 - 服务器 `match.environment_keyword_filters` 默认水池要求 `amphibious`；实体打出、移动、召唤都走该检查
 - Buff/Debuff 定义在 `scripts/data/card_buffs.gd`，词缀定义在 `scripts/data/card_keywords.gd`
+- 进化/底座是实体牌顶层声明：`evolve(filter)` / `base()`；锦囊/环境出现会被编译拒绝
+- 额外攻击事件为 `extra_attack`；`force_attack` 和狂热追加攻击触发，双重打击第二击不触发
 - 战斗棋盘长按任意在场实体，弹出与牌组界面相同的 `CardInfoDialog`
 - 战斗手牌调用 `CardTile.setup(..., false)`，不显示收藏拥有状态
 - `first_strike` 伤害与普通英雄伤害共用 `damage_hero`，会经过免疫、护盾并触发 `hero_damaged`

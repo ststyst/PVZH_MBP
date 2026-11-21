@@ -11,6 +11,9 @@ extends RefCounted
 var on_play: Array = []
 var events: Array = []
 var errors: Array[String] = []
+var evolve_filter_text: String = ""
+var is_evolve_ability: bool = false
+var is_base_ability: bool = false
 
 
 static func parse(source: String) -> CardEffectScript:
@@ -22,6 +25,7 @@ static func parse(source: String) -> CardEffectScript:
 	script.on_play = program.get("on_play", [])
 	script.events = program.get("events", [])
 	script.errors = parser.errors
+	script._extract_declarations()
 	return script
 
 
@@ -32,6 +36,7 @@ static func from_program(program: Dictionary, parse_errors: Array = []) -> CardE
 	script.events = program.get("events", [])
 	for error_message: Variant in parse_errors:
 		script.errors.append(str(error_message))
+	script._extract_declarations()
 	return script
 
 
@@ -138,16 +143,54 @@ func _find_choose(block: Variant) -> Dictionary:
 ## 按卡牌种类校验语义；返回错误列表。
 func validate_for_kind(kind: String) -> Array[String]:
 	var problems: Array[String] = []
-	if kind == "entity" and not on_play.is_empty():
-		problems.append("实体牌的能力必须写在 when 事件块中（例如 when enter: ...），不能有打出时直接执行的语句。")
-	if kind == "spell" and not events.is_empty():
-		problems.append("锦囊牌不能使用 when 事件块；锦囊能力在打出时直接执行。")
-	if kind == "environment" and not events.is_empty():
-		problems.append("环境牌不能使用 when 事件块；环境牌能力在打出时直接执行。")
+	if kind == "entity":
+		for statement: Variant in on_play:
+			if not statement is Dictionary:
+				continue
+			var data: Dictionary = statement
+			var call_name: String = str(data.get("name", ""))
+			if str(data.get("type", "")) != "call" or (call_name != "evolve" and call_name != "base"):
+				problems.append("实体牌顶层只允许 evolve(...) 或 base() 声明；其他能力必须写在 when 事件块中。")
+				break
+	elif kind == "spell" or kind == "environment":
+		if is_base_ability or is_evolve_ability:
+			problems.append("evolve / base 只能用于实体牌，不能用于锦囊或环境牌。")
+		if kind == "spell" and not events.is_empty():
+			problems.append("锦囊牌不能使用 when 事件块；锦囊能力在打出时直接执行。")
+		if kind == "environment" and not events.is_empty():
+			problems.append("环境牌不能使用 when 事件块；环境牌能力在打出时直接执行。")
 	return problems
 
 
-## 打出锦囊时执行顶层语句；返回运行期错误。
+func _extract_declarations() -> void:
+	evolve_filter_text = ""
+	is_evolve_ability = false
+	is_base_ability = false
+	for statement: Variant in on_play:
+		if not statement is Dictionary:
+			continue
+		var data: Dictionary = statement
+		if str(data.get("type", "")) != "call":
+			continue
+		var call_name: String = str(data.get("name", ""))
+		var args: Array = data.get("args", [])
+		if call_name == "base":
+			is_base_ability = true
+		elif call_name == "evolve" and args.size() >= 1:
+			is_evolve_ability = true
+			var filter_node: Variant = args[0]
+			if filter_node is Dictionary and str(filter_node.get("type", "")) == "str":
+				evolve_filter_text = str(filter_node.get("value", ""))
+			elif filter_node is Dictionary and str(filter_node.get("type", "")) == "var":
+				evolve_filter_text = str(filter_node.get("name", ""))
+	if not evolve_filter_text.is_empty():
+		var filter := CardFilter.new()
+		if not filter.parse(evolve_filter_text):
+			for message: String in filter.errors:
+				errors.append("进化筛选条件错误：%s" % message)
+
+
+## 实体触发事件时调用；event_handle 为触发事件的实体句柄。
 func run_on_play(context: EffectContext) -> Array[String]:
 	if has_errors():
 		return ["能力脚本存在语法错误，未执行。"]

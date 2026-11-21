@@ -148,6 +148,14 @@ func _exec_primitive(statement: Dictionary) -> void:
 				_error("force_attack 需要单个实体目标", line)
 			else:
 				context.force_attack(attack_targets[0])
+		"remove_entity":
+			var remove_targets: Array = _resolve_argument_target(arguments[0])
+			if remove_targets.size() != 1:
+				_error("remove_entity 需要单个实体目标", line)
+			else:
+				context.remove_entity(remove_targets[0])
+		"evolve", "base":
+			pass
 		"add_random_cards_to_deck", "add_random_cards_to_hand":
 			var card_targets: Array = _resolve_argument_target(arguments[0])
 			if card_targets.size() != 1:
@@ -196,8 +204,8 @@ func _exec_target_primitive(primitive_name: String, arguments: Array, line: int)
 func _matches_trigger(trigger: Dictionary, event_handle) -> bool:
 	var predicate: Variant = trigger.get("predicate")
 	if predicate == null:
-		# 无过滤条件：普通实体默认只响应自己；环境监听其所在列。
-		return _is_self(event_handle) or context.get_zone() == "environment"
+		# 无过滤条件：普通实体默认只响应自己；环境/底座监听其所在列/挂载。
+		return _is_self(event_handle) or context.get_zone() in ["environment", "base"]
 	var facts: Dictionary = context.describe_entity(event_handle)
 	facts["zone"] = context.get_zone()
 	return _truthy(_eval(predicate, facts))

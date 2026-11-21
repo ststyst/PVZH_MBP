@@ -558,32 +558,54 @@ func valid_slots(side: String, card: CardData) -> Array[Dictionary]:
 	if card == null:
 		return result
 	var comes_with_team_up: bool = card.has_keyword("team_up")
+	var can_evolve: bool = card.ability_script != null and card.ability_script.is_evolve_ability
+	var card_is_base: bool = card.ability_script != null and card.ability_script.is_base_ability
 	for column: int in range(COLUMN_COUNT):
-		if not _keywords_allowed_in_column(card.keywords, column):
-			continue
+		var environment_allowed: bool = _keywords_allowed_in_column(card.keywords, column)
 		var existing: Array[BattleEntity] = []
 		for entity: BattleEntity in entities:
 			if entity.alive and entity.column == column and entity.side == side:
 				existing.append(entity)
-		if existing.size() >= 2:
-			continue
-		# 第二张实体需要至少一方有“组队”
-		if existing.size() == 1 and not existing[0].team_up and not comes_with_team_up:
-			continue
 		for candidate_slot: int in [SLOT_NORMAL, SLOT_TEAM_UP]:
 			var occupant: BattleEntity = _entity_at(column, side, candidate_slot)
 			if occupant == null:
+				if not environment_allowed:
+					continue
+				if existing.size() == 1 and not existing[0].team_up and not comes_with_team_up:
+					continue
 				result.append({"column": column, "slot": candidate_slot})
-			elif occupant != null and occupant.side == side and (comes_with_team_up or occupant.team_up):
-				# 目标格已有组队实体时，新实体本身可以不带组队；原实体被挪到本列另一空格。
-				var other_slot: int = SLOT_NORMAL if candidate_slot == SLOT_TEAM_UP else SLOT_TEAM_UP
-				if _entity_at(column, side, other_slot) == null:
+			elif occupant != null and occupant.side == side:
+				# 进化/底座对“已有友方实体”的优先级高于环境词缀限制。
+				if can_evolve:
 					result.append({
 						"column": column,
 						"slot": candidate_slot,
-						"displace": occupant.entity_id,
+						"evolve": occupant.entity_id,
 					})
+				elif not card_is_base and _is_base_entity(occupant):
+					result.append({
+						"column": column,
+						"slot": candidate_slot,
+						"mount": occupant.entity_id,
+					})
+				elif environment_allowed and (comes_with_team_up or occupant.team_up):
+					var other_slot: int = SLOT_NORMAL if candidate_slot == SLOT_TEAM_UP else SLOT_TEAM_UP
+					if _entity_at(column, side, other_slot) == null:
+						result.append({
+							"column": column,
+							"slot": candidate_slot,
+							"displace": occupant.entity_id,
+						})
 	return result
+
+
+func _is_base_entity(entity: BattleEntity) -> bool:
+	return (
+		entity != null
+		and entity.card != null
+		and entity.card.ability_script != null
+		and entity.card.ability_script.is_base_ability
+	)
 
 
 func card_needs_target(card: CardData) -> bool:
@@ -696,18 +718,66 @@ func play_card(side: String, hand_index: int, target: Dictionary = {}) -> Dictio
 			return _fail("该位置不能放置这张实体。")
 		# 组队实体放到已有友方实体所在格：把原实体移到本列另一空格（不触发位置变动事件）。
 		var occupant: BattleEntity = _entity_at(column, side, slot)
+		var evolved_from: BattleEntity = null
+		var mounted_from: BattleEntity = null
 		if occupant != null:
-			if not (card.has_keyword("team_up") or occupant.team_up):
+			var can_evolve: bool = card.ability_script != null and card.ability_script.is_evolve_ability
+			var card_is_base: bool = card.ability_script != null and card.ability_script.is_base_ability
+			if can_evolve:
+				evolved_from = occupant
+			elif not card_is_base and _is_base_entity(occupant):
+				mounted_from = occupant
+			elif not (card.has_keyword("team_up") or occupant.team_up):
 				return _fail("这一列需要至少一个实体拥有组队词缀。")
-			var other_slot: int = SLOT_NORMAL if slot == SLOT_TEAM_UP else SLOT_TEAM_UP
-			if _entity_at(column, side, other_slot) != null:
-				return _fail("这一列已经满员。")
-			occupant.slot = other_slot
-			_log("%s 被移动到第 %d 列%s位" % [
-				occupant.display_name(), column + 1,
-				"组队" if other_slot == SLOT_TEAM_UP else "普通",
-			])
+			else:
+				var other_slot: int = SLOT_NORMAL if slot == SLOT_TEAM_UP else SLOT_TEAM_UP
+				if _entity_at(column, side, other_slot) != null:
+					return _fail("这一列已经满员。")
+				occupant.slot = other_slot
+				_log("%s 被移动到第 %d 列%s位" % [
+					occupant.display_name(), column + 1,
+					"组队" if other_slot == SLOT_TEAM_UP else "普通",
+				])
 		_spend_and_remove(state, hand_index, card, effective_cost)
+		if evolved_from != null:
+			var evolved_card: CardData = evolved_from.card
+			remove_entity_handle(evolved_from)
+			var evolved_entity: BattleEntity = summon_card(
+				side, card, column, slot, instance.attack_bonus
+			)
+			evolved_entity.apply_instance_keywords(instance)
+			_fire_event("enter", evolved_entity, target_handles)
+			_apply_enter_keywords(evolved_entity)
+			if evolved_card != null and card.ability_script != null:
+				var filter := CardFilter.new()
+				if filter.parse(card.ability_script.evolve_filter_text) and filter.matches(evolved_card):
+					_fire_event("evolved", evolved_entity)
+			return _finish_card_play(card)
+		if mounted_from != null:
+			var base_attack: int = mounted_from.attack
+			var base_health: int = mounted_from.health
+			var base_shield: int = mounted_from.shield
+			var base_card: CardData = mounted_from.card
+			var base_side: String = mounted_from.side
+			var base_column: int = mounted_from.column
+			remove_entity_handle(mounted_from)
+			var mounted_entity: BattleEntity = summon_card(
+				side, card, column, slot, instance.attack_bonus
+			)
+			mounted_entity.attack += base_attack
+			mounted_entity.max_health += base_health
+			mounted_entity.health += base_health
+			mounted_entity.shield += base_shield
+			mounted_entity.apply_instance_keywords(instance)
+			_fire_event("enter", mounted_entity, target_handles)
+			_apply_enter_keywords(mounted_entity)
+			if base_card != null and base_card.ability_script != null:
+				var context := BaseEffectContext.new(self, base_side)
+				context.set_self_target(mounted_from)
+				context.set_event_target(mounted_entity)
+				context.set_base_column(base_column)
+				base_card.ability_script.run_event(context, "mounted", mounted_entity)
+			return _finish_card_play(card)
 		var entity: BattleEntity = summon_card(
 			side, card, column, slot, instance.attack_bonus
 		)
@@ -802,6 +872,16 @@ func _keywords_allowed_in_column(keywords: Array, column: int) -> bool:
 	if not filter.parse(filter_text):
 		return false
 	return filter.matches(keywords)
+
+
+func _finish_card_play(card: CardData) -> Dictionary:
+	_flush_deaths()
+	_check_game_over()
+	changed.emit()
+	if not _special_resolving and not _special_pending_sides.is_empty() and phase != PHASE_SPECIAL:
+		_maybe_begin_special_turn(phase)
+	_end_effect_resolution()
+	return {"ok": true, "message": "已打出：%s" % card.display_name()}
 
 
 func _target_handles(target: Dictionary) -> Array:
@@ -1081,6 +1161,21 @@ func side_of_handle(handle: Variant) -> String:
 
 
 # ----- 伤害 / 治疗 / 原语 -----
+
+func remove_entity_handle(handle: Variant) -> bool:
+	if not handle is BattleEntity:
+		return false
+	var entity: BattleEntity = handle
+	if not entity.alive:
+		return false
+	entity.alive = false
+	entity.buffs.clear()
+	entities.erase(entity)
+	_refresh_all_counter_bonuses()
+	_log("%s 被移除（不触发死亡）" % entity.display_name())
+	changed.emit()
+	return true
+
 
 func damage_handle(handle: Variant, amount: int, source_keywords: Array = [], from_spell: bool = false) -> void:
 	if amount <= 0:
@@ -1443,15 +1538,17 @@ func _choose_attack_target(attacker: BattleEntity) -> Variant:
 func force_entity_attack(attacker: BattleEntity) -> bool:
 	if attacker == null or not attacker.alive or attacker.is_frozen():
 		return false
-	_execute_entity_attack(attacker, _choose_attack_target(attacker), 0)
+	_execute_entity_attack(attacker, _choose_attack_target(attacker), 0, true)
 	_flush_column_deaths(attacker.column)
 	_clear_column_combat_buffs(attacker.column)
 	return true
 
 
-func _execute_entity_attack(attacker: BattleEntity, target: Variant, frenzy_depth: int) -> void:
+func _execute_entity_attack(attacker: BattleEntity, target: Variant, frenzy_depth: int, extra_attack: bool = false) -> void:
 	if attacker == null or not attacker.alive or attacker.is_frozen():
 		return
+	if extra_attack:
+		_fire_event("extra_attack", attacker)
 	var first_strike: int = attacker.keyword_value("first_strike")
 	if first_strike > 0:
 		damage_hero(opposite_side(attacker.side), first_strike, attacker.keywords)
@@ -1491,7 +1588,7 @@ func _execute_entity_attack(attacker: BattleEntity, target: Variant, frenzy_dept
 	if killed_enemy and attacker.alive and attacker.has_keyword("frenzy") and frenzy_depth < 8:
 		_flush_column_deaths(attacker.column)
 		if attacker.alive:
-			_execute_entity_attack(attacker, _choose_attack_target(attacker), frenzy_depth + 1)
+			_execute_entity_attack(attacker, _choose_attack_target(attacker), frenzy_depth + 1, true)
 		_flush_column_deaths(attacker.column)
 
 

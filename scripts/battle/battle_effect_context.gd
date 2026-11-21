@@ -67,6 +67,8 @@ func resolve_selector(selector: String) -> Array:
 			return [] if _self_handle == null else [_self_handle]
 		"event":
 			return [] if _event_handle == null else [_event_handle]
+		"mounted":
+			return [] if _event_handle == null else [_event_handle]
 		"chosen":
 			return chosen_targets.duplicate()
 		"hero":
@@ -257,7 +259,7 @@ func place_environment(column_offset: int, card_name: String) -> bool:
 func apply_buff(target, buff_id: String, amount: int = 1) -> bool:
 	if not target is BattleEntity:
 		return false
-	if engine.is_spell_source and target.is_spell_immune():
+	if is_spell_source and target.is_spell_immune():
 		return false
 	return engine.apply_buff_handle(target, buff_id, amount)
 
@@ -274,6 +276,14 @@ func force_attack(target) -> bool:
 	if is_spell_source and target.is_spell_immune():
 		return false
 	return engine.force_entity_attack(target)
+
+
+func remove_entity(target) -> bool:
+	if not target is BattleEntity:
+		return false
+	if is_spell_source and target.is_spell_immune():
+		return false
+	return engine.remove_entity_handle(target)
 
 
 func choose_targets(count: int, selector: String) -> bool:

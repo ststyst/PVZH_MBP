@@ -29,6 +29,9 @@ const EVENTS: Array[String] = [
 	"position_changed",
 	"buff_applied",
 	"buff_removed",
+	"evolved",
+	"mounted",
+	"extra_attack",
 ]
 const SELECTORS: Array[String] = [
 	"self",
@@ -41,6 +44,7 @@ const SELECTORS: Array[String] = [
 	"all_allies",
 	"other_allies",
 	"random_ally",
+	"mounted",
 ]
 
 ## 原语（只能作为语句调用）
@@ -67,6 +71,9 @@ const PRIMITIVES: Dictionary = {
 	"apply_buff": {"min": 2, "max": 3},
 	"remove_buff": {"min": 2, "max": 2},
 	"force_attack": {"min": 1, "max": 1},
+	"remove_entity": {"min": 1, "max": 1},
+	"evolve": {"min": 1, "max": 1},
+	"base": {"min": 0, "max": 0},
 }
 
 ## 查询函数（可以出现在表达式里）
