@@ -43,6 +43,7 @@ var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var card_database: Object = null
 
 var _next_entity_id: int = 1
+var _next_card_instance_id: int = 1
 var _emitting_game_over: bool = false
 
 
@@ -72,6 +73,7 @@ func setup(
 	phase = PHASE_MULLIGAN
 	active_side = ""
 	_next_entity_id = 1
+	_next_card_instance_id = 1
 	environments.clear()
 	environment_labels.clear()
 	for entry: Variant in DEFAULT_ENVIRONMENTS:
@@ -101,12 +103,38 @@ func _create_player(side: String, hero: HeroData, deck_ids: Array[String]) -> Ba
 	state.hero_health = state.hero_max_health
 	state.energy = 0
 	state.energy_cap = mode.energy_cap
-	state.deck = deck_ids.duplicate()
-	state.deck_modifiers.clear()
-	for _index: int in range(state.deck.size()):
-		state.deck_modifiers.append({})
+	state.deck.clear()
+	for card_id: String in deck_ids:
+		state.add_to_deck(_new_card_instance(card_id, side, "deck"))
 	_shuffle_zones(state)
 	return state
+
+
+func _new_card_instance(card_id: String, side: String, zone: String) -> BattleCardInstance:
+	var instance := BattleCardInstance.create(
+		_next_card_instance_id, card_id, side, zone
+	)
+	_next_card_instance_id += 1
+	return instance
+
+
+## 测试/服务器补牌入口：把一张卡直接放入手牌或牌库。
+func add_card_to_hand(side: String, card_id: String) -> BattleCardInstance:
+	var state: BattlePlayerState = players.get(side, null)
+	if state == null:
+		return null
+	var instance: BattleCardInstance = _new_card_instance(card_id, side, "hand")
+	state.add_to_hand(instance)
+	return instance
+
+
+func add_card_to_deck(side: String, card_id: String) -> BattleCardInstance:
+	var state: BattlePlayerState = players.get(side, null)
+	if state == null:
+		return null
+	var instance: BattleCardInstance = _new_card_instance(card_id, side, "deck")
+	state.add_to_deck(instance)
+	return instance
 
 
 func get_card(card_id: String) -> CardData:
@@ -125,7 +153,7 @@ func hand_card(side: String, index: int) -> CardData:
 	var state: BattlePlayerState = players.get(side, null)
 	if state == null or index < 0 or index >= state.hand.size():
 		return null
-	return get_card(state.hand[index])
+	return get_card(state.hand[index].card_id)
 
 
 ## 当前手牌的有效费用/攻击（手牌实例修正后，最低费用 0）。
@@ -133,21 +161,22 @@ func effective_hand_cost(side: String, hand_index: int) -> int:
 	var state: BattlePlayerState = players.get(side, null)
 	if state == null or hand_index < 0 or hand_index >= state.hand.size():
 		return 0
-	var card: CardData = get_card(state.hand[hand_index])
+	var instance: BattleCardInstance = state.hand[hand_index]
+	var card: CardData = get_card(instance.card_id)
 	if card == null:
 		return 0
-	var modifier: Dictionary = state.hand_modifier(hand_index)
-	return maxi(card.cost + int(modifier.get("cost", 0)), 0)
+	return maxi(card.cost + instance.cost_delta, 0)
 
 
 func effective_hand_attack(side: String, hand_index: int) -> int:
 	var state: BattlePlayerState = players.get(side, null)
 	if state == null or hand_index < 0 or hand_index >= state.hand.size():
 		return 0
-	var card: CardData = get_card(state.hand[hand_index])
+	var instance: BattleCardInstance = state.hand[hand_index]
+	var card: CardData = get_card(instance.card_id)
 	if card == null:
 		return 0
-	return maxi(card.attack + int(state.hand_modifier(hand_index).get("attack", 0)), 0)
+	return maxi(card.attack + instance.attack_bonus, 0)
 
 
 ## 给 UI 用的手牌显示卡：费用/攻击已应用手牌实例修正。
@@ -155,7 +184,7 @@ func hand_card_display(side: String, hand_index: int) -> CardData:
 	var state: BattlePlayerState = players.get(side, null)
 	if state == null or hand_index < 0 or hand_index >= state.hand.size():
 		return null
-	var base: CardData = get_card(state.hand[hand_index])
+	var base: CardData = get_card(state.hand[hand_index].card_id)
 	if base == null:
 		return null
 	var display: CardData = base.copy_card()
@@ -178,10 +207,9 @@ func replace_mulligan_card(side: String, hand_index: int) -> bool:
 	var state: BattlePlayerState = players.get(side, null)
 	if state == null or hand_index < 0 or hand_index >= state.hand.size():
 		return false
-	var card_id: String = state.hand[hand_index]
-	var modifier: Dictionary = state.take_hand_modifier(hand_index)
+	var instance: BattleCardInstance = state.hand[hand_index]
 	state.hand.remove_at(hand_index)
-	state.add_to_deck(card_id, modifier)
+	state.add_to_deck(instance)
 	_shuffle_zones(state)
 	if not state.deck.is_empty():
 		_move_top_deck_to_hand(state)
@@ -381,11 +409,11 @@ func play_card(side: String, hand_index: int, target: Dictionary = {}) -> Dictio
 	var state: BattlePlayerState = players.get(side, null)
 	if state == null or hand_index < 0 or hand_index >= state.hand.size():
 		return _fail("手牌索引无效。")
-	var card: CardData = get_card(state.hand[hand_index])
+	var instance: BattleCardInstance = state.hand[hand_index]
+	var card: CardData = get_card(instance.card_id)
 	if card == null:
 		return _fail("卡牌不存在。")
-	var modifier: Dictionary = state.hand_modifier(hand_index)
-	var effective_cost: int = maxi(card.cost + int(modifier.get("cost", 0)), 0)
+	var effective_cost: int = maxi(card.cost + instance.cost_delta, 0)
 	if effective_cost > state.energy:
 		return _fail("费用不足（需要 %d，当前 %d）。" % [effective_cost, state.energy])
 	if phase == PHASE_SPELL and not (card.is_spell() or card.is_environment()):
@@ -405,7 +433,7 @@ func play_card(side: String, hand_index: int, target: Dictionary = {}) -> Dictio
 			return _fail("该位置不能放置这张实体。")
 		_spend_and_remove(state, hand_index, card, effective_cost)
 		var entity: BattleEntity = summon_card(
-			side, card, column, slot, int(modifier.get("attack", 0))
+			side, card, column, slot, instance.attack_bonus
 		)
 		_fire_event("enter", entity, target_handles)
 	elif card.is_environment():
@@ -458,9 +486,10 @@ func _spend_and_remove(
 ) -> void:
 	var cost: int = card.cost if effective_cost < 0 else effective_cost
 	state.energy = maxi(state.energy - cost, 0)
-	state.take_hand_modifier(hand_index)
-	state.hand.remove_at(hand_index)
-	state.discard.append(card.card_id)
+	var instance: BattleCardInstance = state.hand.pop_at(hand_index)
+	if instance != null:
+		instance.zone = "discard"
+		state.discard.append(instance)
 
 
 func _run_script(card: CardData, side: String, chosen: Variant) -> void:
@@ -812,17 +841,14 @@ func _trigger_zone_ally_death(dead_entity: BattleEntity) -> void:
 	if state == null:
 		return
 	for zone: String in ["hand", "deck"]:
-		var cards: Array[String] = state.hand if zone == "hand" else state.deck
-		for index: int in range(cards.size()):
-			var card: CardData = get_card(cards[index])
+		var instances: Array[BattleCardInstance] = state.hand if zone == "hand" else state.deck
+		for instance: BattleCardInstance in instances:
+			var card: CardData = get_card(instance.card_id)
 			if card == null or card.ability_script == null:
 				continue
 			if not card.ability_script.has_event("ally_die"):
 				continue
-			var modifier: Dictionary = (
-				state.hand_modifier(index) if zone == "hand" else state.deck_modifier(index)
-			)
-			var context := ZoneCardEffectContext.new(self, dead_entity.side, zone, modifier)
+			var context := ZoneCardEffectContext.new(self, dead_entity.side, zone, instance)
 			context.set_event_target(dead_entity)
 			var errors: Array[String] = card.ability_script.run_event(context, "ally_die", dead_entity)
 			for message: String in errors:
@@ -830,32 +856,18 @@ func _trigger_zone_ally_death(dead_entity: BattleEntity) -> void:
 
 
 func _shuffle_zones(state: BattlePlayerState) -> void:
-	_ensure_zone_modifiers(state)
 	for index: int in range(state.deck.size() - 1, 0, -1):
 		var swap_index: int = rng.randi_range(0, index)
-		var temp_card: String = state.deck[index]
+		var temp: BattleCardInstance = state.deck[index]
 		state.deck[index] = state.deck[swap_index]
-		state.deck[swap_index] = temp_card
-		var temp_modifier: Dictionary = state.deck_modifiers[index]
-		state.deck_modifiers[index] = state.deck_modifiers[swap_index]
-		state.deck_modifiers[swap_index] = temp_modifier
-
-
-func _ensure_zone_modifiers(state: BattlePlayerState) -> void:
-	while state.hand_modifiers.size() < state.hand.size():
-		state.hand_modifiers.append({})
-	while state.deck_modifiers.size() < state.deck.size():
-		state.deck_modifiers.append({})
+		state.deck[swap_index] = temp
 
 
 func _move_top_deck_to_hand(state: BattlePlayerState) -> void:
-	if state.deck.is_empty():
+	var instance: BattleCardInstance = state.take_top_deck()
+	if instance == null:
 		return
-	_ensure_zone_modifiers(state)
-	var card_id: String = state.deck.pop_back()
-	var modifier: Dictionary = state.deck_modifiers.pop_back()
-	state.hand.append(card_id)
-	state.hand_modifiers.append(modifier)
+	state.add_to_hand(instance)
 
 
 func _shuffle(cards: Array[String]) -> void:

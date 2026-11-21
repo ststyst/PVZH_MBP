@@ -1,7 +1,9 @@
 # 联机同步设计（当前方向）
 
 > 当前状态：战斗引擎/DSL 已支持区域被动、多目标选择、特殊标志物与动画动作 cue；
-> 网络传输（BattleServer/BattleClient）尚未实现。
+> 手牌/牌库已使用 `BattleCardInstance`，UI 已支持入场多目标选择；
+> ENet 传输基础层（BattleServer/BattleClient/BattleProtocol）已加入；
+> 权威对局会话、UI 联机接入、服务器存档仍未实现。
 
 ## 决策
 
@@ -24,6 +26,15 @@ BattleClientSession ── ENet/UDP ── BattleServerSession
                                       │
                                   BattleEngine
 ```
+
+已加入的基础代码：
+
+- `scripts/net/battle_protocol.gd`：协议版本、消息类型、JSON 编解码
+- `scripts/net/battle_server.gd`：ENet host、peer 连接/断开、消息收发
+- `scripts/net/battle_client.gd`：ENet join/leave、HELLO/命令/服务器消息
+- `BattleProtocol.DEFAULT_GAME_PORT = 45770`
+
+当前服务器层只做传输边界；权威对局会话（按 peer 绑定阵营、命令校验、私有快照）是下一步。
 
 - `BattleEngine` 仍是唯一权威状态；客户端不跑完整引擎（否则隐藏牌库无意义）
 - 单机 vs AI 走内存版 ServerSession + 本地 ClientSession，复用同一套视图/命令接口

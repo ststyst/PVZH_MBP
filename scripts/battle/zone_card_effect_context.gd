@@ -5,13 +5,18 @@ extends BattleEffectContext
 ## zone 供 when ally_die(zone == 'deck'/'hand') 过滤使用。
 
 var zone_name: String = "hand"
-var card_modifier: Dictionary = {}
+var card_instance: BattleCardInstance = null
 
 
-func _init(engine_ref: BattleEngine, side: String, zone: String, modifier: Dictionary) -> void:
+func _init(
+	engine_ref: BattleEngine,
+	side: String,
+	zone: String,
+	instance: BattleCardInstance,
+) -> void:
 	super(engine_ref, side)
 	zone_name = zone
-	card_modifier = modifier
+	card_instance = instance
 
 
 func get_zone() -> String:
@@ -19,8 +24,10 @@ func get_zone() -> String:
 
 
 func gain_attack(amount: int) -> void:
-	card_modifier["attack"] = int(card_modifier.get("attack", 0)) + amount
+	if card_instance != null:
+		card_instance.attack_bonus += amount
 
 
 func reduce_cost(amount: int) -> void:
-	card_modifier["cost"] = int(card_modifier.get("cost", 0)) - amount
+	if card_instance != null:
+		card_instance.cost_delta -= amount

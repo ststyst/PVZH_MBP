@@ -415,7 +415,8 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 `assets/animations/whole.tres` / `background.tres` / `art.tres`。
 
 区域/多目标/标志物：
-- `BattlePlayerState.hand_modifiers` / `deck_modifiers` 与手牌/牌库一一对应（攻击/费用修正）
+- `BattlePlayerState.hand` / `deck` / `discard` 为 `BattleCardInstance` 数组（带 `instance_id`、`card_id`、`zone`、`attack_bonus`、`cost_delta`）
+- `BattleCardInstance.to_dict()` / `from_dict()` 供联机快照使用
 - `BattlePlayerState.markers` 为 `Dictionary`（字符串名字、整数数量，允许负数）
 - `CardEffectScript.target_requirement()` 返回入场 `choose(count, selector)` 的目标需求
 - 区域被动用 `when ally_die(zone == 'deck'|'hand')`，原语 `gain_attack` / `reduce_cost`

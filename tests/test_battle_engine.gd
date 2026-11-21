@@ -37,6 +37,24 @@ func _deck(card_id: String, count: int) -> Array[String]:
 	return ids
 
 
+func _set_hand(engine: BattleEngine, side: String, ids: Array) -> void:
+	var state: BattlePlayerState = engine.players[side]
+	state.hand.clear()
+	for card_id: Variant in ids:
+		engine.add_card_to_hand(side, str(card_id))
+
+
+func _set_deck(engine: BattleEngine, side: String, ids: Array) -> void:
+	var state: BattlePlayerState = engine.players[side]
+	state.deck.clear()
+	for card_id: Variant in ids:
+		engine.add_card_to_deck(side, str(card_id))
+
+
+func _hand_has(state: BattlePlayerState, card_id: String) -> bool:
+	return state.hand_ids().has(card_id)
+
+
 func _make_test_card(card_id: String, ability: String) -> CardData:
 	var template: CardData = cards.get_card("pvzh:gnoll")
 	var card := CardData.new()
@@ -87,6 +105,12 @@ func test_initial_draw_and_mulligan() -> void:
 	assert_eq(int(engine.players["z"].hand.size()), 4)
 	var before: int = int(engine.players["p"].deck.size())
 	assert_eq(before, 8)
+	var seen_ids: Dictionary = {}
+	for instance: BattleCardInstance in engine.players["p"].hand:
+		seen_ids[instance.instance_id] = true
+	for instance: BattleCardInstance in engine.players["p"].deck:
+		seen_ids[instance.instance_id] = true
+	assert_eq(seen_ids.size(), 12, "每张卡实例应有唯一 instance_id")
 	assert_true(engine.replace_mulligan_card("p", 0), "调度应可用")
 	assert_eq(int(engine.players["p"].hand.size()), 4)
 	assert_eq(int(engine.players["p"].deck.size()), 8)
@@ -128,7 +152,7 @@ func test_hand_limit_cancels_draw() -> void:
 	var state: BattlePlayerState = engine.players["p"]
 	state.hand.clear()
 	for _index: int in range(engine.mode.hand_limit):
-		state.hand.append("pvzh:gnoll")
+		engine.add_card_to_hand("p", "pvzh:gnoll")
 	assert_eq(engine.draw_cards("p", 1), 0, "手牌满时取消抽牌")
 	assert_eq(state.hand.size(), engine.mode.hand_limit)
 
@@ -136,7 +160,7 @@ func test_hand_limit_cancels_draw() -> void:
 func test_place_entity() -> void:
 	var engine: BattleEngine = _started_engine()
 	var state: BattlePlayerState = engine.players["z"]
-	state.hand = ["pvzh:hound"]
+	_set_hand(engine, "z", ["pvzh:hound"])
 	state.energy = 10
 	engine.phase = BattleEngine.PHASE_HAND
 	engine.active_side = "z"
@@ -165,7 +189,7 @@ func test_team_up_swap() -> void:
 func test_spell_damage() -> void:
 	var engine: BattleEngine = _started_engine()
 	var state: BattlePlayerState = engine.players["z"]
-	state.hand = ["pvzh:fireball"]
+	_set_hand(engine, "z", ["pvzh:fireball"])
 	state.energy = 10
 	engine.phase = BattleEngine.PHASE_HAND
 	engine.active_side = "z"
@@ -207,7 +231,7 @@ func test_win_when_hero_dies() -> void:
 func test_environment_card() -> void:
 	var engine: BattleEngine = _started_engine()
 	var state: BattlePlayerState = engine.players["z"]
-	state.hand = ["pvzh:sunny_field"]
+	_set_hand(engine, "z", ["pvzh:sunny_field"])
 	state.energy = 10
 	engine.phase = BattleEngine.PHASE_SPELL
 	engine.active_side = "z"
@@ -220,13 +244,13 @@ func test_environment_card() -> void:
 func test_easy_ai_plays_highest_cost() -> void:
 	var engine: BattleEngine = _started_engine()
 	var state: BattlePlayerState = engine.players["z"]
-	state.hand = ["pvzh:gnoll", "pvzh:yeti"]
+	_set_hand(engine, "z", ["pvzh:gnoll", "pvzh:yeti"])
 	state.energy = 10
 	engine.phase = BattleEngine.PHASE_HAND
 	engine.active_side = "z"
 	assert_true(EasyBattleAI.take_action(engine, "z"))
-	assert_false(state.hand.has("pvzh:yeti"), "应优先打出费用最高的雪原雪怪")
-	assert_true(state.hand.has("pvzh:gnoll"))
+	assert_false(_hand_has(state, "pvzh:yeti"), "应优先打出费用最高的雪原雪怪")
+	assert_true(_hand_has(state, "pvzh:gnoll"))
 
 
 func test_turn_draw_except_first_turn() -> void:
@@ -259,7 +283,7 @@ func test_turn_draw_configurable() -> void:
 func test_any_empty_slot_allowed() -> void:
 	var engine: BattleEngine = _started_engine()
 	var state: BattlePlayerState = engine.players["p"]
-	state.hand = ["pvzh:gnoll", "pvzh:gnoll"]
+	_set_hand(engine, "p", ["pvzh:gnoll", "pvzh:gnoll"])
 	state.energy = 10
 	engine.phase = BattleEngine.PHASE_HAND
 	engine.active_side = "p"
@@ -304,17 +328,17 @@ func test_zone_deck_death_bonus_and_play_attack() -> void:
 	)
 	var engine: BattleEngine = _started_engine()
 	var state: BattlePlayerState = engine.players["p"]
-	state.hand.clear()
-	state.hand_modifiers.clear()
-	state.deck = [card.card_id]
-	state.deck_modifiers = [{}]
+	_set_hand(engine, "p", [])
+	_set_deck(engine, "p", [card.card_id])
+	var deck_instance_id: int = state.deck[0].instance_id
 	var ally: BattleEntity = engine.summon_card("p", cards.get_card("pvzh:gnoll"), 0, 0)
 	engine.damage_handle(ally, 99)
 	engine._flush_deaths()
-	assert_eq(int(state.deck_modifier(0).get("attack", 0)), 1, "牌库中的卡应累计攻击加成")
+	assert_eq(state.deck[0].attack_bonus, 1, "牌库中的卡应累计攻击加成")
 	engine.draw_cards("p", 1)
 	assert_eq(state.hand.size(), 1)
-	assert_eq(int(state.hand_modifier(0).get("attack", 0)), 1, "抽到后加成应保留")
+	assert_eq(state.hand[0].instance_id, deck_instance_id, "抽牌应保留同一实例")
+	assert_eq(state.hand[0].attack_bonus, 1, "抽到后加成应保留")
 	var display: CardData = engine.hand_card_display("p", 0)
 	assert_true(display != null)
 	if display != null:
@@ -341,13 +365,12 @@ func test_zone_hand_death_bonus_cost_and_play() -> void:
 	)
 	var engine: BattleEngine = _started_engine()
 	var state: BattlePlayerState = engine.players["p"]
-	state.hand = [card.card_id]
-	state.hand_modifiers = [{}]
+	_set_hand(engine, "p", [card.card_id])
 	var ally: BattleEntity = engine.summon_card("p", cards.get_card("pvzh:gnoll"), 0, 0)
 	engine.damage_handle(ally, 99)
 	engine._flush_deaths()
-	assert_eq(int(state.hand_modifier(0).get("attack", 0)), 1)
-	assert_eq(int(state.hand_modifier(0).get("cost", 0)), -1)
+	assert_eq(state.hand[0].attack_bonus, 1)
+	assert_eq(state.hand[0].cost_delta, -1)
 	assert_eq(engine.effective_hand_cost("p", 0), maxi(card.cost - 1, 0))
 	engine.phase = BattleEngine.PHASE_HAND
 	engine.active_side = "p"
@@ -370,8 +393,7 @@ func test_choose_two_other_allies_buffs_both() -> void:
 	)
 	var engine: BattleEngine = _started_engine()
 	var state: BattlePlayerState = engine.players["p"]
-	state.hand = [card.card_id]
-	state.hand_modifiers = [{}]
+	_set_hand(engine, "p", [card.card_id])
 	state.energy = 10
 	engine.phase = BattleEngine.PHASE_HAND
 	engine.active_side = "p"
@@ -398,8 +420,7 @@ func test_special_markers_are_string_names_with_int_values() -> void:
 	var engine: BattleEngine = _started_engine()
 	var state: BattlePlayerState = engine.players["p"]
 	state.markers["special_marker_1"] = 2
-	state.hand = [card.card_id]
-	state.hand_modifiers = [{}]
+	_set_hand(engine, "p", [card.card_id])
 	state.energy = 10
 	engine.phase = BattleEngine.PHASE_HAND
 	engine.active_side = "p"
@@ -416,7 +437,7 @@ func test_team_up_placement_rule() -> void:
 	team_card.keywords.append("team_up")
 	cards.cards[team_card.card_id] = team_card
 	var state: BattlePlayerState = engine.players["p"]
-	state.hand = ["pvzh:gnoll", "pvzh:gnoll", team_card.card_id]
+	_set_hand(engine, "p", ["pvzh:gnoll", "pvzh:gnoll", team_card.card_id])
 	state.energy = 10
 	engine.phase = BattleEngine.PHASE_HAND
 	engine.active_side = "p"

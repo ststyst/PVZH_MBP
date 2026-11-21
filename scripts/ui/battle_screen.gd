@@ -19,6 +19,7 @@ var _time_limit_enabled: bool = true
 var _pending_card_index: int = -1
 var _pending_mode: String = ""
 var _pending_candidates: Array = []
+var _pending_handles: Array = []
 var _phase_remaining: float = 0.0
 var _last_phase_key: String = ""
 var _ai_accum: float = 0.0
@@ -229,8 +230,23 @@ func _on_hand_pressed(index: int) -> void:
 		return
 	if card.is_entity():
 		_pending_card_index = index
-		_pending_mode = "place"
+		_pending_handles.clear()
 		_pending_candidates.clear()
+		var requirement: Dictionary = (
+			card.ability_script.target_requirement()
+			if card.ability_script != null else {}
+		)
+		var required_count: int = int(requirement.get("count", 0))
+		if required_count > 0:
+			for entity: BattleEntity in engine.entities:
+				if entity.alive and entity.side == player_side:
+					_pending_candidates.append(entity)
+			if not _pending_candidates.is_empty():
+				_pending_mode = "choose"
+				_set_status("最多选择 %d 个其他友方实体，然后点击空位放置（直接点空位表示少选/不选）。" % required_count)
+				_refresh_all()
+				return
+		_pending_mode = "place"
 		_set_status("请选择放置位置。")
 		_refresh_all()
 	elif card.is_environment():
@@ -251,6 +267,26 @@ func _on_hand_pressed(index: int) -> void:
 
 func _on_slot_pressed(side: String, column: int, slot: int) -> void:
 	if not _started or engine == null:
+		return
+	if _pending_mode == "choose" and side == player_side:
+		var choose_entity: BattleEntity = _entity_at(column, side, slot)
+		if choose_entity != null and _pending_candidates.has(choose_entity):
+			var required_count: int = _pending_choose_limit()
+			if _pending_handles.has(choose_entity):
+				_pending_handles.erase(choose_entity)
+			elif _pending_handles.size() < required_count:
+				_pending_handles.append(choose_entity)
+			_set_status("已选择 %d/%d；点击空位放置。" % [_pending_handles.size(), required_count])
+			_refresh_all()
+			return
+		if choose_entity == null and _pending_slot_valid(column, slot):
+			_play_pending({
+				"column": column,
+				"slot": slot,
+				"handles": _pending_handles.duplicate(),
+			})
+			return
+		_set_status("请选择高亮的友方实体，或点击空位放置。", true)
 		return
 	if _pending_mode == "place" and side == player_side:
 		_play_pending({"column": column, "slot": slot})
@@ -316,6 +352,24 @@ func _clear_pending() -> void:
 	_pending_card_index = -1
 	_pending_mode = ""
 	_pending_candidates.clear()
+	_pending_handles.clear()
+
+
+func _pending_choose_limit() -> int:
+	var card: CardData = engine.hand_card(player_side, _pending_card_index)
+	if card == null or card.ability_script == null:
+		return 0
+	return int(card.ability_script.target_requirement().get("count", 0))
+
+
+func _pending_slot_valid(column: int, slot: int) -> bool:
+	var card: CardData = engine.hand_card(player_side, _pending_card_index)
+	if card == null:
+		return false
+	for slot_info: Dictionary in engine.valid_slots(player_side, card):
+		if int(slot_info.get("column", -1)) == column and int(slot_info.get("slot", -1)) == slot:
+			return true
+	return false
 
 
 # ----- 状态刷新 -----
@@ -387,6 +441,15 @@ func _update_slot_button(
 		actionable = side == player_side
 	elif _pending_mode == "target":
 		actionable = entity != null and _pending_candidates.has(entity)
+	elif _pending_mode == "choose":
+		if side == player_side:
+			if entity == null:
+				for slot_info: Dictionary in valid_slots:
+					if int(slot_info.get("column", -1)) == column and int(slot_info.get("slot", -1)) == slot:
+						actionable = true
+						break
+			else:
+				actionable = _pending_candidates.has(entity)
 	else:
 		actionable = entity != null and entity.side == player_side and entity.team_up
 	if entity == null:
@@ -395,7 +458,7 @@ func _update_slot_button(
 			if is_instance_valid(hidden_view):
 				hidden_view.visible = false
 		button.text = ""
-		if actionable and (_pending_mode == "place" or _pending_mode == "column"):
+		if actionable and (_pending_mode == "place" or _pending_mode == "column" or _pending_mode == "choose"):
 			_apply_highlight_slot_style(button)
 			button.disabled = false
 		else:
@@ -410,6 +473,7 @@ func _update_slot_button(
 		actionable and (
 			_pending_mode == "target"
 			or _pending_mode == "column"
+			or (_pending_mode == "choose" and _pending_candidates.has(entity))
 			or (_pending_mode.is_empty() and entity.team_up)
 		)
 	)
