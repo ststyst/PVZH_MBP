@@ -43,6 +43,12 @@ func test_defaults() -> void:
 	assert_eq(config.phase_time_limit_seconds, 40)
 	assert_eq(config.player_draw_per_turn, 1)
 	assert_eq(config.enemy_draw_per_turn, 1)
+	assert_eq(config.charge_shield_max, 8)
+	assert_eq(config.charge_shield_durability, 3)
+	assert_eq(config.charge_shield_emergency_uses, 1)
+	assert_eq(config.charge_gain_for_damage(2), 1)
+	assert_eq(config.charge_gain_for_damage(5), 2)
+	assert_eq(config.charge_gain_for_damage(9), 3)
 
 
 func test_from_dict_overrides() -> void:

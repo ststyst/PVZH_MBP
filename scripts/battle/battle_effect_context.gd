@@ -6,6 +6,7 @@ extends EffectContext
 var engine: BattleEngine = null
 var caster_side: String = "p"
 var chosen_targets: Array = []
+var source_keywords: Array = []
 var _self_handle: Variant = null
 var _event_handle: Variant = null
 
@@ -29,6 +30,10 @@ func set_chosen_target(handle) -> void:
 
 func set_chosen_targets(handles: Array) -> void:
 	chosen_targets = handles.duplicate()
+
+
+func set_source_keywords(keywords: Array) -> void:
+	source_keywords = keywords.duplicate()
 
 
 func resolve_selector(selector: String) -> Array:
@@ -91,7 +96,7 @@ func draw_cards(count: int) -> int:
 
 
 func deal_damage(target, amount: int) -> void:
-	engine.damage_handle(target, amount)
+	engine.damage_handle(target, amount, source_keywords)
 
 
 func heal(target, amount: int) -> void:

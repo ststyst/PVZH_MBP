@@ -10,6 +10,16 @@ var hero_health: int = 20
 var hero_shield: int = 0
 ## 英雄伤害免疫（预留；为 true 时不受到任何伤害）。
 var hero_damage_immune: bool = false
+## 充能护盾当前充能 / 耐久 / 致命保护剩余次数
+var charge_shield: int = 0
+var charge_shield_durability: int = 3
+var charge_shield_emergency_uses: int = 1
+## 本局该英雄的超能力牌池（尚未发放的卡牌 ID）
+var superpower_pool: Array[String] = []
+## 当前特殊回合提供给该玩家的超能力牌实例 ID（0 表示无）
+var special_offer_id: int = 0
+## 特殊回合选择：空 / "play" / "hand"
+var special_choice: String = ""
 var energy: int = 0
 var energy_cap: int = 99
 var hand: Array[BattleCardInstance] = []

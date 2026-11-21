@@ -30,6 +30,8 @@
 - 单机战斗：`scenes/battle/BattlePrep.tscn` 准备 + `Battle.tscn` 对战；战斗 UI 已全部节点化，可直接在编辑器部署素材；推荐卡组 CSV（`data/battle`）；简单 AI。
 - 战斗卡牌/实体：手牌与牌组编辑共用 `CardTile.tscn`，实体使用 `BattleEntityView.tscn`；背景、外观、费用/攻击/生命图标均为空 Sprite2D 挂点。
 - 实体动画：整体/背景/外观三种模式，卡牌 `animation` 列用伪代码编排攻击/能力/死亡/法术动画。
+- 英雄机制：超能力牌池、特殊回合、充能护盾（上限/耐久/致命保护可配置）、必中伤害不充能。
+- 超能力：基础编辑界面已支持初始随机超能力、充能免疫后的特殊回合（立刻打出/移入手牌）；ENet 命令已预留。
 - 区域与多目标：手牌/牌库为带 `instance_id` 的 `BattleCardInstance`；`when ally_die(zone == 'deck'|'hand')` 支持区域被动；
   `choose(n, "other_allies")` 多目标；玩家特殊标志物为 `{名字: 数量}` 数据接口。
 - 联机基础：`scripts/net` 下已有 ENet 协议/服务器/客户端传输层；权威对局会话与 UI 接入待完成。

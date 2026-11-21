@@ -336,6 +336,7 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 
 `HeroData` 字段：`hero_id`、`english_name`、`chinese_name`、`faction`、`classes`、`class_labels`、
 `special_card_names`、`special_card_ids`；方法：`display_name()`、`has_class()`、`is_special_card()`。
+`special_card_ids` 中筛出锦囊牌即为该英雄的超能力牌池来源；超能力牌带 `superpower` 流派。
 
 ### 玩法配置 `GameModeConfig` / `ModeManager`
 
@@ -347,7 +348,9 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 `player_initial_energy`(1)、`enemy_initial_energy`(1)、
 `player_initial_draw`(4)、`enemy_initial_draw`(4)、
 `hand_limit`(10)、`energy_cap`(99)、`phase_time_limit_seconds`(40)、
-`player_draw_per_turn`(1)、`enemy_draw_per_turn`(1)。
+`player_draw_per_turn`(1)、`enemy_draw_per_turn`(1)、
+`charge_shield_max`(8)、`charge_shield_durability`(3)、`charge_shield_emergency_uses`(1)、
+`charge_shield_charge_rules`（1~3→1、4~6→2、7+→3）、`superpower_priority_side`("z")。
 
 | API | 说明 |
 |---|---|
@@ -437,6 +440,8 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 | `effective_hand_cost(side, index)` / `effective_hand_attack(side, index)` | 应用手牌实例修正后的有效费用/攻击 |
 | `hand_card_display(side, index)` | 给 UI 的手牌显示副本（已带有效费用/攻击） |
 | `play_card(..., target.handles)` | 多目标选择；`handles` 为实体数组 |
+| `execute_command(side, command)` | 服务器权威命令入口：play_card/end_phase/起手/特殊回合 |
+| `special_resolve_play(side, target)` / `special_resolve_hand(side)` | 特殊回合：打出临时超能力 / 移入手牌 |
 | `give_keyword_handle(handle, keyword, value)` | 给实体叠加词缀数值；受卡牌种类白名单限制 |
 | `give_keyword_to_hand_card(side, index, keyword, value)` | 给指定手牌实例赋予词缀；同名牌其他副本不受影响 |
 | `get_markers(side)` | 返回玩家特殊标志物 `{名字: 数量}` 副本 |
@@ -454,8 +459,11 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 - `BattleCardInstance.to_dict()` / `from_dict()` 供联机快照使用
 - `BattlePlayerState.markers` 为 `Dictionary`（字符串名字、整数数量，允许负数）
 - `BattlePlayerState.hero_shield` 为英雄护盾；`hero_damage_immune` 为伤害免疫标记（预留）
-- `give_keyword` / `give_keyword_handle` 支持带数值词缀；`CardKeywords.can_receive` 做卡牌种类白名单过滤
-- 先攻（first_strike）伤害与普通英雄伤害共用 `damage_hero`，会经过免疫、护盾并触发 `hero_damaged`
+- `BattlePlayerState.charge_shield` / `charge_shield_durability` / `charge_shield_emergency_uses` 为充能护盾状态
+- `BattlePlayerState.superpower_pool` / `special_offer_id` 为超能力牌池与特殊回合临时牌
+- `first_strike` 伤害与普通英雄伤害共用 `damage_hero`，会经过免疫、护盾并触发 `hero_damaged`
+- 充能护盾在真实受击后结算；满充能触发免疫、耐久 -1，并给该英雄发放随机超能力进入特殊回合
+- 必中（`bullseye`）伤害不增加充能护盾充能
 - `CardEffectScript.target_requirement()` 返回入场 `choose(count, selector)` 的目标需求
 - 区域被动用 `when ally_die(zone == 'deck'|'hand')`，原语 `gain_attack` / `reduce_cost`
 - 多目标用 `choose(count, "other_allies")` + `buff_stats(chosen, ...)`

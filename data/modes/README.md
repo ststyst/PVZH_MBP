@@ -22,6 +22,11 @@
 | `phase_time_limit_seconds` | int | 40 | 单个回合阶段真实时间上限（秒），到点强制结束；**与电脑对战时不生效（不限时）**，预留给玩家对玩家 |
 | `player_draw_per_turn` | int | 1 | 从第二回合起，每回合开始时我方抽牌数（第一回合不触发；0 = 不抽） |
 | `enemy_draw_per_turn` | int | 1 | 从第二回合起，每回合开始时敌方抽牌数（第一回合不触发；0 = 不抽） |
+| `charge_shield_max` | int | 8 | 充能护盾充能上限；达到上限时免疫该次真实伤害 |
+| `charge_shield_durability` | int | 3 | 充能护盾耐久；每次免疫消耗 1 |
+| `charge_shield_emergency_uses` | int | 1 | 每方整局限一次的致命保护次数；致命伤害时无视数值增加 3 充能 |
+| `charge_shield_charge_rules` | object[] | 1~3→1、4~6→2、7+→3 | 真实受击伤害对应的充能增量；`max=-1` 表示不封顶 |
+| `superpower_priority_side` | string | `"z"` | 双方同时触发特殊回合时超能力效果先结算的阵营 |
 
 玩家对战时：p 阵营英雄使用 `player_*` 数据，z 阵营英雄使用 `enemy_*` 数据。
 
@@ -42,7 +47,16 @@
   "energy_cap": 99,
   "phase_time_limit_seconds": 40,
   "player_draw_per_turn": 1,
-  "enemy_draw_per_turn": 1
+  "enemy_draw_per_turn": 1,
+  "charge_shield_max": 8,
+  "charge_shield_durability": 3,
+  "charge_shield_emergency_uses": 1,
+  "charge_shield_charge_rules": [
+    {"min": 1, "max": 3, "charge": 1},
+    {"min": 4, "max": 6, "charge": 2},
+    {"min": 7, "max": -1, "charge": 3}
+  ],
+  "superpower_priority_side": "z"
 }
 ```
 

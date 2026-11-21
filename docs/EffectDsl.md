@@ -25,7 +25,8 @@
 | `gain_shield(target, amount)` | 目标、数值 | 加护甲 |
 | `buff_stats(target, attack, health)` | 目标、两个增减值 | 修改攻/血 |
 | `gain_energy(amount)` | 数值 | 获得费用 |
-| `give_keyword(target, keyword, value = 0)` | 目标、词缀 id、数值 | 赋予词缀；已有同词缀则累加数值（如先攻 2 + 先攻 3 = 先攻 5） |
+| `give_keyword(target, keyword, value = 0)` | 目标、词缀 id、数值 | 赋予词缀；已有同词缀则累加数值（如先攻 2 + 先攻 3 = 先攻 5）；受卡牌种类白名单限制 |
+| `give_keyword` 的 `bullseye` | — | 伤害类型变为必中；必中伤害不增加充能护盾充能 |
 | `destroy(target)` | 目标 | 消灭 |
 | `choose(count, selector)` | 数量、选择器 | 声明最多选择 N 个目标（玩家选择；`chosen` 为目标数组） |
 | `gain_attack(amount)` | 数值 | 修改当前卡牌实例的攻击（用于牌库/手牌被动，打出后转为实体攻击） |

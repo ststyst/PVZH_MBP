@@ -52,6 +52,8 @@ BattleClientSession ── ENet/UDP ── BattleServerSession
 - `handles` 用于多目标选择（最多 count 个）
 - 组队实体打向已有友方实体格时，服务器把原实体挪到同列另一空格，再把新实体放在目标格；这属于放置规则，不发位置变动事件
 - `move_entity` 效果移动实体后发 `position_changed` 事件
+- 特殊回合命令：`{"type":"special_play","target":{...}}` / `{"type":"special_hand"}`
+- 超能力牌池与当前 offer 只发给所属玩家；其他玩家只看到特殊回合状态
 - 引擎统一入口：`BattleEngine.execute_command(side, command)`
 - 超时自动 `end_phase`
 

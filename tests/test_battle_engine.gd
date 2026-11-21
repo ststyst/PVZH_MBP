@@ -102,8 +102,8 @@ func _started_engine(p_card: String = "pvzh:gnoll", z_card: String = "pvzh:hound
 func test_initial_draw_and_mulligan() -> void:
 	var engine: BattleEngine = _new_engine()
 	assert_eq(engine.phase, BattleEngine.PHASE_MULLIGAN)
-	assert_eq(int(engine.players["p"].hand.size()), 4)
-	assert_eq(int(engine.players["z"].hand.size()), 4)
+	assert_eq(int(engine.players["p"].hand.size()), 5, "初始手牌包含一张超能力")
+	assert_eq(int(engine.players["z"].hand.size()), 5, "初始手牌包含一张超能力")
 	var before: int = int(engine.players["p"].deck.size())
 	assert_eq(before, 8)
 	var seen_ids: Dictionary = {}
@@ -111,9 +111,9 @@ func test_initial_draw_and_mulligan() -> void:
 		seen_ids[instance.instance_id] = true
 	for instance: BattleCardInstance in engine.players["p"].deck:
 		seen_ids[instance.instance_id] = true
-	assert_eq(seen_ids.size(), 12, "每张卡实例应有唯一 instance_id")
+	assert_eq(seen_ids.size(), 13, "每张卡实例应有唯一 instance_id（含初始超能力）")
 	assert_true(engine.replace_mulligan_card("p", 0), "调度应可用")
-	assert_eq(int(engine.players["p"].hand.size()), 4)
+	assert_eq(int(engine.players["p"].hand.size()), 5, "初始手牌包含一张超能力")
 	assert_eq(int(engine.players["p"].deck.size()), 8)
 
 
@@ -189,6 +189,74 @@ func test_first_strike_damages_hero_then_normal_attack() -> void:
 	assert_eq(striker.attack, 1)
 
 
+func test_charge_shield_immunity_and_special_offer() -> void:
+	var engine: BattleEngine = _started_engine()
+	var p_state: BattlePlayerState = engine.players["p"]
+	p_state.charge_shield = 7
+	p_state.charge_shield_durability = 1
+	engine.damage_hero("p", 2, [])
+	assert_eq(int(p_state.hero_health), 20, "充能到 8 时应免疫本次伤害")
+	assert_eq(int(p_state.charge_shield), 0, "免疫后充能归零")
+	assert_eq(int(p_state.charge_shield_durability), 0, "免疫后耐久 -1")
+	assert_true(p_state.special_offer_id != 0, "应获得一张超能力牌")
+	assert_true(engine._special_pending_sides.has("p"))
+	assert_true(engine._maybe_begin_special_turn(BattleEngine.PHASE_HAND))
+	assert_eq(engine.phase, BattleEngine.PHASE_SPECIAL)
+	var hand_count_before: int = p_state.hand.size()
+	var result: Dictionary = engine.special_resolve_hand("p")
+	assert_true(bool(result.get("ok", false)))
+	assert_eq(engine.phase, BattleEngine.PHASE_HAND)
+	assert_eq(p_state.special_offer_id, 0)
+	assert_eq(p_state.hand.size(), hand_count_before, "移入手牌后牌仍在手中")
+
+
+func test_charge_shield_emergency_lethal_protection() -> void:
+	var engine: BattleEngine = _started_engine()
+	var p_state: BattlePlayerState = engine.players["p"]
+	p_state.hero_health = 5
+	p_state.charge_shield = 5
+	p_state.charge_shield_durability = 3
+	p_state.charge_shield_emergency_uses = 1
+	engine.damage_hero("p", 10, [])
+	assert_eq(p_state.hero_health, 5, "致命伤害应被充能护盾免疫")
+	assert_eq(p_state.charge_shield, 0, "免疫后充能归零")
+	assert_eq(p_state.charge_shield_durability, 2)
+	assert_eq(p_state.charge_shield_emergency_uses, 0, "整局限一次的生命保护应被消耗")
+
+
+func test_charge_shield_rules_and_bullseye() -> void:
+	var engine: BattleEngine = _started_engine()
+	var z_state: BattlePlayerState = engine.players["z"]
+	engine.damage_hero("z", 4, [])
+	assert_eq(z_state.charge_shield, 2, "4~6 伤害应充能 2")
+	var before: int = z_state.charge_shield
+	engine.damage_hero("z", 3, ["bullseye"])
+	assert_eq(z_state.charge_shield, before, "必中伤害不应增加充能")
+	assert_eq(z_state.hero_health, 13, "必中伤害仍应正常扣血")
+
+
+func test_initial_superpower_is_in_hand() -> void:
+	var engine: BattleEngine = _new_engine()
+	var p_state: BattlePlayerState = engine.players["p"]
+	var hero: HeroData = heroes.get_hero("green_knight")
+	var found: bool = false
+	for instance: BattleCardInstance in p_state.hand:
+		if hero.special_card_ids.has(instance.card_id):
+			found = true
+			break
+	assert_true(found, "初始手牌应包含一张英雄超能力")
+	assert_true(p_state.superpower_pool.size() < hero.special_card_ids.size())
+
+
+func test_hero_shield_cleared_at_turn_end() -> void:
+	var engine: BattleEngine = _started_engine()
+	engine.players["p"].hero_shield = 3
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "z"
+	engine.advance_phase()
+	assert_eq(int(engine.players["p"].hero_shield), 0, "回合结束应清空英雄护盾")
+
+
 func test_first_strike_uses_hero_shield_and_damage_event() -> void:
 	var engine: BattleEngine = _started_engine()
 	var striker_card: CardData = _make_test_card("pvzh:test_first_shield", "")
@@ -230,7 +298,7 @@ func test_first_strike_respects_hero_damage_immunity() -> void:
 	engine.active_side = "z"
 	engine.advance_phase()
 	assert_eq(int(engine.players["z"].hero_health), 20, "免疫时先攻不应造成英雄伤害")
-	assert_eq(int(engine.players["z"].hero_shield), 3, "免疫时不应消耗护盾")
+	assert_eq(int(engine.players["z"].hero_shield), 0, "回合结束时英雄护盾应被清空")
 	assert_true(damage_events.is_empty(), "完全免疫时不应发伤害事件")
 
 
@@ -391,14 +459,14 @@ func test_turn_draw_except_first_turn() -> void:
 	var engine: BattleEngine = _started_engine()
 	var p_state: BattlePlayerState = engine.players["p"]
 	var z_state: BattlePlayerState = engine.players["z"]
-	assert_eq(p_state.hand.size(), 4, "第一回合不应额外抽牌")
-	assert_eq(z_state.hand.size(), 4)
+	assert_eq(p_state.hand.size(), 5, "第一回合不应额外抽牌（含初始超能力）")
+	assert_eq(z_state.hand.size(), 5)
 	engine.end_phase("z")
 	engine.end_phase("p")
 	engine.end_phase("z")
 	assert_eq(engine.turn, 2)
-	assert_eq(p_state.hand.size(), 5, "第二回合开始双方各抽 1 张")
-	assert_eq(z_state.hand.size(), 5)
+	assert_eq(p_state.hand.size(), 6, "第二回合开始双方各抽 1 张")
+	assert_eq(z_state.hand.size(), 6)
 	assert_eq(p_state.deck.size(), 7)
 	assert_eq(z_state.deck.size(), 7)
 
@@ -410,8 +478,8 @@ func test_turn_draw_configurable() -> void:
 	engine.end_phase("z")
 	engine.end_phase("p")
 	engine.end_phase("z")
-	assert_eq(engine.players["p"].hand.size(), 6, "我方每回合抽 2")
-	assert_eq(engine.players["z"].hand.size(), 4, "敌方每回合抽 0")
+	assert_eq(engine.players["p"].hand.size(), 7, "我方每回合抽 2")
+	assert_eq(engine.players["z"].hand.size(), 5, "敌方每回合抽 0")
 
 
 func test_any_empty_slot_allowed() -> void:

@@ -22,6 +22,8 @@ const COMMAND_PLAY_CARD: String = "play_card"
 const COMMAND_END_PHASE: String = "end_phase"
 const COMMAND_MULLIGAN_REPLACE: String = "mulligan_replace"
 const COMMAND_MULLIGAN_CONFIRM: String = "mulligan_confirm"
+const COMMAND_SPECIAL_PLAY: String = "special_play"
+const COMMAND_SPECIAL_HAND: String = "special_hand"
 
 
 static func encode(message: Dictionary) -> PackedByteArray:

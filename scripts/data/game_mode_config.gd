@@ -18,6 +18,15 @@ const DEFAULT_HAND_LIMIT: int = 10
 const DEFAULT_ENERGY_CAP: int = 99
 const DEFAULT_PHASE_TIME_SECONDS: int = 40
 const DEFAULT_TURN_DRAW: int = 1
+const DEFAULT_CHARGE_SHIELD_MAX: int = 8
+const DEFAULT_CHARGE_SHIELD_DURABILITY: int = 3
+const DEFAULT_CHARGE_SHIELD_EMERGENCY_USES: int = 1
+const DEFAULT_CHARGE_SHIELD_RULES: Array = [
+	{"min": 1, "max": 3, "charge": 1},
+	{"min": 4, "max": 6, "charge": 2},
+	{"min": 7, "max": -1, "charge": 3},
+]
+const DEFAULT_SUPERPOWER_PRIORITY_SIDE: String = "z"
 
 var deck_max_size: int = DEFAULT_DECK_MAX_SIZE
 var enforce_full_deck: bool = DEFAULT_ENFORCE_FULL_DECK
@@ -39,17 +48,27 @@ var phase_time_limit_seconds: int = DEFAULT_PHASE_TIME_SECONDS
 ## 从第二回合起，每回合开始时我方/敌方各抽几张（第一回合不触发）
 var player_draw_per_turn: int = DEFAULT_TURN_DRAW
 var enemy_draw_per_turn: int = DEFAULT_TURN_DRAW
+## 充能护盾上限 / 耐久 / 每方整局限一次的致命保护次数
+var charge_shield_max: int = DEFAULT_CHARGE_SHIELD_MAX
+var charge_shield_durability: int = DEFAULT_CHARGE_SHIELD_DURABILITY
+var charge_shield_emergency_uses: int = DEFAULT_CHARGE_SHIELD_EMERGENCY_USES
+## 真实受击伤害 -> 充能：{min,max,charge}，max=-1 表示不封顶
+var charge_shield_charge_rules: Array[Dictionary] = []
+## 双方同时触发特殊回合时，超能力效果先结算的阵营（z/p）
+var superpower_priority_side: String = DEFAULT_SUPERPOWER_PRIORITY_SIDE
 ## 来源文件路径（调试/服务器配置用）
 var source_path: String = ""
 var load_errors: Array[String] = []
 
 
 static func default_config() -> GameModeConfig:
-	return GameModeConfig.new()
+	var config := GameModeConfig.new()
+	config.charge_shield_charge_rules = _default_charge_rules()
+	return config
 
 
 static func from_dict(data: Dictionary) -> GameModeConfig:
-	var config := GameModeConfig.new()
+	var config := GameModeConfig.default_config()
 	config.deck_max_size = maxi(_int_value(data, "deck_max_size", DEFAULT_DECK_MAX_SIZE), 1)
 	config.enforce_full_deck = bool(data.get("enforce_full_deck", DEFAULT_ENFORCE_FULL_DECK))
 	config.max_copies_by_rarity = _int_array(data.get("max_copies_by_rarity", DEFAULT_MAX_COPIES))
@@ -66,6 +85,16 @@ static func from_dict(data: Dictionary) -> GameModeConfig:
 	)
 	config.player_draw_per_turn = maxi(_int_value(data, "player_draw_per_turn", DEFAULT_TURN_DRAW), 0)
 	config.enemy_draw_per_turn = maxi(_int_value(data, "enemy_draw_per_turn", DEFAULT_TURN_DRAW), 0)
+	config.charge_shield_max = maxi(_int_value(data, "charge_shield_max", DEFAULT_CHARGE_SHIELD_MAX), 1)
+	config.charge_shield_durability = maxi(
+		_int_value(data, "charge_shield_durability", DEFAULT_CHARGE_SHIELD_DURABILITY), 0
+	)
+	config.charge_shield_emergency_uses = maxi(
+		_int_value(data, "charge_shield_emergency_uses", DEFAULT_CHARGE_SHIELD_EMERGENCY_USES), 0
+	)
+	config.charge_shield_charge_rules = _charge_rules(data.get("charge_shield_charge_rules", []))
+	var priority_side: String = str(data.get("superpower_priority_side", DEFAULT_SUPERPOWER_PRIORITY_SIDE)).to_lower()
+	config.superpower_priority_side = priority_side if priority_side == "p" or priority_side == "z" else "z"
 	return config
 
 
@@ -128,7 +157,46 @@ func to_dict() -> Dictionary:
 		"phase_time_limit_seconds": phase_time_limit_seconds,
 		"player_draw_per_turn": player_draw_per_turn,
 		"enemy_draw_per_turn": enemy_draw_per_turn,
+		"charge_shield_max": charge_shield_max,
+		"charge_shield_durability": charge_shield_durability,
+		"charge_shield_emergency_uses": charge_shield_emergency_uses,
+		"charge_shield_charge_rules": charge_shield_charge_rules.duplicate(true),
+		"superpower_priority_side": superpower_priority_side,
 	}
+
+
+## 根据真实受击数值返回充能增量。
+func charge_gain_for_damage(damage: int) -> int:
+	for rule: Dictionary in charge_shield_charge_rules:
+		var minimum: int = int(rule.get("min", 1))
+		var maximum: int = int(rule.get("max", -1))
+		if damage >= minimum and (maximum < 0 or damage <= maximum):
+			return maxi(int(rule.get("charge", 1)), 0)
+	return 0
+
+
+static func _default_charge_rules() -> Array[Dictionary]:
+	var rules: Array[Dictionary] = []
+	for raw: Variant in DEFAULT_CHARGE_SHIELD_RULES:
+		rules.append((raw as Dictionary).duplicate(true))
+	return rules
+
+
+static func _charge_rules(raw: Variant) -> Array[Dictionary]:
+	var rules: Array[Dictionary] = []
+	if not raw is Array or (raw as Array).is_empty():
+		return _default_charge_rules()
+	for entry: Variant in raw:
+		if not entry is Dictionary:
+			continue
+		rules.append({
+			"min": maxi(_int_value(entry, "min", 1), 0),
+			"max": _int_value(entry, "max", -1),
+			"charge": maxi(_int_value(entry, "charge", 1), 0),
+		})
+	if rules.is_empty():
+		return _default_charge_rules()
+	return rules
 
 
 static func _float_value(data: Dictionary, key: String, fallback: float) -> float:

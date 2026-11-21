@@ -42,6 +42,11 @@ var _ai_accum: float = 0.0
 @onready var _game_over_overlay: Control = %GameOverOverlay
 @onready var _game_over_label: Label = %GameOverLabel
 @onready var _game_over_back_button: Button = %GameOverBackButton
+@onready var _special_overlay: Control = %SpecialOverlay
+@onready var _special_hint: Label = %SpecialHint
+@onready var _special_card_slot: Control = %SpecialCardSlot
+@onready var _special_play_button: Button = %SpecialPlayButton
+@onready var _special_hand_button: Button = %SpecialHandButton
 
 var _board_columns: Array[Dictionary] = []
 var _mulligan_used: Array[bool] = []
@@ -51,6 +56,8 @@ var _animation_queue: Array[Dictionary] = []
 var _animation_busy: bool = false
 var _empty_slot_style: StyleBoxEmpty = null
 var _highlight_slot_style: StyleBoxFlat = null
+var _special_target_mode: bool = false
+var _special_card_tile: CardTile = null
 
 
 func _ready() -> void:
@@ -61,6 +68,8 @@ func _ready() -> void:
 	_end_phase_button.pressed.connect(_on_end_phase_pressed)
 	_mulligan_confirm_button.pressed.connect(_on_mulligan_confirm_pressed)
 	_game_over_back_button.pressed.connect(_on_return_after_game_pressed)
+	_special_play_button.pressed.connect(_on_special_play_pressed)
+	_special_hand_button.pressed.connect(_on_special_hand_pressed)
 	var setup: Dictionary = BattleManager.current_battle
 	if setup.is_empty():
 		_show_fatal("没有进行中的对局，请返回准备界面重新开始。")
@@ -304,6 +313,12 @@ func _on_slot_pressed(side: String, column: int, slot: int) -> void:
 		return
 	if _pending_mode == "target":
 		var entity: BattleEntity = _entity_at(column, side, slot)
+		if _special_target_mode:
+			if entity != null and _pending_candidates.has(entity):
+				_resolve_special_target({"handle": entity})
+			else:
+				_set_status("该位置不是超能力的合法目标。", true)
+			return
 		if entity != null and _pending_candidates.has(entity):
 			_play_pending({"handle": entity})
 		else:
@@ -326,7 +341,10 @@ func _on_player_hero_pressed() -> void:
 
 func _on_hero_target(side: String) -> void:
 	if _pending_mode == "target" and _pending_candidates.has(engine.hero_handle(side)):
-		_play_pending({"handle": engine.hero_handle(side)})
+		if _special_target_mode:
+			_resolve_special_target({"handle": engine.hero_handle(side)})
+		else:
+			_play_pending({"handle": engine.hero_handle(side)})
 		return
 	_set_status("这不是当前可选择的英雄目标。")
 
@@ -356,6 +374,7 @@ func _clear_pending() -> void:
 	_pending_mode = ""
 	_pending_candidates.clear()
 	_pending_handles.clear()
+	_special_target_mode = false
 
 
 func _pending_choose_limit() -> int:
@@ -389,20 +408,25 @@ func _refresh_all() -> void:
 	_rebuild_hand()
 	_update_labels()
 	_update_log()
+	_refresh_special_overlay()
 
 
 func _update_hero_bars() -> void:
 	var player_state: BattlePlayerState = engine.players[player_side]
 	var enemy_state: BattlePlayerState = engine.players[enemy_side]
-	_player_hero_button.text = "%s（%s） 生命 %d/%d · 费用 %d/%d" % [
+	_player_hero_button.text = "%s（%s） 生命 %d/%d · 费用 %d/%d · 充能 %d/%d · 耐久 %d" % [
 		player_state.hero.display_name(), player_side.to_upper(),
 		player_state.hero_health, player_state.hero_max_health,
 		player_state.energy, player_state.energy_cap,
+		player_state.charge_shield, mode.charge_shield_max,
+		player_state.charge_shield_durability,
 	]
-	_enemy_hero_button.text = "%s（%s） 生命 %d/%d · 费用 %d/%d" % [
+	_enemy_hero_button.text = "%s（%s） 生命 %d/%d · 费用 %d/%d · 充能 %d/%d · 耐久 %d" % [
 		enemy_state.hero.display_name(), enemy_side.to_upper(),
 		enemy_state.hero_health, enemy_state.hero_max_health,
 		enemy_state.energy, enemy_state.energy_cap,
+		enemy_state.charge_shield, mode.charge_shield_max,
+		enemy_state.charge_shield_durability,
 	]
 	_player_info_label.text = "手牌 %d · 牌库 %d" % [player_state.hand_count(), player_state.deck_count()]
 	_enemy_info_label.text = "手牌 %d · 牌库 %d" % [enemy_state.hand_count(), enemy_state.deck_count()]
@@ -598,6 +622,12 @@ func _process(delta: float) -> void:
 			return
 	if engine.winner != "":
 		return
+	if engine.phase == BattleEngine.PHASE_SPECIAL:
+		var enemy_state: BattlePlayerState = engine.players[enemy_side]
+		if enemy_state.special_offer_id != 0:
+			engine.special_resolve_hand(enemy_side)
+			_refresh_all()
+		return
 	if _can_player_act():
 		if _time_limit_enabled:
 			_phase_remaining -= delta
@@ -721,6 +751,74 @@ func _slot_button_for_entity(entity: BattleEntity) -> Button:
 	if entity.side == "z":
 		return column.get("z_team" if entity.slot == BattleEngine.SLOT_TEAM_UP else "z_normal") as Button
 	return column.get("p_team" if entity.slot == BattleEngine.SLOT_TEAM_UP else "p_normal") as Button
+
+
+func _refresh_special_overlay() -> void:
+	if engine == null:
+		_special_overlay.visible = false
+		return
+	if engine.phase != BattleEngine.PHASE_SPECIAL:
+		_special_overlay.visible = false
+		return
+	var state: BattlePlayerState = engine.players[player_side]
+	if state.special_offer_id == 0:
+		if _special_overlay.visible:
+			_special_hint.text = "等待对方完成超能力选择…"
+			_special_play_button.visible = false
+			_special_hand_button.visible = false
+			_special_overlay.visible = true
+		return
+	if _special_card_tile != null and is_instance_valid(_special_card_tile):
+		_special_card_tile.queue_free()
+		_special_card_tile = null
+	for child: Node in _special_card_slot.get_children():
+		child.queue_free()
+	var index: int = state.find_hand_index(state.special_offer_id)
+	var card: CardData = engine.hand_card_display(player_side, index)
+	if card == null:
+		_special_overlay.visible = false
+		return
+	var tile: CardTile = CARD_TILE_SCENE.instantiate()
+	_special_card_slot.add_child(tile)
+	tile.setup(card, 0, "特殊回合 · 费用 -1")
+	tile.disabled = true
+	tile.position = Vector2(maxf((_special_card_slot.size.x - 160.0) * 0.5, 0.0), 0.0)
+	_special_card_tile = tile
+	_special_hint.text = "你获得了一张临时费用 -1 的超能力牌（当前费用 %d）；立刻打出或移入手牌，选择后特殊回合结束。" % engine.effective_hand_cost(player_side, index)
+	_special_play_button.visible = true
+	_special_hand_button.visible = true
+	_special_overlay.visible = not _special_target_mode
+
+
+func _on_special_play_pressed() -> void:
+	var state: BattlePlayerState = engine.players[player_side]
+	var index: int = state.find_hand_index(state.special_offer_id)
+	var card: CardData = engine.hand_card(player_side, index)
+	if card == null:
+		return
+	if engine.card_needs_target(card):
+		_special_target_mode = true
+		_pending_mode = "target"
+		_pending_candidates = engine.target_candidates(card, player_side)
+		_special_overlay.visible = false
+		_set_status("请选择超能力目标。")
+		_refresh_all()
+		return
+	_resolve_special_target({})
+
+
+func _on_special_hand_pressed() -> void:
+	var result: Dictionary = engine.special_resolve_hand(player_side)
+	_set_status(str(result.get("message", "")), not bool(result.get("ok", false)))
+	_clear_pending()
+	_refresh_all()
+
+
+func _resolve_special_target(target: Dictionary) -> void:
+	var result: Dictionary = engine.special_resolve_play(player_side, target)
+	_set_status(str(result.get("message", "")), not bool(result.get("ok", false)))
+	_clear_pending()
+	_refresh_all()
 
 
 func _on_game_finished(winner_side: String) -> void:

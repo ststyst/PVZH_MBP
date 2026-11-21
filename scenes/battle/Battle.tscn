@@ -476,3 +476,71 @@ unique_name_in_owner = true
 layout_mode = 2
 custom_minimum_size = Vector2(0, 60)
 text = "返回准备界面"
+
+[node name="SpecialOverlay" type="ColorRect" parent="."]
+unique_name_in_owner = true
+visible = false
+z_index = 10
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.03, 0.035, 0.05, 0.94)
+
+[node name="Margin" type="MarginContainer" parent="SpecialOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 24
+
+[node name="VBox" type="VBoxContainer" parent="SpecialOverlay/Margin"]
+layout_mode = 2
+size_flags_vertical = 3
+alignment = 1
+theme_override_constants/separation = 14
+
+[node name="SpecialTitle" type="Label" parent="SpecialOverlay/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+text = "特殊回合：超能力"
+horizontal_alignment = 1
+
+[node name="SpecialHint" type="Label" parent="SpecialOverlay/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.74902, 0.780392, 0.858824, 1)
+text = "你获得了一张临时费用 -1 的超能力牌。"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="SpecialCardSlot" type="Control" parent="SpecialOverlay/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(0, 240)
+mouse_filter = 2
+
+[node name="SpecialButtons" type="HBoxContainer" parent="SpecialOverlay/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="SpecialPlayButton" type="Button" parent="SpecialOverlay/Margin/VBox/SpecialButtons"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 56)
+text = "立刻打出"
+
+[node name="SpecialHandButton" type="Button" parent="SpecialOverlay/Margin/VBox/SpecialButtons"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 56)
+text = "移入手牌"

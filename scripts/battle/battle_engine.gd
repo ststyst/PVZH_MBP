@@ -21,6 +21,7 @@ const PHASE_HAND: String = "hand"
 const PHASE_SPELL: String = "spell"
 const PHASE_COMBAT: String = "combat"
 const PHASE_TURN_END: String = "turn_end"
+const PHASE_SPECIAL: String = "special"
 const PHASE_GAME_OVER: String = "game_over"
 
 const ENV_HIGHGROUND: String = "highground"
@@ -47,6 +48,12 @@ var card_database: Object = null
 var _next_entity_id: int = 1
 var _next_card_instance_id: int = 1
 var _emitting_game_over: bool = false
+## 特殊回合（充能护盾免疫触发）待处理阵营
+var _special_pending_sides: Array[String] = []
+var _special_resume_phase: String = ""
+var _special_resume_active_side: String = ""
+var _special_turn_end_resolved: bool = false
+var _special_resolving: bool = false
 
 
 func _init(database = null, battle_seed: int = 0) -> void:
@@ -76,6 +83,11 @@ func setup(
 	active_side = ""
 	_next_entity_id = 1
 	_next_card_instance_id = 1
+	_special_pending_sides.clear()
+	_special_resume_phase = ""
+	_special_resume_active_side = ""
+	_special_turn_end_resolved = false
+	_special_resolving = false
 	environments.clear()
 	environment_labels.clear()
 	for entry: Variant in DEFAULT_ENVIRONMENTS:
@@ -88,6 +100,7 @@ func setup(
 	for side: String in [SIDE_P, SIDE_Z]:
 		var initial_draw: int = mode.initial_draw_for_faction(side)
 		draw_cards(side, initial_draw)
+	_grant_initial_superpowers()
 	mulligan_ready = {SIDE_P: false, SIDE_Z: false}
 	_log("对局开始：%s vs %s" % [player_hero.display_name(), enemy_hero.display_name()])
 	changed.emit()
@@ -105,6 +118,15 @@ func _create_player(side: String, hero: HeroData, deck_ids: Array[String]) -> Ba
 	state.hero_health = state.hero_max_health
 	state.energy = 0
 	state.energy_cap = mode.energy_cap
+	state.charge_shield = 0
+	state.charge_shield_durability = mode.charge_shield_durability
+	state.charge_shield_emergency_uses = mode.charge_shield_emergency_uses
+	state.superpower_pool.clear()
+	if hero != null:
+		for card_id: String in hero.special_card_ids:
+			var special_card: CardData = get_card(card_id)
+			if special_card != null and special_card.is_spell() and not state.superpower_pool.has(card_id):
+				state.superpower_pool.append(card_id)
 	state.deck.clear()
 	for card_id: String in deck_ids:
 		state.add_to_deck(_new_card_instance(card_id, side, "deck"))
@@ -139,6 +161,140 @@ func add_card_to_deck(side: String, card_id: String) -> BattleCardInstance:
 	return instance
 
 
+func _grant_initial_superpowers() -> void:
+	for side: String in [SIDE_P, SIDE_Z]:
+		_grant_superpower_card(side, false)
+
+
+## 从该英雄的超能力池随机取一张；as_offer=true 时标记为特殊回合的临时 -1 费牌。
+func _grant_superpower_card(side: String, as_offer: bool = true) -> BattleCardInstance:
+	var state: BattlePlayerState = players.get(side, null)
+	if state == null or state.superpower_pool.is_empty():
+		return null
+	var index: int = rng.randi_range(0, state.superpower_pool.size() - 1)
+	var card_id: String = state.superpower_pool[index]
+	state.superpower_pool.remove_at(index)
+	var instance: BattleCardInstance = add_card_to_hand(side, card_id)
+	if instance == null:
+		return null
+	if as_offer:
+		state.special_offer_id = instance.instance_id
+	_log("%s 获得超能力：%s%s" % [
+		side.to_upper(), instance.card_id,
+		"（特殊回合）" if as_offer else "",
+	])
+	return instance
+
+
+func _trigger_superpower_offer(side: String) -> void:
+	var state: BattlePlayerState = players.get(side, null)
+	if state == null or state.special_offer_id != 0:
+		return
+	var instance: BattleCardInstance = _grant_superpower_card(side, true)
+	if instance == null:
+		_log("%s 超能力牌池为空，取消本次特殊回合" % side.to_upper())
+		return
+	state.special_choice = ""
+	if not _special_pending_sides.has(side):
+		_special_pending_sides.append(side)
+	changed.emit()
+
+
+func _maybe_begin_special_turn(resume_phase: String, turn_end_resolved: bool = false) -> bool:
+	if _special_pending_sides.is_empty() or phase == PHASE_SPECIAL:
+		return false
+	_special_resume_phase = resume_phase
+	_special_resume_active_side = active_side
+	_special_turn_end_resolved = turn_end_resolved
+	phase = PHASE_SPECIAL
+	active_side = ""
+	_log("特殊回合：等待 %s 选择超能力" % "、".join(_special_pending_sides))
+	changed.emit()
+	return true
+
+
+func special_resolve_hand(side: String) -> Dictionary:
+	if phase != PHASE_SPECIAL or not _special_pending_sides.has(side):
+		return _fail("当前不处于该阵营的特殊回合。")
+	if _special_waits_for_priority(side):
+		return _fail("请等待优先阵营先结算超能力。")
+	var state: BattlePlayerState = players.get(side, null)
+	if state == null or state.special_offer_id == 0:
+		return _fail("没有可选择的超能力牌。")
+	state.special_offer_id = 0
+	state.special_choice = "hand"
+	_special_pending_sides.erase(side)
+	_log("%s 将超能力移入手牌" % side.to_upper())
+	if _special_pending_sides.is_empty():
+		_finish_special_turn()
+	return {"ok": true, "message": "已移入手牌。"}
+
+
+func special_resolve_play(side: String, target: Dictionary = {}) -> Dictionary:
+	if phase != PHASE_SPECIAL or not _special_pending_sides.has(side):
+		return _fail("当前不处于该阵营的特殊回合。")
+	if _special_waits_for_priority(side):
+		return _fail("请等待优先阵营先结算超能力。")
+	var state: BattlePlayerState = players.get(side, null)
+	if state == null or state.special_offer_id == 0:
+		return _fail("没有可选择的超能力牌。")
+	var hand_index: int = state.find_hand_index(state.special_offer_id)
+	if hand_index < 0:
+		return _fail("超能力牌不在手牌中。")
+	var instance: BattleCardInstance = state.hand[hand_index]
+	var original_delta: int = instance.cost_delta
+	var original_phase: String = phase
+	var original_active: String = active_side
+	instance.cost_delta -= 1
+	phase = PHASE_HAND
+	active_side = side
+	_special_resolving = true
+	var result: Dictionary = play_card(side, hand_index, target)
+	_special_resolving = false
+	if not bool(result.get("ok", false)):
+		instance.cost_delta = original_delta
+		phase = original_phase
+		active_side = original_active
+		return result
+	state.special_offer_id = 0
+	state.special_choice = "play"
+	_special_pending_sides.erase(side)
+	_log("%s 在特殊回合打出超能力" % side.to_upper())
+	if _special_pending_sides.is_empty():
+		_finish_special_turn()
+	else:
+		phase = PHASE_SPECIAL
+		active_side = ""
+		changed.emit()
+	return result
+
+
+func _special_waits_for_priority(side: String) -> bool:
+	if _special_pending_sides.size() <= 1:
+		return false
+	var other: String = opposite_side(side)
+	return _special_pending_sides.has(other) and mode.superpower_priority_side != side
+
+
+func _finish_special_turn() -> void:
+	var resume_phase: String = _special_resume_phase
+	var resume_side: String = _special_resume_active_side
+	var end_resolved: bool = _special_turn_end_resolved
+	_special_resume_phase = ""
+	_special_resume_active_side = ""
+	_special_turn_end_resolved = false
+	phase = resume_phase
+	active_side = resume_side
+	if phase == PHASE_TURN_END:
+		if not end_resolved:
+			_clear_hero_shields()
+			_resolve_turn_end()
+		if winner == "":
+			_start_next_turn()
+	else:
+		changed.emit()
+
+
 func get_card(card_id: String) -> CardData:
 	if card_database == null:
 		return null
@@ -167,7 +323,10 @@ func effective_hand_cost(side: String, hand_index: int) -> int:
 	var card: CardData = get_card(instance.card_id)
 	if card == null:
 		return 0
-	return maxi(card.cost + instance.cost_delta, 0)
+	var special_discount: int = 1 if (
+		phase == PHASE_SPECIAL and state.special_offer_id == instance.instance_id
+	) else 0
+	return maxi(card.cost + instance.cost_delta - special_discount, 0)
 
 
 func effective_hand_attack(side: String, hand_index: int) -> int:
@@ -268,15 +427,29 @@ func advance_phase() -> void:
 			active_side = ""
 			_log("对战回合：开始逐列结算")
 			_resolve_combat()
+			if winner == "" and not _special_pending_sides.is_empty():
+				if _maybe_begin_special_turn(PHASE_TURN_END):
+					return
 			if winner == "":
 				phase = PHASE_TURN_END
 				_log("回合结束效果结算")
 				_resolve_turn_end()
+			_clear_hero_shields()
+			if winner == "" and not _special_pending_sides.is_empty():
+				if _maybe_begin_special_turn(PHASE_TURN_END, true):
+					return
 			if winner == "":
 				_start_next_turn()
 		_:
 			pass
 	changed.emit()
+
+
+func _clear_hero_shields() -> void:
+	for side: String in [SIDE_P, SIDE_Z]:
+		var state: BattlePlayerState = players.get(side, null)
+		if state != null:
+			state.hero_shield = 0
 
 
 func _start_next_turn() -> void:
@@ -485,6 +658,8 @@ func play_card(side: String, hand_index: int, target: Dictionary = {}) -> Dictio
 	_flush_deaths()
 	_check_game_over()
 	changed.emit()
+	if not _special_resolving and not _special_pending_sides.is_empty() and phase != PHASE_SPECIAL:
+		_maybe_begin_special_turn(phase)
 	return {"ok": true, "message": "已打出：%s" % card.display_name()}
 
 
@@ -527,6 +702,7 @@ func _run_script(card: CardData, side: String, chosen: Variant) -> void:
 	elif chosen != null:
 		chosen_handles = [chosen]
 	context.set_chosen_targets(chosen_handles)
+	context.set_source_keywords(card.keywords)
 	var errors: Array[String] = card.ability_script.run_on_play(context)
 	for message: String in errors:
 		_log("效果错误（%s）：%s" % [card.display_name(), message])
@@ -633,6 +809,10 @@ func execute_command(side: String, command: Dictionary) -> Dictionary:
 		"mulligan_confirm":
 			confirm_mulligan(side)
 			return {"ok": true, "message": "已确认起手。"}
+		"special_play":
+			return special_resolve_play(side, command.get("target", {}))
+		"special_hand":
+			return special_resolve_hand(side)
 		_:
 			return _fail("未知命令：%s" % command_type)
 
@@ -669,13 +849,13 @@ func side_of_handle(handle: Variant) -> String:
 
 # ----- 伤害 / 治疗 / 原语 -----
 
-func damage_handle(handle: Variant, amount: int) -> void:
+func damage_handle(handle: Variant, amount: int, source_keywords: Array = []) -> void:
 	if amount <= 0:
 		return
 	if handle is BattleEntity:
-		damage_entity(handle, amount, [])
+		damage_entity(handle, amount, source_keywords)
 	elif handle is String and handle.begins_with("hero:"):
-		damage_hero(handle.substr(5), amount)
+		damage_hero(handle.substr(5), amount, source_keywords)
 
 
 func damage_entity(entity: BattleEntity, amount: int, source_keywords: Array = []) -> void:
@@ -708,6 +888,25 @@ func damage_hero(side: String, amount: int, source_keywords: Array = []) -> void
 	if damage <= 0:
 		_log("%s 英雄护盾吸收本次伤害（剩余护盾 %d）" % [side.to_upper(), state.hero_shield])
 		return
+	# 真实受击：先结算充能护盾，再决定是否免疫本次伤害。
+	var is_bullseye: bool = source_keywords.has("bullseye")
+	var lethal: bool = damage >= state.hero_health
+	var charge_gain: int = 0
+	if not is_bullseye:
+		if lethal and state.charge_shield_emergency_uses > 0 and state.charge_shield_durability > 0:
+			state.charge_shield_emergency_uses -= 1
+			charge_gain = 3
+			_log("%s 触发生命保护：本次受击无视数值，充能 +3" % side.to_upper())
+		else:
+			charge_gain = mode.charge_gain_for_damage(damage)
+		var projected_charge: int = state.charge_shield + charge_gain
+		state.charge_shield = projected_charge
+		if projected_charge >= mode.charge_shield_max and state.charge_shield_durability > 0:
+			state.charge_shield = 0
+			state.charge_shield_durability -= 1
+			_log("%s 充能护盾触发免疫（剩余耐久 %d）" % [side.to_upper(), state.charge_shield_durability])
+			_trigger_superpower_offer(side)
+			return
 	state.hero_health -= damage
 	hero_damaged.emit(side, damage, source_keywords.duplicate())
 	_log("%s 英雄受到 %d 点伤害（生命 %d，护盾 %d）" % [
@@ -800,6 +999,7 @@ func _fire_event(event_name: String, event_entity: BattleEntity, chosen_targets:
 		var context := BattleEffectContext.new(self, listener.side)
 		context.set_self_target(listener)
 		context.set_event_target(event_entity)
+		context.set_source_keywords(listener.keywords)
 		if not chosen_targets.is_empty():
 			context.set_chosen_targets(chosen_targets)
 		var errors: Array[String] = listener.card.ability_script.run_event(context, event_name, event_entity)

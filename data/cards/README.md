@@ -51,7 +51,7 @@ english_name,chinese_name,kind,cost,attack,health,shield,class,rarity,keywords,t
 | `shield` | int | 防御力（护甲） |
 | `class` | string | 职业，必须是 `config.csv` 中的 class 之一 |
 | `rarity` | string | 稀有度，必须是 `config.csv` 中的 rarity 之一 |
-| `keywords` | string | 词缀，逗号分隔；带数值的写 `id:数值`（如 `first_strike:2`）；未知词缀或该卡牌种类不允许获得的词缀会被忽略/报错 |
+| `keywords` | string | 词缀，逗号分隔；带数值的写 `id:数值`（如 `first_strike:2`）；未知词缀或该卡牌种类不允许获得的词缀会被忽略/报错。`bullseye` 表示伤害类型为必中，不增加充能护盾充能 |
 | `tribes` | string | 流派，逗号分隔；必须是配置中的 tribe |
 | `ability` | string | 特殊能力，伪代码（见下） |
 | `description` | string | 中文简介，卡牌详情页底部显示 |
@@ -77,6 +77,15 @@ english_name,chinese_name,kind,cost,attack,health,shield,class,rarity,keywords,t
 `bullseye` 必中、`double_strike` 双击、`overshoot` 溅射、`frenzy` 狂怒、`untrickable` 免疫锦囊、`team_up` 组队。
 
 完整定义见 `scripts/data/card_keywords.gd`。
+
+### 超能力与英雄专属牌
+
+英雄数据 `special_cards` 列出的法术牌就是该英雄的超能力牌池来源。超能力牌在 `tribes` 中带有 `superpower` 流派标记：
+
+- 每个英雄的池子按 `special_card_ids` 生成，每个卡牌 ID 一份
+- 开局初始抽牌后随机发放一张到该英雄手牌
+- 充能护盾触发免疫时再随机发放一张，并进入超能力特殊回合
+- 英雄之间可以共用同一张超能力牌
 
 ### 带数值的词缀与种类白名单
 

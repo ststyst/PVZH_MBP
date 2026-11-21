@@ -32,7 +32,7 @@ const DEFINITIONS: Dictionary = {
 	},
 	"bullseye": {
 		"label": "必中",
-		"description": "攻击不会被闪避。",
+		"description": "该实体或法术造成的伤害类型为必中；必中伤害不会增加充能护盾充能。",
 	},
 	"double_strike": {
 		"label": "双击",
