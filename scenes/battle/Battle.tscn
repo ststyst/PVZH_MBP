@@ -77,7 +77,7 @@ layout_mode = 2
 custom_minimum_size = Vector2(0, 44)
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 10
-text = "空位"
+text = ""
 clip_text = true
 
 [node name="ZNormalButton" type="Button" parent="Margin/Root/Board/Column1"]
@@ -85,7 +85,7 @@ layout_mode = 2
 custom_minimum_size = Vector2(0, 44)
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 10
-text = "空位"
+text = ""
 clip_text = true
 
 [node name="Separator" type="HSeparator" parent="Margin/Root/Board/Column1"]
@@ -96,7 +96,7 @@ layout_mode = 2
 custom_minimum_size = Vector2(0, 44)
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 10
-text = "空位"
+text = ""
 clip_text = true
 
 [node name="PTeamButton" type="Button" parent="Margin/Root/Board/Column1"]
@@ -104,7 +104,7 @@ layout_mode = 2
 custom_minimum_size = Vector2(0, 44)
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 10
-text = "空位"
+text = ""
 clip_text = true
 
 [node name="Column2" type="VBoxContainer" parent="Margin/Root/Board"]
@@ -123,7 +123,7 @@ layout_mode = 2
 custom_minimum_size = Vector2(0, 44)
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 10
-text = "空位"
+text = ""
 clip_text = true
 
 [node name="ZNormalButton" type="Button" parent="Margin/Root/Board/Column2"]
@@ -131,7 +131,7 @@ layout_mode = 2
 custom_minimum_size = Vector2(0, 44)
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 10
-text = "空位"
+text = ""
 clip_text = true
 
 [node name="Separator" type="HSeparator" parent="Margin/Root/Board/Column2"]
@@ -142,7 +142,7 @@ layout_mode = 2
 custom_minimum_size = Vector2(0, 44)
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 10
-text = "空位"
+text = ""
 clip_text = true
 
 [node name="PTeamButton" type="Button" parent="Margin/Root/Board/Column2"]
@@ -150,7 +150,7 @@ layout_mode = 2
 custom_minimum_size = Vector2(0, 44)
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 10
-text = "空位"
+text = ""
 clip_text = true
 
 [node name="Column3" type="VBoxContainer" parent="Margin/Root/Board"]
@@ -169,7 +169,7 @@ layout_mode = 2
 custom_minimum_size = Vector2(0, 44)
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 10
-text = "空位"
+text = ""
 clip_text = true
 
 [node name="ZNormalButton" type="Button" parent="Margin/Root/Board/Column3"]
@@ -177,7 +177,7 @@ layout_mode = 2
 custom_minimum_size = Vector2(0, 44)
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 10
-text = "空位"
+text = ""
 clip_text = true
 
 [node name="Separator" type="HSeparator" parent="Margin/Root/Board/Column3"]
@@ -188,7 +188,7 @@ layout_mode = 2
 custom_minimum_size = Vector2(0, 44)
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 10
-text = "空位"
+text = ""
 clip_text = true
 
 [node name="PTeamButton" type="Button" parent="Margin/Root/Board/Column3"]
@@ -196,7 +196,7 @@ layout_mode = 2
 custom_minimum_size = Vector2(0, 44)
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 10
-text = "空位"
+text = ""
 clip_text = true
 
 [node name="Column4" type="VBoxContainer" parent="Margin/Root/Board"]
@@ -215,7 +215,7 @@ layout_mode = 2
 custom_minimum_size = Vector2(0, 44)
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 10
-text = "空位"
+text = ""
 clip_text = true
 
 [node name="ZNormalButton" type="Button" parent="Margin/Root/Board/Column4"]
@@ -223,7 +223,7 @@ layout_mode = 2
 custom_minimum_size = Vector2(0, 44)
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 10
-text = "空位"
+text = ""
 clip_text = true
 
 [node name="Separator" type="HSeparator" parent="Margin/Root/Board/Column4"]
@@ -234,7 +234,7 @@ layout_mode = 2
 custom_minimum_size = Vector2(0, 44)
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 10
-text = "空位"
+text = ""
 clip_text = true
 
 [node name="PTeamButton" type="Button" parent="Margin/Root/Board/Column4"]
@@ -242,7 +242,7 @@ layout_mode = 2
 custom_minimum_size = Vector2(0, 44)
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 10
-text = "空位"
+text = ""
 clip_text = true
 
 [node name="Column5" type="VBoxContainer" parent="Margin/Root/Board"]
@@ -261,7 +261,7 @@ layout_mode = 2
 custom_minimum_size = Vector2(0, 44)
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 10
-text = "空位"
+text = ""
 clip_text = true
 
 [node name="ZNormalButton" type="Button" parent="Margin/Root/Board/Column5"]
@@ -269,7 +269,7 @@ layout_mode = 2
 custom_minimum_size = Vector2(0, 44)
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 10
-text = "空位"
+text = ""
 clip_text = true
 
 [node name="Separator" type="HSeparator" parent="Margin/Root/Board/Column5"]
@@ -280,7 +280,7 @@ layout_mode = 2
 custom_minimum_size = Vector2(0, 44)
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 10
-text = "空位"
+text = ""
 clip_text = true
 
 [node name="PTeamButton" type="Button" parent="Margin/Root/Board/Column5"]
@@ -288,7 +288,7 @@ layout_mode = 2
 custom_minimum_size = Vector2(0, 44)
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 10
-text = "空位"
+text = ""
 clip_text = true
 
 [node name="CenterBar" type="HBoxContainer" parent="Margin/Root"]
@@ -345,9 +345,10 @@ size_flags_horizontal = 3
 [node name="StatusLabel" type="Label" parent="Margin/Root/HandTitleBar"]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.74902, 0.780392, 0.858824, 1)
 theme_override_font_sizes/font_size = 11
-autowrap_mode = 2
+horizontal_alignment = 2
 
 [node name="HandScroll" type="ScrollContainer" parent="Margin/Root"]
 unique_name_in_owner = true

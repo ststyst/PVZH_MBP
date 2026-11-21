@@ -43,9 +43,12 @@ var _ai_accum: float = 0.0
 
 var _board_columns: Array[Dictionary] = []
 var _mulligan_used: Array[bool] = []
+var _empty_slot_style: StyleBoxEmpty = null
+var _highlight_slot_style: StyleBoxFlat = null
 
 
 func _ready() -> void:
+	_init_slot_styles()
 	_collect_board_columns()
 	_enemy_hero_button.pressed.connect(_on_enemy_hero_pressed)
 	_player_hero_button.pressed.connect(_on_player_hero_pressed)
@@ -105,6 +108,9 @@ func _collect_board_columns() -> void:
 		z_normal.pressed.connect(_on_slot_pressed.bind("z", index, BattleEngine.SLOT_NORMAL))
 		p_normal.pressed.connect(_on_slot_pressed.bind("p", index, BattleEngine.SLOT_NORMAL))
 		p_team.pressed.connect(_on_slot_pressed.bind("p", index, BattleEngine.SLOT_TEAM_UP))
+		for button: Button in [z_team, z_normal, p_normal, p_team]:
+			button.text = ""
+			_apply_empty_slot_style(button)
 		_board_columns.append({
 			"env": environment_label,
 			"z_team": z_team,
@@ -112,6 +118,33 @@ func _collect_board_columns() -> void:
 			"p_normal": p_normal,
 			"p_team": p_team,
 		})
+
+
+func _init_slot_styles() -> void:
+	_empty_slot_style = StyleBoxEmpty.new()
+	_highlight_slot_style = StyleBoxFlat.new()
+	_highlight_slot_style.bg_color = Color(1.0, 1.0, 1.0, 0.04)
+	_highlight_slot_style.border_color = Color(1.0, 1.0, 1.0, 1.0)
+	_highlight_slot_style.set_border_width_all(3)
+	_highlight_slot_style.set_corner_radius_all(6)
+
+
+func _apply_empty_slot_style(button: Button) -> void:
+	button.flat = true
+	for state: String in ["normal", "hover", "pressed", "focus", "disabled"]:
+		button.add_theme_stylebox_override(state, _empty_slot_style)
+
+
+func _apply_highlight_slot_style(button: Button) -> void:
+	button.flat = false
+	for state: String in ["normal", "hover", "pressed", "focus"]:
+		button.add_theme_stylebox_override(state, _highlight_slot_style)
+
+
+func _clear_slot_style(button: Button) -> void:
+	button.flat = false
+	for state: String in ["normal", "hover", "pressed", "focus", "disabled"]:
+		button.remove_theme_stylebox_override(state)
 # ----- 起手 -----
 
 func _show_mulligan() -> void:
@@ -328,29 +361,40 @@ func _update_slot_button(
 	valid_slots: Array[Dictionary],
 ) -> void:
 	var entity: BattleEntity = _entity_at(column, side, slot)
-	if entity == null:
-		button.text = "空位"
-	else:
-		button.text = "%s\n⚔%d ♥%d" % [entity.display_name(), entity.attack, entity.health]
-		if entity.shield > 0:
-			button.text += " 🛡%d" % entity.shield
 	var actionable: bool = false
 	if not _started or engine.winner != "":
 		actionable = false
 	elif _pending_mode == "place":
-		for slot_info: Dictionary in valid_slots:
-			if int(slot_info.get("column", -1)) == column and int(slot_info.get("slot", -1)) == slot:
-				actionable = true
-				break
+		if side == player_side:
+			for slot_info: Dictionary in valid_slots:
+				if int(slot_info.get("column", -1)) == column and int(slot_info.get("slot", -1)) == slot:
+					actionable = true
+					break
 	elif _pending_mode == "column":
 		actionable = side == player_side
 	elif _pending_mode == "target":
 		actionable = entity != null and _pending_candidates.has(entity)
 	else:
 		actionable = entity != null and entity.side == player_side and entity.team_up
-	button.disabled = not actionable
+	if entity == null:
+		button.text = ""
+		if actionable and (_pending_mode == "place" or _pending_mode == "column"):
+			_apply_highlight_slot_style(button)
+			button.disabled = false
+		else:
+			_apply_empty_slot_style(button)
+			button.disabled = true
+		return
+	button.text = "%s\n⚔%d ♥%d" % [entity.display_name(), entity.attack, entity.health]
+	if entity.shield > 0:
+		button.text += " 🛡%d" % entity.shield
 	if _pending_mode == "target" and actionable:
 		button.text = "★" + button.text
+	if actionable and _pending_mode == "column":
+		_apply_highlight_slot_style(button)
+	else:
+		_clear_slot_style(button)
+	button.disabled = not actionable
 
 
 func _rebuild_hand() -> void:
