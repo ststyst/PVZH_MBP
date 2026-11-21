@@ -10,3 +10,468 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_battle")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.0705882, 0.0784314, 0.109804, 1)
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 6
+theme_override_constants/margin_bottom = 6
+
+[node name="Root" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="EnemyBar" type="HBoxContainer" parent="Margin/Root"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="EnemyHeroButton" type="Button" parent="Margin/Root/EnemyBar"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(0, 48)
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 12
+text = "敌方英雄"
+
+[node name="EnemyInfoLabel" type="Label" parent="Margin/Root/EnemyBar"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(150, 0)
+theme_override_font_sizes/font_size = 12
+text = "手牌 0 · 牌库 0"
+
+[node name="Board" type="HBoxContainer" parent="Margin/Root"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+
+[node name="Column1" type="VBoxContainer" parent="Margin/Root/Board"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="EnvLabel" type="Label" parent="Margin/Root/Board/Column1"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "第1列"
+horizontal_alignment = 1
+
+[node name="ZTeamButton" type="Button" parent="Margin/Root/Board/Column1"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 44)
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 10
+text = "空位"
+clip_text = true
+
+[node name="ZNormalButton" type="Button" parent="Margin/Root/Board/Column1"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 44)
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 10
+text = "空位"
+clip_text = true
+
+[node name="Separator" type="HSeparator" parent="Margin/Root/Board/Column1"]
+layout_mode = 2
+
+[node name="PNormalButton" type="Button" parent="Margin/Root/Board/Column1"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 44)
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 10
+text = "空位"
+clip_text = true
+
+[node name="PTeamButton" type="Button" parent="Margin/Root/Board/Column1"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 44)
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 10
+text = "空位"
+clip_text = true
+
+[node name="Column2" type="VBoxContainer" parent="Margin/Root/Board"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="EnvLabel" type="Label" parent="Margin/Root/Board/Column2"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "第2列"
+horizontal_alignment = 1
+
+[node name="ZTeamButton" type="Button" parent="Margin/Root/Board/Column2"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 44)
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 10
+text = "空位"
+clip_text = true
+
+[node name="ZNormalButton" type="Button" parent="Margin/Root/Board/Column2"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 44)
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 10
+text = "空位"
+clip_text = true
+
+[node name="Separator" type="HSeparator" parent="Margin/Root/Board/Column2"]
+layout_mode = 2
+
+[node name="PNormalButton" type="Button" parent="Margin/Root/Board/Column2"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 44)
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 10
+text = "空位"
+clip_text = true
+
+[node name="PTeamButton" type="Button" parent="Margin/Root/Board/Column2"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 44)
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 10
+text = "空位"
+clip_text = true
+
+[node name="Column3" type="VBoxContainer" parent="Margin/Root/Board"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="EnvLabel" type="Label" parent="Margin/Root/Board/Column3"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "第3列"
+horizontal_alignment = 1
+
+[node name="ZTeamButton" type="Button" parent="Margin/Root/Board/Column3"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 44)
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 10
+text = "空位"
+clip_text = true
+
+[node name="ZNormalButton" type="Button" parent="Margin/Root/Board/Column3"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 44)
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 10
+text = "空位"
+clip_text = true
+
+[node name="Separator" type="HSeparator" parent="Margin/Root/Board/Column3"]
+layout_mode = 2
+
+[node name="PNormalButton" type="Button" parent="Margin/Root/Board/Column3"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 44)
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 10
+text = "空位"
+clip_text = true
+
+[node name="PTeamButton" type="Button" parent="Margin/Root/Board/Column3"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 44)
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 10
+text = "空位"
+clip_text = true
+
+[node name="Column4" type="VBoxContainer" parent="Margin/Root/Board"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="EnvLabel" type="Label" parent="Margin/Root/Board/Column4"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "第4列"
+horizontal_alignment = 1
+
+[node name="ZTeamButton" type="Button" parent="Margin/Root/Board/Column4"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 44)
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 10
+text = "空位"
+clip_text = true
+
+[node name="ZNormalButton" type="Button" parent="Margin/Root/Board/Column4"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 44)
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 10
+text = "空位"
+clip_text = true
+
+[node name="Separator" type="HSeparator" parent="Margin/Root/Board/Column4"]
+layout_mode = 2
+
+[node name="PNormalButton" type="Button" parent="Margin/Root/Board/Column4"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 44)
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 10
+text = "空位"
+clip_text = true
+
+[node name="PTeamButton" type="Button" parent="Margin/Root/Board/Column4"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 44)
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 10
+text = "空位"
+clip_text = true
+
+[node name="Column5" type="VBoxContainer" parent="Margin/Root/Board"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="EnvLabel" type="Label" parent="Margin/Root/Board/Column5"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 10
+text = "第5列"
+horizontal_alignment = 1
+
+[node name="ZTeamButton" type="Button" parent="Margin/Root/Board/Column5"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 44)
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 10
+text = "空位"
+clip_text = true
+
+[node name="ZNormalButton" type="Button" parent="Margin/Root/Board/Column5"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 44)
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 10
+text = "空位"
+clip_text = true
+
+[node name="Separator" type="HSeparator" parent="Margin/Root/Board/Column5"]
+layout_mode = 2
+
+[node name="PNormalButton" type="Button" parent="Margin/Root/Board/Column5"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 44)
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 10
+text = "空位"
+clip_text = true
+
+[node name="PTeamButton" type="Button" parent="Margin/Root/Board/Column5"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 44)
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 10
+text = "空位"
+clip_text = true
+
+[node name="CenterBar" type="HBoxContainer" parent="Margin/Root"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="PhaseLabel" type="Label" parent="Margin/Root/CenterBar"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "阶段"
+
+[node name="TurnLabel" type="Label" parent="Margin/Root/CenterBar"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "第 1 回合"
+
+[node name="TimerLabel" type="Label" parent="Margin/Root/CenterBar"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "不限时"
+
+[node name="Spacer" type="Control" parent="Margin/Root/CenterBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="EndPhaseButton" type="Button" parent="Margin/Root/CenterBar"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(120, 36)
+text = "结束阶段"
+
+[node name="LogLabel" type="Label" parent="Margin/Root"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+autowrap_mode = 2
+
+[node name="HandTitleBar" type="HBoxContainer" parent="Margin/Root"]
+layout_mode = 2
+
+[node name="HandTitle" type="Label" parent="Margin/Root/HandTitleBar"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+text = "手牌"
+
+[node name="Spacer" type="Control" parent="Margin/Root/HandTitleBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="StatusLabel" type="Label" parent="Margin/Root/HandTitleBar"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.74902, 0.780392, 0.858824, 1)
+theme_override_font_sizes/font_size = 11
+autowrap_mode = 2
+
+[node name="HandScroll" type="ScrollContainer" parent="Margin/Root"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 210)
+layout_mode = 2
+horizontal_scroll_mode = 1
+vertical_scroll_mode = 0
+
+[node name="HandRow" type="HBoxContainer" parent="Margin/Root/HandScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="PlayerBar" type="HBoxContainer" parent="Margin/Root"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="PlayerHeroButton" type="Button" parent="Margin/Root/PlayerBar"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(0, 48)
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 12
+text = "我方英雄"
+
+[node name="PlayerInfoLabel" type="Label" parent="Margin/Root/PlayerBar"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(150, 0)
+theme_override_font_sizes/font_size = 12
+text = "手牌 0 · 牌库 0"
+
+[node name="MulliganOverlay" type="ColorRect" parent="."]
+unique_name_in_owner = true
+visible = false
+z_index = 10
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.03, 0.035, 0.05, 0.94)
+
+[node name="Margin" type="MarginContainer" parent="MulliganOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 24
+
+[node name="VBox" type="VBoxContainer" parent="MulliganOverlay/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="MulliganOverlay/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "起手调度"
+
+[node name="Hint" type="Label" parent="MulliganOverlay/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "点击卡牌下方的“刷新”可洗回牌组并重抽一张（每张限一次）。"
+autowrap_mode = 2
+
+[node name="Scroll" type="ScrollContainer" parent="MulliganOverlay/Margin/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 1
+vertical_scroll_mode = 0
+
+[node name="MulliganRow" type="HBoxContainer" parent="MulliganOverlay/Margin/VBox/Scroll"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="MulliganConfirmButton" type="Button" parent="MulliganOverlay/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(0, 60)
+text = "确定"
+
+[node name="GameOverOverlay" type="ColorRect" parent="."]
+unique_name_in_owner = true
+visible = false
+z_index = 11
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.03, 0.035, 0.05, 0.94)
+
+[node name="Margin" type="MarginContainer" parent="GameOverOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 24
+
+[node name="VBox" type="VBoxContainer" parent="GameOverOverlay/Margin"]
+layout_mode = 2
+alignment = 1
+
+[node name="GameOverLabel" type="Label" parent="GameOverOverlay/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+horizontal_alignment = 1
+
+[node name="GameOverBackButton" type="Button" parent="GameOverOverlay/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(0, 60)
+text = "返回准备界面"

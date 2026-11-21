@@ -6,8 +6,6 @@ extends Control
 ## - 简单 AI：优先打出费用最高的可打出手牌，目标随机
 
 const CARD_TILE_SCENE: PackedScene = preload("res://scenes/cards/CardTile.tscn")
-const SLOT_HEIGHT: int = 44
-const HAND_HEIGHT: int = 210
 const AI_INTERVAL: float = 0.7
 
 var engine: BattleEngine = null
@@ -24,27 +22,36 @@ var _phase_remaining: float = 0.0
 var _last_phase_key: String = ""
 var _ai_accum: float = 0.0
 
-var _enemy_hero_button: Button = null
-var _player_hero_button: Button = null
-var _enemy_info_label: Label = null
-var _player_info_label: Label = null
+@onready var _enemy_hero_button: Button = %EnemyHeroButton
+@onready var _player_hero_button: Button = %PlayerHeroButton
+@onready var _enemy_info_label: Label = %EnemyInfoLabel
+@onready var _player_info_label: Label = %PlayerInfoLabel
+@onready var _board: HBoxContainer = %Board
+@onready var _phase_label: Label = %PhaseLabel
+@onready var _turn_label: Label = %TurnLabel
+@onready var _timer_label: Label = %TimerLabel
+@onready var _log_label: Label = %LogLabel
+@onready var _status_label: Label = %StatusLabel
+@onready var _end_phase_button: Button = %EndPhaseButton
+@onready var _hand_row: HBoxContainer = %HandRow
+@onready var _mulligan_overlay: Control = %MulliganOverlay
+@onready var _mulligan_row: HBoxContainer = %MulliganRow
+@onready var _mulligan_confirm_button: Button = %MulliganConfirmButton
+@onready var _game_over_overlay: Control = %GameOverOverlay
+@onready var _game_over_label: Label = %GameOverLabel
+@onready var _game_over_back_button: Button = %GameOverBackButton
+
 var _board_columns: Array[Dictionary] = []
-var _phase_label: Label = null
-var _turn_label: Label = null
-var _timer_label: Label = null
-var _log_label: Label = null
-var _status_label: Label = null
-var _end_phase_button: Button = null
-var _hand_row: HBoxContainer = null
-var _mulligan_overlay: Control = null
-var _mulligan_row: HBoxContainer = null
 var _mulligan_used: Array[bool] = []
-var _game_over_overlay: Control = null
-var _game_over_label: Label = null
 
 
 func _ready() -> void:
-	_build_ui()
+	_collect_board_columns()
+	_enemy_hero_button.pressed.connect(_on_enemy_hero_pressed)
+	_player_hero_button.pressed.connect(_on_player_hero_pressed)
+	_end_phase_button.pressed.connect(_on_end_phase_pressed)
+	_mulligan_confirm_button.pressed.connect(_on_mulligan_confirm_pressed)
+	_game_over_back_button.pressed.connect(_on_return_after_game_pressed)
 	var setup: Dictionary = BattleManager.current_battle
 	if setup.is_empty():
 		_show_fatal("没有进行中的对局，请返回准备界面重新开始。")
@@ -81,61 +88,23 @@ func _to_string_array(raw: Variant) -> Array[String]:
 			result.append(str(entry))
 	return result
 
+# ----- 场景节点初始化 -----
 
-# ----- UI 构建 -----
-
-func _build_ui() -> void:
-	var background := ColorRect.new()
-	background.color = Color(0.0705882, 0.0784314, 0.109804)
-	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(background)
-
-	var margin := MarginContainer.new()
-	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 6)
-	margin.add_theme_constant_override("margin_right", 6)
-	margin.add_theme_constant_override("margin_top", 6)
-	margin.add_theme_constant_override("margin_bottom", 6)
-	add_child(margin)
-
-	var root := VBoxContainer.new()
-	root.add_theme_constant_override("separation", 4)
-	margin.add_child(root)
-
-	var enemy_bar := HBoxContainer.new()
-	root.add_child(enemy_bar)
-	_enemy_hero_button = _make_bar_button()
-	_enemy_hero_button.pressed.connect(_on_enemy_hero_pressed)
-	enemy_bar.add_child(_enemy_hero_button)
-	_enemy_info_label = _make_label("", 12)
-	_enemy_info_label.custom_minimum_size = Vector2(150, 0)
-	enemy_bar.add_child(_enemy_info_label)
-
-	var board := HBoxContainer.new()
-	board.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	board.add_theme_constant_override("separation", 4)
-	root.add_child(board)
-	for column_index: int in range(BattleEngine.COLUMN_COUNT):
-		var column := VBoxContainer.new()
-		column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		column.add_theme_constant_override("separation", 2)
-		board.add_child(column)
-		var environment_label := _make_label("", 10)
-		environment_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		column.add_child(environment_label)
-		var z_team := _make_slot_button("空位")
-		z_team.pressed.connect(_on_slot_pressed.bind("z", column_index, BattleEngine.SLOT_TEAM_UP))
-		column.add_child(z_team)
-		var z_normal := _make_slot_button("空位")
-		z_normal.pressed.connect(_on_slot_pressed.bind("z", column_index, BattleEngine.SLOT_NORMAL))
-		column.add_child(z_normal)
-		column.add_child(HSeparator.new())
-		var p_normal := _make_slot_button("空位")
-		p_normal.pressed.connect(_on_slot_pressed.bind("p", column_index, BattleEngine.SLOT_NORMAL))
-		column.add_child(p_normal)
-		var p_team := _make_slot_button("空位")
-		p_team.pressed.connect(_on_slot_pressed.bind("p", column_index, BattleEngine.SLOT_TEAM_UP))
-		column.add_child(p_team)
+func _collect_board_columns() -> void:
+	_board_columns.clear()
+	for index: int in range(_board.get_child_count()):
+		var column: VBoxContainer = _board.get_child(index) as VBoxContainer
+		if column == null:
+			continue
+		var environment_label: Label = column.get_node("EnvLabel") as Label
+		var z_team: Button = column.get_node("ZTeamButton") as Button
+		var z_normal: Button = column.get_node("ZNormalButton") as Button
+		var p_normal: Button = column.get_node("PNormalButton") as Button
+		var p_team: Button = column.get_node("PTeamButton") as Button
+		z_team.pressed.connect(_on_slot_pressed.bind("z", index, BattleEngine.SLOT_TEAM_UP))
+		z_normal.pressed.connect(_on_slot_pressed.bind("z", index, BattleEngine.SLOT_NORMAL))
+		p_normal.pressed.connect(_on_slot_pressed.bind("p", index, BattleEngine.SLOT_NORMAL))
+		p_team.pressed.connect(_on_slot_pressed.bind("p", index, BattleEngine.SLOT_TEAM_UP))
 		_board_columns.append({
 			"env": environment_label,
 			"z_team": z_team,
@@ -143,152 +112,6 @@ func _build_ui() -> void:
 			"p_normal": p_normal,
 			"p_team": p_team,
 		})
-
-	var center_bar := HBoxContainer.new()
-	center_bar.add_theme_constant_override("separation", 8)
-	root.add_child(center_bar)
-	_phase_label = _make_label("", 14)
-	center_bar.add_child(_phase_label)
-	_turn_label = _make_label("", 12)
-	center_bar.add_child(_turn_label)
-	_timer_label = _make_label("", 12)
-	center_bar.add_child(_timer_label)
-	var spacer := Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	center_bar.add_child(spacer)
-	_end_phase_button = Button.new()
-	_end_phase_button.text = "结束阶段"
-	_end_phase_button.custom_minimum_size = Vector2(120, 36)
-	_end_phase_button.pressed.connect(_on_end_phase_pressed)
-	center_bar.add_child(_end_phase_button)
-
-	_log_label = _make_label("", 11)
-	_log_label.custom_minimum_size = Vector2(0, 42)
-	_log_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	root.add_child(_log_label)
-
-	var hand_title := HBoxContainer.new()
-	root.add_child(hand_title)
-	var hand_label := _make_label("手牌", 13)
-	hand_title.add_child(hand_label)
-	var hand_spacer := Control.new()
-	hand_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	hand_title.add_child(hand_spacer)
-	_status_label = _make_label("", 11)
-	_status_label.add_theme_color_override("font_color", Color(0.749, 0.780, 0.859))
-	hand_title.add_child(_status_label)
-
-	var hand_scroll := ScrollContainer.new()
-	hand_scroll.custom_minimum_size = Vector2(0, HAND_HEIGHT)
-	hand_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	hand_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	root.add_child(hand_scroll)
-	_hand_row = HBoxContainer.new()
-	_hand_row.add_theme_constant_override("separation", 4)
-	hand_scroll.add_child(_hand_row)
-
-	var player_bar := HBoxContainer.new()
-	root.add_child(player_bar)
-	_player_hero_button = _make_bar_button()
-	_player_hero_button.pressed.connect(_on_player_hero_pressed)
-	player_bar.add_child(_player_hero_button)
-	_player_info_label = _make_label("", 12)
-	_player_info_label.custom_minimum_size = Vector2(150, 0)
-	player_bar.add_child(_player_info_label)
-
-	_build_mulligan_overlay()
-	_build_game_over_overlay()
-
-
-func _build_mulligan_overlay() -> void:
-	_mulligan_overlay = ColorRect.new()
-	_mulligan_overlay.color = Color(0.03, 0.035, 0.05, 0.94)
-	_mulligan_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_mulligan_overlay.z_index = 10
-	_mulligan_overlay.visible = false
-	add_child(_mulligan_overlay)
-	var margin := MarginContainer.new()
-	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 16)
-	margin.add_theme_constant_override("margin_right", 16)
-	margin.add_theme_constant_override("margin_top", 24)
-	margin.add_theme_constant_override("margin_bottom", 24)
-	_mulligan_overlay.add_child(margin)
-	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 12)
-	margin.add_child(vbox)
-	var title := _make_label("起手调度", 22)
-	vbox.add_child(title)
-	var hint := _make_label("点击卡牌下方的“刷新”可洗回牌组并重抽一张（每张限一次）。", 12)
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	vbox.add_child(hint)
-	var scroll := ScrollContainer.new()
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	vbox.add_child(scroll)
-	_mulligan_row = HBoxContainer.new()
-	_mulligan_row.add_theme_constant_override("separation", 8)
-	scroll.add_child(_mulligan_row)
-	var confirm := Button.new()
-	confirm.text = "确定"
-	confirm.custom_minimum_size = Vector2(0, 60)
-	confirm.pressed.connect(_on_mulligan_confirm_pressed)
-	vbox.add_child(confirm)
-
-
-func _build_game_over_overlay() -> void:
-	_game_over_overlay = ColorRect.new()
-	_game_over_overlay.color = Color(0.03, 0.035, 0.05, 0.94)
-	_game_over_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_game_over_overlay.z_index = 11
-	_game_over_overlay.visible = false
-	add_child(_game_over_overlay)
-	var margin := MarginContainer.new()
-	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 24)
-	margin.add_theme_constant_override("margin_right", 24)
-	margin.add_theme_constant_override("margin_top", 24)
-	margin.add_theme_constant_override("margin_bottom", 24)
-	_game_over_overlay.add_child(margin)
-	var vbox := VBoxContainer.new()
-	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	margin.add_child(vbox)
-	_game_over_label = _make_label("", 32)
-	_game_over_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vbox.add_child(_game_over_label)
-	var back := Button.new()
-	back.text = "返回准备界面"
-	back.custom_minimum_size = Vector2(0, 60)
-	back.pressed.connect(_on_return_after_game_pressed)
-	vbox.add_child(back)
-
-
-func _make_label(text: String, font_size: int) -> Label:
-	var label := Label.new()
-	label.text = text
-	label.add_theme_font_size_override("font_size", font_size)
-	return label
-
-
-func _make_slot_button(text: String) -> Button:
-	var button := Button.new()
-	button.text = text
-	button.custom_minimum_size = Vector2(0, SLOT_HEIGHT)
-	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	button.add_theme_font_size_override("font_size", 10)
-	button.clip_text = true
-	return button
-
-
-func _make_bar_button() -> Button:
-	var button := Button.new()
-	button.custom_minimum_size = Vector2(0, 48)
-	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	button.add_theme_font_size_override("font_size", 12)
-	return button
-
-
 # ----- 起手 -----
 
 func _show_mulligan() -> void:
