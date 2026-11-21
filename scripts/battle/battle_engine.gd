@@ -28,8 +28,6 @@ const DEFAULT_ENVIRONMENTS: Array = ["highground", "default", "default", "defaul
 const DEFAULT_ENVIRONMENT_LABELS: Array = ["高地", "默认", "默认", "默认", "水池"]
 
 var mode: GameModeConfig = null
-## 由 UI/服务器从 data/server/server_config.json 注入；0 表示不限制。
-var team_up_swap_cooldown_seconds: float = 0.35
 var players: Dictionary = {}
 var entities: Array[BattleEntity] = []
 var environments: Array[String] = []
@@ -46,7 +44,6 @@ var card_database: Object = null
 
 var _next_entity_id: int = 1
 var _next_card_instance_id: int = 1
-var _swap_ready_at_msec: Dictionary = {}
 var _emitting_game_over: bool = false
 
 
@@ -77,7 +74,6 @@ func setup(
 	active_side = ""
 	_next_entity_id = 1
 	_next_card_instance_id = 1
-	_swap_ready_at_msec = {SIDE_P: 0, SIDE_Z: 0}
 	environments.clear()
 	environment_labels.clear()
 	for entry: Variant in DEFAULT_ENVIRONMENTS:
@@ -341,13 +337,22 @@ func valid_slots(side: String, card: CardData) -> Array[Dictionary]:
 				existing.append(entity)
 		if existing.size() >= 2:
 			continue
-		# 位置不固定：该列已有实体 + 新实体至少有一个带“组队”才能放入第二张
+		# 第二张实体需要至少一方有“组队”
 		if existing.size() == 1 and not existing[0].team_up and not comes_with_team_up:
 			continue
-		# 空列的两个空位都允许打出；已有 1 个实体时只剩余一个空位
 		for candidate_slot: int in [SLOT_NORMAL, SLOT_TEAM_UP]:
-			if _entity_at(column, side, candidate_slot) == null:
+			var occupant: BattleEntity = _entity_at(column, side, candidate_slot)
+			if occupant == null:
 				result.append({"column": column, "slot": candidate_slot})
+			elif comes_with_team_up and occupant.side == side:
+				# 组队实体可以点已有友方实体所在的格子；该实体被挪到本列另一空格。
+				var other_slot: int = SLOT_NORMAL if candidate_slot == SLOT_TEAM_UP else SLOT_TEAM_UP
+				if _entity_at(column, side, other_slot) == null:
+					result.append({
+						"column": column,
+						"slot": candidate_slot,
+						"displace": occupant.entity_id,
+					})
 	return result
 
 
@@ -435,6 +440,19 @@ func play_card(side: String, hand_index: int, target: Dictionary = {}) -> Dictio
 				break
 		if not valid:
 			return _fail("该位置不能放置这张实体。")
+		# 组队实体放到已有友方实体所在格：把原实体移到本列另一空格（不触发位置变动事件）。
+		var occupant: BattleEntity = _entity_at(column, side, slot)
+		if occupant != null:
+			if not card.has_keyword("team_up"):
+				return _fail("只有组队实体可以占用已有友方实体的格子。")
+			var other_slot: int = SLOT_NORMAL if slot == SLOT_TEAM_UP else SLOT_TEAM_UP
+			if _entity_at(column, side, other_slot) != null:
+				return _fail("这一列已经满员。")
+			occupant.slot = other_slot
+			_log("%s 被移动到第 %d 列%s位" % [
+				occupant.display_name(), column + 1,
+				"组队" if other_slot == SLOT_TEAM_UP else "普通",
+			])
 		_spend_and_remove(state, hand_index, card, effective_cost)
 		var entity: BattleEntity = summon_card(
 			side, card, column, slot, instance.attack_bonus
@@ -554,56 +572,47 @@ func find_free_slot(side: String, card: CardData, preferred_column: int = -1) ->
 	return {}
 
 
-func swap_team_up(side: String, entity: BattleEntity) -> bool:
-	if entity == null or not entity.alive or not entity.team_up:
+## 位置移动（卡牌效果）：移动到空位；若目标列已有实体，需至少一方带“组队”。
+## 成功后会触发 position_changed 事件；打出组队实体导致的位置挪动不会走这里。
+func move_entity(entity: BattleEntity, column: int, slot: int, fire_event: bool = true) -> bool:
+	if entity == null or not entity.alive:
 		return false
-	if entity.side != side:
+	if column < 0 or column >= COLUMN_COUNT or (slot != SLOT_NORMAL and slot != SLOT_TEAM_UP):
 		return false
-	var other_slot: int = SLOT_NORMAL if entity.slot == SLOT_TEAM_UP else SLOT_TEAM_UP
-	var other: BattleEntity = _entity_at(entity.column, side, other_slot)
-	if other == null:
+	if entity.column == column and entity.slot == slot:
 		return false
-	var old_slot: int = entity.slot
-	entity.slot = other_slot
-	other.slot = old_slot
-	_log("%s 与 %s 交换位置" % [entity.display_name(), other.display_name()])
+	if _entity_at(column, entity.side, slot) != null:
+		return false
+	var occupants: Array[BattleEntity] = []
+	for other: BattleEntity in entities:
+		if other == entity or not other.alive:
+			continue
+		if other.column == column and other.side == entity.side:
+			occupants.append(other)
+	if occupants.size() >= 2:
+		return false
+	if occupants.size() == 1 and not occupants[0].team_up and not entity.team_up:
+		return false
+	entity.column = column
+	entity.slot = slot
+	_log("%s 移动到第 %d 列%s位" % [
+		entity.display_name(), column + 1,
+		"组队" if slot == SLOT_TEAM_UP else "普通",
+	])
+	if fire_event:
+		_fire_event("position_changed", entity)
 	changed.emit()
 	return true
 
 
-## 带冷却的组队换位：UI 与服务器命令都走这里，避免高频点击/高频命令。
-func try_swap_team_up(side: String, entity: BattleEntity, now_msec: int = 0) -> Dictionary:
-	var now: int = now_msec if now_msec > 0 else Time.get_ticks_msec()
-	var ready_at: int = int(_swap_ready_at_msec.get(side, 0))
-	if now < ready_at:
-		return {
-			"ok": false,
-			"message": "换位冷却中，请稍后。",
-			"remaining_ms": ready_at - now,
-		}
-	if not swap_team_up(side, entity):
-		return _fail("这一列没有可交换的另一实体。")
-	var cooldown_ms: int = int(round(team_up_swap_cooldown_seconds * 1000.0))
-	if cooldown_ms > 0:
-		_swap_ready_at_msec[side] = now + cooldown_ms
-	return {"ok": true, "message": "已交换位置。"}
-
-
-## 联机命令用：按 entity_id 校验并交换组队实体位置。
-func swap_team_up_by_id(side: String, entity_id: int, now_msec: int = 0) -> Dictionary:
-	for entity: BattleEntity in entities:
-		if entity.entity_id != entity_id:
-			continue
-		if entity.side != side:
-			return _fail("不能操作敌方实体。")
-		if not entity.team_up:
-			return _fail("该实体没有组队词缀。")
-		return try_swap_team_up(side, entity, now_msec)
-	return _fail("实体不存在。")
+func move_entity_handle(handle: Variant, column: int, slot: int) -> bool:
+	if handle is BattleEntity:
+		return move_entity(handle, column, slot)
+	return false
 
 
 ## 服务器权威命令入口：所有客户端意图都应通过这里校验后执行。
-func execute_command(side: String, command: Dictionary, now_msec: int = 0) -> Dictionary:
+func execute_command(side: String, command: Dictionary) -> Dictionary:
 	var command_type: String = str(command.get("type", command.get("command", "")))
 	match command_type:
 		"play_card":
@@ -614,8 +623,6 @@ func execute_command(side: String, command: Dictionary, now_msec: int = 0) -> Di
 				return _fail("当前不是你的阶段。")
 			end_phase(side)
 			return {"ok": true, "message": "阶段结束。"}
-		"swap_team_up":
-			return swap_team_up_by_id(side, int(command.get("entity_id", -1)), now_msec)
 		"mulligan_replace":
 			if replace_mulligan_card(side, int(command.get("hand_index", -1))):
 				return {"ok": true, "message": "已换牌。"}

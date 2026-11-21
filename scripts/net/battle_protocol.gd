@@ -20,7 +20,6 @@ const MSG_ERROR: String = "error"
 
 const COMMAND_PLAY_CARD: String = "play_card"
 const COMMAND_END_PHASE: String = "end_phase"
-const COMMAND_SWAP_TEAM_UP: String = "swap_team_up"
 const COMMAND_MULLIGAN_REPLACE: String = "mulligan_replace"
 const COMMAND_MULLIGAN_CONFIRM: String = "mulligan_confirm"
 

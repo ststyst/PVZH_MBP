@@ -10,6 +10,11 @@ const CARD_TILE_SCENE: PackedScene = preload("res://scenes/cards/CardTile.tscn")
 const MENU_ACTION_PRIMARY: int = 0
 const MENU_ACTION_INFO: int = 1
 
+## 牌组下拉菜单素材；缺图时回退为纯文字。
+const ICON_ADD: String = "res://assets/ui/deck_menu/add.png"
+const ICON_REMOVE: String = "res://assets/ui/deck_menu/remove.png"
+const ICON_INFO: String = "res://assets/ui/deck_menu/info.png"
+
 @onready var back_button: Button = %BackButton
 @onready var deck_name_label: Label = %DeckNameLabel
 @onready var hero_label: Label = %HeroLabel
@@ -32,6 +37,7 @@ func _ready() -> void:
 	back_button.pressed.connect(_on_back_pressed)
 	save_button.pressed.connect(_on_save_pressed)
 	card_menu.id_pressed.connect(_on_menu_id_pressed)
+	card_menu.add_theme_constant_override("icon_max_width", 24)
 	_load_deck()
 
 
@@ -112,9 +118,12 @@ func _open_available_menu(entry: Dictionary, tile: CardTile) -> void:
 	_menu_card_id = str(entry.get("card_id", ""))
 	_menu_from_deck = false
 	card_menu.clear()
-	card_menu.add_item("选中", MENU_ACTION_PRIMARY)
-	card_menu.set_item_disabled(0, not bool(entry.get("can_add", false)))
-	card_menu.add_item("信息", MENU_ACTION_INFO)
+	_add_menu_item("编入", MENU_ACTION_PRIMARY, ICON_ADD)
+	card_menu.set_item_disabled(
+		card_menu.get_item_index(MENU_ACTION_PRIMARY),
+		not bool(entry.get("can_add", false)),
+	)
+	_add_menu_item("信息", MENU_ACTION_INFO, ICON_INFO)
 	_popup_menu_at(tile)
 
 
@@ -122,9 +131,18 @@ func _open_deck_menu(card_id: String, tile: CardTile) -> void:
 	_menu_card_id = card_id
 	_menu_from_deck = true
 	card_menu.clear()
-	card_menu.add_item("移除", MENU_ACTION_PRIMARY)
-	card_menu.add_item("信息", MENU_ACTION_INFO)
+	_add_menu_item("移出", MENU_ACTION_PRIMARY, ICON_REMOVE)
+	_add_menu_item("信息", MENU_ACTION_INFO, ICON_INFO)
 	_popup_menu_at(tile)
+
+
+func _add_menu_item(label: String, id: int, icon_path: String) -> void:
+	if ResourceLoader.exists(icon_path):
+		var texture: Texture2D = load(icon_path) as Texture2D
+		if texture != null:
+			card_menu.add_icon_item(texture, label, id)
+			return
+	card_menu.add_item(label, id)
 
 
 func _popup_menu_at(tile: CardTile) -> void:

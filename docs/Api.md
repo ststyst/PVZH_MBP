@@ -360,15 +360,11 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 ### 服务器/运行优化配置 `ServerConfig`
 
 文件：`data/server/server_config.json`；字段说明见 `data/server/README.md`。
-当前只有 `match.team_up_swap_cooldown_seconds` 接入代码，其余为预留参数。
+当前所有字段均为预留，不提供业务接口。
 
 | API | 说明 |
 |---|---|
 | `ServerConfig.load_config(path)` | 读取原始配置字典（失败返回空） |
-| `ServerConfig.swap_cooldown_seconds(path)` | 读取组队换位冷却秒数；缺失回退 0.35 |
-
-单机战斗 UI 启动时会把该冷却注入 `BattleEngine.team_up_swap_cooldown_seconds`；
-未来服务器也使用同一字段。
 
 ### 牌组管理 `DeckManager`（autoload）
 
@@ -427,19 +423,16 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 | API | 说明 |
 |---|---|
 | `confirm_mulligan(side)` / `replace_mulligan_card(side, index)` | 起手调度（每张限换一次） |
-| `play_card(side, hand_index, target)` | target：实体 `{column,slot}`；环境 `{column}`；需要目标 `{handle}` |
+| `play_card(side, hand_index, target)` | target：实体 `{column,slot}`（组队实体可指向已有友方实体格，挤开原实体）；环境 `{column}`；需要目标 `{handle}` |
 | `end_phase(side)` / `advance_phase()` | 结束当前阶段 / 推进阶段 |
-| `swap_team_up(side, entity)` | 组队实体与同列同阵营另一实体换位 |
-| `valid_slots(side, card)` / `target_candidates(card, side)` | UI 高亮与 AI 选目标 |
+| `valid_slots(side, card)` / `target_candidates(card, side)` | UI 高亮与 AI 选目标；`valid_slots` 的 `displace` 字段表示会挤开哪个实体 |
+| `move_entity(entity, column, slot)` | 卡牌效果移动实体到空位，触发 `position_changed` |
 | `damage_handle / heal_handle / buff_handle / ...` | 效果原语入口 |
 | `changed` / `game_finished(winner)` 信号 | 状态变化 / 胜负 |
 | `animation_cue(trigger, actor, target)` 信号 | 攻击/能力触发/死亡时发出动画请求（UI 排队播放，不阻塞逻辑） |
 | `effective_hand_cost(side, index)` / `effective_hand_attack(side, index)` | 应用手牌实例修正后的有效费用/攻击 |
 | `hand_card_display(side, index)` | 给 UI 的手牌显示副本（已带有效费用/攻击） |
 | `play_card(..., target.handles)` | 多目标选择；`handles` 为实体数组 |
-| `execute_command(side, command)` | 服务器权威命令入口：play_card/end_phase/swap_team_up/起手 |
-| `try_swap_team_up(side, entity, now_msec)` | 带冷却的组队换位（UI 与服务器命令共用；冷却来自玩法配置） |
-| `swap_team_up_by_id(side, entity_id)` | 按实体 ID 校验并交换组队位置（联机命令用） |
 | `get_markers(side)` | 返回玩家特殊标志物 `{名字: 数量}` 副本 |
 
 卡牌动画：`CardData.animation_script`（`CardAnimationScript`）解析 `animation` 列，

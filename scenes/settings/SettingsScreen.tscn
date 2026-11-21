@@ -1,8 +1,9 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=3 uid="uid://8w6t0vwfc4ok"]
 
-[ext_resource type="Script" path="res://scripts/ui/settings_screen.gd" id="1_settings"]
+[ext_resource type="Script" uid="uid://clfy4rr3eb31h" path="res://scripts/ui/settings_screen.gd" id="1_settings"]
+[ext_resource type="Theme" uid="uid://dd7i32g28guo5" path="res://themes/pvzh_ui.tres" id="2_n3mps"]
 
-[node name="SettingsScreen" type="Control"]
+[node name="SettingsScreen" type="Control" unique_id=11138218]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -11,16 +12,16 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_settings")
 
-[node name="Background" type="ColorRect" parent="."]
+[node name="Background" type="ColorRect" parent="." unique_id=889111399]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.0705882, 0.0784314, 0.109804, 1)
+color = Color(0.07762883, 0.07762881, 0.07762881, 1)
 
-[node name="Margin" type="MarginContainer" parent="."]
+[node name="Margin" type="MarginContainer" parent="." unique_id=250930904]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -32,119 +33,120 @@ theme_override_constants/margin_top = 20
 theme_override_constants/margin_right = 20
 theme_override_constants/margin_bottom = 20
 
-[node name="VBox" type="VBoxContainer" parent="Margin"]
+[node name="VBox" type="VBoxContainer" parent="Margin" unique_id=1615019861]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="TopBar" type="HBoxContainer" parent="Margin/VBox"]
+[node name="TopBar" type="HBoxContainer" parent="Margin/VBox" unique_id=20290717]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="BackButton" type="Button" parent="Margin/VBox/TopBar"]
+[node name="BackButton" type="Button" parent="Margin/VBox/TopBar" unique_id=269300433]
 unique_name_in_owner = true
 layout_mode = 2
 text = "← 返回"
 
-[node name="TitleLabel" type="Label" parent="Margin/VBox/TopBar"]
+[node name="TitleLabel" type="Label" parent="Margin/VBox/TopBar" unique_id=2003271324]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 24
 text = "设置"
 
-[node name="Scroll" type="ScrollContainer" parent="Margin/VBox"]
+[node name="Scroll" type="ScrollContainer" parent="Margin/VBox" unique_id=930364873]
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
-[node name="Content" type="VBoxContainer" parent="Margin/VBox/Scroll"]
+[node name="Content" type="VBoxContainer" parent="Margin/VBox/Scroll" unique_id=405382820]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 14
 
-[node name="AudioTitle" type="Label" parent="Margin/VBox/Scroll/Content"]
+[node name="AudioTitle" type="Label" parent="Margin/VBox/Scroll/Content" unique_id=1811995474]
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.72, 0.32, 1)
 theme_override_font_sizes/font_size = 18
 text = "音频"
 
-[node name="VolumeRow" type="HBoxContainer" parent="Margin/VBox/Scroll/Content"]
+[node name="VolumeRow" type="HBoxContainer" parent="Margin/VBox/Scroll/Content" unique_id=1213087080]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="VolumeLabel" type="Label" parent="Margin/VBox/Scroll/Content/VolumeRow"]
-layout_mode = 2
+[node name="VolumeLabel" type="Label" parent="Margin/VBox/Scroll/Content/VolumeRow" unique_id=670603122]
 custom_minimum_size = Vector2(100, 0)
+layout_mode = 2
 text = "主音量"
 
-[node name="VolumeSlider" type="HSlider" parent="Margin/VBox/Scroll/Content/VolumeRow"]
+[node name="VolumeSlider" type="HSlider" parent="Margin/VBox/Scroll/Content/VolumeRow" unique_id=1593233485]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
 value = 1.0
 
-[node name="VolumeValue" type="Label" parent="Margin/VBox/Scroll/Content/VolumeRow"]
+[node name="VolumeValue" type="Label" parent="Margin/VBox/Scroll/Content/VolumeRow" unique_id=1930912412]
 unique_name_in_owner = true
-layout_mode = 2
 custom_minimum_size = Vector2(64, 0)
+layout_mode = 2
 text = "100%"
 horizontal_alignment = 2
 
-[node name="DisplayTitle" type="Label" parent="Margin/VBox/Scroll/Content"]
+[node name="DisplayTitle" type="Label" parent="Margin/VBox/Scroll/Content" unique_id=693519976]
 layout_mode = 2
+theme = ExtResource("2_n3mps")
 theme_override_colors/font_color = Color(1, 0.72, 0.32, 1)
 theme_override_font_sizes/font_size = 18
 text = "显示"
 
-[node name="DisplayOption" type="OptionButton" parent="Margin/VBox/Scroll/Content"]
+[node name="DisplayOption" type="OptionButton" parent="Margin/VBox/Scroll/Content" unique_id=1248984526]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="DisplayHint" type="Label" parent="Margin/VBox/Scroll/Content"]
+[node name="DisplayHint" type="Label" parent="Margin/VBox/Scroll/Content" unique_id=1601924370]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.65098, 0.678431, 0.760784, 1)
 autowrap_mode = 2
 
-[node name="AccountTitle" type="Label" parent="Margin/VBox/Scroll/Content"]
+[node name="AccountTitle" type="Label" parent="Margin/VBox/Scroll/Content" unique_id=601061298]
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.72, 0.32, 1)
 theme_override_font_sizes/font_size = 18
 text = "账号与存档"
 
-[node name="InfoLabel" type="Label" parent="Margin/VBox/Scroll/Content"]
+[node name="InfoLabel" type="Label" parent="Margin/VBox/Scroll/Content" unique_id=1471849681]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.788235, 0.807843, 0.847059, 1)
 autowrap_mode = 2
 
-[node name="SaveButton" type="Button" parent="Margin/VBox/Scroll/Content"]
+[node name="SaveButton" type="Button" parent="Margin/VBox/Scroll/Content" unique_id=24986515]
 unique_name_in_owner = true
-layout_mode = 2
 custom_minimum_size = Vector2(0, 52)
+layout_mode = 2
 text = "保存当前存档"
 
-[node name="DeveloperButton" type="Button" parent="Margin/VBox/Scroll/Content"]
+[node name="DeveloperButton" type="Button" parent="Margin/VBox/Scroll/Content" unique_id=201980491]
 unique_name_in_owner = true
-layout_mode = 2
 custom_minimum_size = Vector2(0, 52)
+layout_mode = 2
 text = "开发者调试"
 
-[node name="SurrenderButton" type="Button" parent="Margin/VBox/Scroll/Content"]
+[node name="SurrenderButton" type="Button" parent="Margin/VBox/Scroll/Content" unique_id=31735424]
 unique_name_in_owner = true
 visible = false
-layout_mode = 2
 custom_minimum_size = Vector2(0, 52)
+layout_mode = 2
 theme_override_colors/font_color = Color(0.941176, 0.54902, 0.54902, 1)
 text = "投降"
 
-[node name="StatusLabel" type="Label" parent="Margin/VBox"]
+[node name="StatusLabel" type="Label" parent="Margin/VBox" unique_id=2063730850]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.74902, 0.780392, 0.858824, 1)
 autowrap_mode = 2
 
-[node name="VersionLabel" type="Label" parent="Margin/VBox"]
+[node name="VersionLabel" type="Label" parent="Margin/VBox" unique_id=820236352]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.478431, 0.501961, 0.568627, 1)

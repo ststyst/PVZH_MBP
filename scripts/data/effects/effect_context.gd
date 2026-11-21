@@ -87,6 +87,12 @@ func destroy(_target) -> void:
 	push_warning("EffectContext.destroy 未实现：需要战斗层提供")
 
 
+## 把实体移动到指定列/位置（0=普通，1=组队）；成功会触发 position_changed。
+func move_entity(_target, _column: int, _slot: int) -> bool:
+	push_warning("EffectContext.move_entity 未实现：需要战斗层提供")
+	return false
+
+
 ## 多目标选择声明：从 selector 候选中校验最多 count 个已选目标。
 func choose_targets(_count: int, _selector: String) -> bool:
 	push_warning("EffectContext.choose_targets 未实现：需要战斗层提供")

@@ -172,37 +172,48 @@ func test_place_entity() -> void:
 	assert_eq(int(engine.entities[0].slot), 0)
 
 
-func test_team_up_swap() -> void:
+func test_team_up_placement_displaces_existing() -> void:
 	var engine: BattleEngine = _started_engine()
-	var team_card: CardData = cards.get_card("pvzh:hound")
-	var copy: CardData = team_card.duplicate()
-	copy.card_id = "pvzh:test_team"
-	copy.keywords.append("team_up")
-	cards.cards[copy.card_id] = copy
-	var normal: BattleEntity = engine.summon_card("p", cards.get_card("pvzh:gnoll"), 0, BattleEngine.SLOT_NORMAL)
-	var team: BattleEntity = engine.summon_card("p", copy, 0, BattleEngine.SLOT_TEAM_UP)
-	assert_true(engine.swap_team_up("p", team), "组队实体应能与同列另一实体交换")
-	assert_eq(team.slot, BattleEngine.SLOT_NORMAL)
-	assert_eq(normal.slot, BattleEngine.SLOT_TEAM_UP)
-	var enemy_swap: Dictionary = engine.execute_command("z", {
-		"type": "swap_team_up", "entity_id": team.entity_id,
-	}, 1000)
-	assert_false(bool(enemy_swap.get("ok", true)), "服务器命令应拒绝敌方实体的换位")
-	var own_swap: Dictionary = engine.execute_command("p", {
-		"type": "swap_team_up", "entity_id": team.entity_id,
-	}, 1000)
-	assert_true(bool(own_swap.get("ok", false)), "服务器命令应允许自己的组队换位")
-	assert_eq(team.slot, BattleEngine.SLOT_TEAM_UP)
-	assert_eq(normal.slot, BattleEngine.SLOT_NORMAL)
-	var cooldown_block: Dictionary = engine.execute_command("p", {
-		"type": "swap_team_up", "entity_id": team.entity_id,
-	}, 1000)
-	assert_false(bool(cooldown_block.get("ok", true)), "冷却内换位命令应被拒绝")
-	var cooldown_ms: int = int(round(engine.team_up_swap_cooldown_seconds * 1000.0))
-	var after_cooldown: Dictionary = engine.execute_command("p", {
-		"type": "swap_team_up", "entity_id": team.entity_id,
-	}, 1000 + cooldown_ms + 1)
-	assert_true(bool(after_cooldown.get("ok", false)), "冷却结束后应可再次换位")
+	var team_card: CardData = _make_test_card("pvzh:test_team", "")
+	team_card.keywords.append("team_up")
+	var floor_card: CardData = _make_test_card(
+		"pvzh:test_moved",
+		"when position_changed:\n    add_marker(\"moved\", 1)"
+	)
+	var occupant: BattleEntity = engine.summon_card("p", floor_card, 0, BattleEngine.SLOT_NORMAL)
+	var state: BattlePlayerState = engine.players["p"]
+	_set_hand(engine, "p", [team_card.card_id])
+	state.energy = 10
+	engine.phase = BattleEngine.PHASE_HAND
+	engine.active_side = "p"
+	var result: Dictionary = engine.play_card("p", 0, {
+		"column": 0, "slot": BattleEngine.SLOT_NORMAL,
+	})
+	assert_true(bool(result.get("ok", false)), "组队实体应能占用已有友方实体的格子")
+	assert_eq(occupant.slot, BattleEngine.SLOT_TEAM_UP, "原实体应被移到另一格")
+	assert_eq(engine.entities.size(), 2)
+	assert_eq(engine._entity_at(0, "p", BattleEngine.SLOT_NORMAL).card.card_id, team_card.card_id)
+	assert_eq(state.marker_count("moved"), 0, "放置导致的位置变化不应触发 position_changed")
+
+	_set_hand(engine, "p", [team_card.card_id])
+	state.energy = 10
+	var full_result: Dictionary = engine.play_card("p", 0, {
+		"column": 0, "slot": BattleEngine.SLOT_TEAM_UP,
+	})
+	assert_false(bool(full_result.get("ok", true)), "满员列不允许再放置组队实体")
+
+
+func test_move_entity_triggers_position_event() -> void:
+	var engine: BattleEngine = _started_engine()
+	var mover_card: CardData = _make_test_card(
+		"pvzh:test_position_mover",
+		"when position_changed:\n    add_marker(\"moved\", 1)"
+	)
+	var entity: BattleEntity = engine.summon_card("p", mover_card, 0, BattleEngine.SLOT_NORMAL)
+	assert_true(engine.move_entity(entity, 2, BattleEngine.SLOT_TEAM_UP))
+	assert_eq(entity.column, 2)
+	assert_eq(entity.slot, BattleEngine.SLOT_TEAM_UP)
+	assert_eq(engine.players["p"].marker_count("moved"), 1, "效果移动应触发 position_changed")
 
 
 func test_spell_damage() -> void:

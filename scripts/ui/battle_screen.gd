@@ -76,7 +76,6 @@ func _ready() -> void:
 		return
 	mode = ModeManager.get_mode()
 	engine = BattleEngine.new(CardDatabase)
-	engine.team_up_swap_cooldown_seconds = ServerConfig.swap_cooldown_seconds()
 	engine.changed.connect(_on_engine_changed)
 	engine.game_finished.connect(_on_game_finished)
 	engine.animation_cue.connect(_on_animation_cue)
@@ -277,7 +276,11 @@ func _on_slot_pressed(side: String, column: int, slot: int) -> void:
 				_pending_handles.erase(choose_entity)
 			elif _pending_handles.size() < required_count:
 				_pending_handles.append(choose_entity)
-			_set_status("已选择 %d/%d；点击空位放置。" % [_pending_handles.size(), required_count])
+			if required_count > 0 and _pending_handles.size() >= required_count:
+				_pending_mode = "place"
+				_set_status("已选满 %d 个目标；点击放置位置（可点已有友方实体所在格）。" % required_count)
+			else:
+				_set_status("已选择 %d/%d；点击空位放置，或继续选择。" % [_pending_handles.size(), required_count])
 			_refresh_all()
 			return
 		if choose_entity == null and _pending_slot_valid(column, slot):
@@ -290,7 +293,10 @@ func _on_slot_pressed(side: String, column: int, slot: int) -> void:
 		_set_status("请选择高亮的友方实体，或点击空位放置。", true)
 		return
 	if _pending_mode == "place" and side == player_side:
-		_play_pending({"column": column, "slot": slot})
+		var place_target: Dictionary = {"column": column, "slot": slot}
+		if not _pending_handles.is_empty():
+			place_target["handles"] = _pending_handles.duplicate()
+		_play_pending(place_target)
 		return
 	if _pending_mode == "column":
 		if side == player_side:
@@ -303,18 +309,9 @@ func _on_slot_pressed(side: String, column: int, slot: int) -> void:
 		else:
 			_set_status("该位置不是合法目标。", true)
 		return
-	# 任何目标选择/放置状态都优先于组队换位；选择目标点击实体绝不触发换位。
+	# 任何目标选择/放置状态都优先；不再有手动换位。
 	if not _pending_mode.is_empty():
 		_set_status("请先完成当前目标选择。", true)
-		return
-	var own_entity: BattleEntity = _entity_at(column, side, slot)
-	if side == player_side and own_entity != null and own_entity.team_up:
-		var swap_result: Dictionary = engine.try_swap_team_up(player_side, own_entity)
-		if bool(swap_result.get("ok", false)):
-			_set_status(str(swap_result.get("message", "已交换位置。")))
-			_refresh_all()
-		else:
-			_set_status(str(swap_result.get("message", "换位失败。")), true)
 		return
 	_set_status("先点击手牌选择要打出的牌。")
 
@@ -457,7 +454,7 @@ func _update_slot_button(
 			else:
 				actionable = _pending_candidates.has(entity)
 	else:
-		actionable = entity != null and entity.side == player_side and entity.team_up
+		actionable = false
 	if entity == null:
 		if _entity_views.has(button):
 			var hidden_view: BattleEntityView = _entity_views[button] as BattleEntityView
@@ -479,8 +476,8 @@ func _update_slot_button(
 		actionable and (
 			_pending_mode == "target"
 			or _pending_mode == "column"
+			or _pending_mode == "place"
 			or (_pending_mode == "choose" and _pending_candidates.has(entity))
-			or (_pending_mode.is_empty() and entity.team_up)
 		)
 	)
 	button.text = ""

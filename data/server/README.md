@@ -4,8 +4,7 @@
 
 ## 当前状态
 
-- **已实现**：`match.team_up_swap_cooldown_seconds`（组队换位点击冷却）
-- **预留、暂未接入代码**：其余参数。它们用于未来专用服务器/LAN 主机，当前不会影响单机规则。
+- **所有参数均为预留，暂未接入代码**。它们用于未来专用服务器/LAN 主机，当前不会影响单机规则。
 - 玩法内容（牌组上限、英雄生命、抽牌等）仍由 `data/modes/default_mode.json` 管理。
 
 ## network
@@ -35,7 +34,6 @@
 
 | 参数 | 默认 | 功能 |
 |---|---|---|
-| `team_up_swap_cooldown_seconds` | `0.35` | 组队实体换位点击冷却（秒）；**已接入** UI/服务器命令，0 表示不限制 |
 | `command_rate_limit_per_second` | `10` | 单个玩家每秒最多接受的命令数 |
 | `max_commands_per_turn` | `100` | 单个回合内单玩家命令上限 |
 | `snapshot_interval_seconds` | `1` | 全量快照最小间隔；期间用事件增量 |
@@ -75,7 +73,3 @@
 | `motd` | `""` | 登录后公告文本 |
 | `region` | `lan` | 区域标识（lan / cn / asia 等） |
 | `max_concurrent_matches` | `32` | 服务器同时进行的对局上限 |
-
-## 单机是否生效
-
-`team_up_swap_cooldown_seconds` 会被单机战斗 UI 读取并应用到本地换位；其余参数只供未来服务器使用，单机不读取。

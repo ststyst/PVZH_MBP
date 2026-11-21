@@ -118,6 +118,10 @@ func destroy(target) -> void:
 	engine.destroy_handle(target)
 
 
+func move_entity(target, column: int, slot: int) -> bool:
+	return engine.move_entity_handle(target, column, slot)
+
+
 func choose_targets(count: int, selector: String) -> bool:
 	if chosen_targets.size() > maxi(count, 0):
 		return false

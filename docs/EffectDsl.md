@@ -32,6 +32,7 @@
 | `reduce_cost(amount)` | 数值 | 修改当前卡牌实例的费用（最低 0，用于手牌被动） |
 | `add_marker(name, amount)` | 标志物名、增减值 | 修改玩家特殊标志物数量（允许负数） |
 | `remove_marker(name, amount)` | 标志物名、数量 | 减少玩家特殊标志物（等价于负数 add_marker） |
+| `move_entity(target, column, slot)` | 实体、列(0-4)、位置(0普通/1组队) | 把实体移动到空位；成功触发 `position_changed` |
 
 多目标选择器（`all_enemies` / `all_allies` / `other_allies`）会被解释器**逐个**调用原语。
 
@@ -64,7 +65,7 @@
 
 `enter`（入场）、`die`（死亡）、`attack`（攻击）、`attacked`（受击）、`healed`（被治疗）、
 `attack_changed`（攻击力变化）、`health_changed`（生命值变化）、`turn_start`（回合开始）、`turn_end`（回合结束）、
-`ally_die`（友方实体死亡，可触发牌库/手牌中的卡牌被动）。
+`ally_die`（友方实体死亡，可触发牌库/手牌中的卡牌被动）、`position_changed`（实体被卡牌效果移动位置）。
 
 ### 区域被动
 
@@ -192,6 +193,21 @@ when enter:
         add_marker("special_marker_2", 3)
         add_marker("special_marker_3", -1)
 ```
+
+移动实体并触发位置事件：
+
+```
+move_entity(event, 2, 0)
+```
+
+拥有位置被动的实体：
+
+```
+when position_changed:
+    add_marker("moved", 1)
+```
+
+注意：打出组队实体时把原实体挤到同列另一格，属于“放置规则”，**不会触发** `position_changed`；只有卡牌效果调用 `move_entity` 才会触发。
 
 特殊标志物名字是任意英文字符串，不注册种类，数量允许负数。
 

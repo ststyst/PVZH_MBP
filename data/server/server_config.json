@@ -17,7 +17,6 @@
     "min_client_version": "0.1.0"
   },
   "match": {
-    "team_up_swap_cooldown_seconds": 0.35,
     "command_rate_limit_per_second": 10,
     "max_commands_per_turn": 100,
     "snapshot_interval_seconds": 1,
