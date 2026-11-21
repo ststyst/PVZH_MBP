@@ -4,15 +4,12 @@ extends Control
 const TOOLTIP_SERVER_ONLY: String = "仅服务器身份可用（登录专用服务端后开放）"
 
 @onready var player_label: Label = %PlayerLabel
-@onready var gold_label: Label = %GoldLabel
-@onready var dust_label: Label = %DustLabel
 @onready var identity_label: Label = %IdentityLabel
 @onready var battle_button: Button = %BattleButton
 @onready var deck_button: Button = %DeckButton
 @onready var collection_button: Button = %CollectionButton
 @onready var social_button: Button = %SocialButton
 @onready var events_button: Button = %EventsButton
-@onready var settings_button: Button = %SettingsButton
 @onready var dev_button: Button = %DevButton
 @onready var logout_button: Button = %LogoutButton
 @onready var status_label: Label = %StatusLabel
@@ -30,7 +27,6 @@ func _connect_signals() -> void:
 	collection_button.pressed.connect(_on_collection_pressed)
 	social_button.pressed.connect(_on_social_pressed)
 	events_button.pressed.connect(_on_events_pressed)
-	settings_button.pressed.connect(_on_settings_pressed)
 	dev_button.pressed.connect(_on_dev_pressed)
 	logout_button.pressed.connect(_on_logout_pressed)
 
@@ -39,14 +35,10 @@ func _refresh_header() -> void:
 	var profile: PlayerProfile = GameState.profile
 	if profile == null:
 		player_label.text = "未登录"
-		gold_label.text = ""
-		dust_label.text = ""
 		identity_label.text = GameState.get_identity_text()
 		_set_status("没有玩家资料，请返回登录界面。", true)
 		return
 	player_label.text = profile.player_name
-	gold_label.text = "金币 %d" % profile.gold
-	dust_label.text = "钻石 %d" % profile.diamond
 	identity_label.text = "%s　·　当前牌组：%s" % [
 		GameState.get_identity_text(),
 		_get_active_deck_name(profile),
@@ -87,10 +79,6 @@ func _on_social_pressed() -> void:
 
 func _on_events_pressed() -> void:
 	_show_placeholder("活动", "服主配置的玩法与签到奖励将在 M6 实现。")
-
-
-func _on_settings_pressed() -> void:
-	GameState.go_to_settings()
 
 
 func _on_dev_pressed() -> void:

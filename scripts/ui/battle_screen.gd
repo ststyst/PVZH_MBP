@@ -734,6 +734,14 @@ func _on_game_finished(winner_side: String) -> void:
 		_game_over_label.text = "失败……"
 
 
+## 设置界面（战斗内）的投降按钮调用。
+func surrender_player() -> void:
+	if engine == null or engine.winner != "":
+		return
+	engine.surrender(player_side)
+	_refresh_all()
+
+
 func _on_return_after_game_pressed() -> void:
 	BattleManager.clear_current_battle()
 	GameState.go_to_battle_prep()

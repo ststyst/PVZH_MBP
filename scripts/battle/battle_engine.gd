@@ -898,6 +898,14 @@ func _set_winner(side: String) -> void:
 		game_finished.emit(side)
 
 
+## 投降：立即判该阵营失败。
+func surrender(side: String) -> void:
+	if winner != "" or not players.has(side):
+		return
+	_set_winner(opposite_side(side))
+	changed.emit()
+
+
 func _trigger_zone_ally_death(dead_entity: BattleEntity) -> void:
 	var state: BattlePlayerState = players.get(dead_entity.side, null)
 	if state == null:

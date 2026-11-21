@@ -340,6 +340,16 @@ func test_animation_cues_on_attack_and_death() -> void:
 	assert_true(cues.has("die"), "死亡应触发动画 cue：%s" % [cues])
 
 
+func test_surrender_sets_opponent_winner() -> void:
+	var engine: BattleEngine = _started_engine()
+	var finished: Array[String] = []
+	engine.game_finished.connect(func(winner: String) -> void: finished.append(winner))
+	engine.surrender("p")
+	assert_eq(engine.winner, "z", "我方投降应判敌方获胜")
+	assert_eq(engine.phase, BattleEngine.PHASE_GAME_OVER)
+	assert_true(finished.has("z"))
+
+
 func test_zone_deck_death_bonus_and_play_attack() -> void:
 	var card: CardData = _make_test_card(
 		"pvzh:test_deck_bonus",

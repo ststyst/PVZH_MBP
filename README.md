@@ -34,7 +34,7 @@
   `choose(n, "other_allies")` 多目标；玩家特殊标志物为 `{名字: 数量}` 数据接口。
 - 联机基础：`scripts/net` 下已有 ENet 协议/服务器/客户端传输层；权威对局会话与 UI 接入待完成。
 - 服务器/运行优化配置：`data/server/server_config.json`（目前仅接入组队换位冷却，其余为预留参数，说明见 `data/server/README.md`）。
-- 设置与调试：设置页（音量/显示预设/保存存档/开发者入口）+ 开发者调试面板（货币/卡牌/CSV 编译）。
+- 设置与调试：全局 UI（`scenes/ui/GlobalUI.tscn`）常驻显示金币/钻石/设置；设置以覆盖层打开，战斗内额外提供「投降」；开发者调试面板（货币/卡牌/CSV 编译）。
 - 30 张示例卡数据（`data/cards/official/cards.csv`，CSV 数据驱动）+ 能力 DSL
   （`docs/EffectDsl.md`：变量、四则运算、条件目标、实体事件与过滤）。
 - 旧版占位界面（LoginScreen / MainScreen / Battle）；正式 UI 由后续开发替换。

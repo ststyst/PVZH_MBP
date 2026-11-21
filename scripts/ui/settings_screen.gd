@@ -1,5 +1,10 @@
+class_name SettingsScreen
 extends Control
 ## 设置界面：主音量、显示预设、账号/存档信息、保存存档、开发者调试入口、返回。
+## 也可以作为全局 UI 的覆盖层打开（战斗内额外显示“投降”按钮）。
+
+signal close_requested()
+signal surrender_requested()
 
 @onready var back_button: Button = %BackButton
 @onready var volume_slider: HSlider = %VolumeSlider
@@ -9,8 +14,11 @@ extends Control
 @onready var info_label: Label = %InfoLabel
 @onready var save_button: Button = %SaveButton
 @onready var developer_button: Button = %DeveloperButton
+@onready var surrender_button: Button = %SurrenderButton
 @onready var status_label: Label = %StatusLabel
 @onready var version_label: Label = %VersionLabel
+
+var overlay_mode: bool = false
 
 
 func _ready() -> void:
@@ -23,6 +31,8 @@ func _ready() -> void:
 	_update_volume_label()
 	save_button.pressed.connect(_on_save_pressed)
 	developer_button.pressed.connect(_on_developer_pressed)
+	surrender_button.pressed.connect(_on_surrender_pressed)
+	surrender_button.visible = false
 	_setup_display_options()
 	_refresh_info()
 	version_label.text = "版本 %s · %s" % [GameState.get_version(), GameState.get_identity_text()]
@@ -115,7 +125,23 @@ func _on_developer_pressed() -> void:
 	GameState.go_to_developer_panel()
 
 
+func open_as_overlay(in_battle: bool) -> void:
+	overlay_mode = true
+	surrender_button.visible = in_battle
+	_refresh_info()
+	_set_status("设置会立即生效并保存。")
+	visible = true
+
+
+func _on_surrender_pressed() -> void:
+	if surrender_button.visible:
+		surrender_requested.emit()
+
+
 func _on_back_pressed() -> void:
+	if overlay_mode:
+		close_requested.emit()
+		return
 	GameState.go_to_main()
 
 

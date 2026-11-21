@@ -180,7 +180,7 @@ func _on_create_confirm_pressed() -> void:
 
 ### 设置界面 `SettingsScreen`
 
-场景：`res://scenes/settings/SettingsScreen.tscn`（主界面「设置」进入）。
+场景：`res://scenes/settings/SettingsScreen.tscn`；通常由全局 UI 的「设置」按钮以覆盖层打开（不切换场景）。
 
 | 功能 | 实现 |
 |---|---|
@@ -189,9 +189,29 @@ func _on_create_confirm_pressed() -> void:
 | 账号/存档信息 | 身份、玩家名、金币/钻石、开发者标记、存档或服务器账号 |
 | 保存当前存档 | `GameState.save_active_profile()`（服务器身份下提示由服务器保存） |
 | 开发者调试 | 仅开发者存档启用，进入 `DeveloperPanel.tscn` |
-| 返回 | `GameState.go_to_main()` |
+| 投降 | 只在战斗覆盖层显示，触发 `surrender_requested`，由全局 UI 让当前战斗我方失败 |
+| 返回 | 覆盖层模式发出 `close_requested` 关闭；直接进入场景时返回主界面 |
 
-导航 API：`GameState.go_to_settings()`、`GameState.go_to_developer_panel()`。
+覆盖层 API：`open_as_overlay(in_battle)`；信号 `close_requested` / `surrender_requested`。
+
+### 全局 UI `GlobalUI`（autoload）
+
+场景：`res://scenes/ui/GlobalUI.tscn`，跨场景常驻。
+
+- 显示金币、钻石、设置按钮（设置按钮为紧凑尺寸）
+- 登录界面 / 战斗场景自动切换为 `SETTINGS_ONLY`（只显示设置）
+- 其他界面自动 `ALL`
+- 设置以覆盖层打开，战斗内打开时暂停战斗树；关闭后恢复
+
+| API | 说明 |
+|---|---|
+| `show_all()` | 全部显示 |
+| `hide_all()` | 全部关闭（含设置按钮） |
+| `show_settings_only()` | 除设置按钮外全部关闭 |
+| `set_visibility(mode)` | 使用 `GlobalUI.VISIBILITY.ALL / SETTINGS_ONLY / HIDDEN` |
+| `_open_settings()` / `_close_settings()` | 内部使用；也可在调试中调用 |
+
+战斗内设置覆盖层的「投降」会调用当前 `BattleScreen.surrender_player()`，直接判我方失败。
 
 ## 6. 弹出框 `ConfirmService`
 | 方法 | 返回 | 说明 |

@@ -32,6 +32,7 @@ DisplayService="*res://scripts/core/display_service.gd"
 DeckManager="*res://scripts/core/deck_manager.gd"
 BattleManager="*res://scripts/core/battle_manager.gd"
 DeveloperTools="*res://scripts/core/developer_tools.gd"
+GlobalUI="*res://scenes/ui/GlobalUI.tscn"
 _mcp_game_helper="*res://addons/godot_ai/runtime/game_helper.gd"
 
 [display]
