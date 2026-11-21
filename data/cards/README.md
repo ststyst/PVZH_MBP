@@ -89,6 +89,7 @@ CSV 的 `keywords` 列支持 `id:数值`，一张牌可以同时有多个词缀�
 - 读取后进入 `CardData.keywords` 和 `CardData.keyword_values`
 - `CardData.keyword_value("first_strike")` 返回 2
 - 显示文本为 `先攻 2、组队`
+- 先攻伤害走普通英雄伤害结算：免疫 → 护盾 → 生命，并触发 `hero_damaged` 信号
 - 没有数值的词缀写 `team_up` 即可
 
 白名单在 `CardKeywords.DEFINITIONS` 的 `allowed_kinds` 中配置，例如：

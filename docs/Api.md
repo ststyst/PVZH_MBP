@@ -431,6 +431,8 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 | `move_entity(entity, column, slot)` | 卡牌效果移动实体到空位，触发 `position_changed` |
 | `damage_handle / heal_handle / buff_handle / ...` | 效果原语入口 |
 | `changed` / `game_finished(winner)` 信号 | 状态变化 / 胜负 |
+| `hero_damaged(side, amount, source_keywords)` 信号 | 英雄实际受伤（已扣护盾/免疫后）；amount > 0 时发出 |
+| `damage_hero(side, amount, source_keywords)` | 英雄伤害统一结算：免疫 → 护盾 → 生命 |
 | `animation_cue(trigger, actor, target)` 信号 | 攻击/能力触发/死亡时发出动画请求（UI 排队播放，不阻塞逻辑） |
 | `effective_hand_cost(side, index)` / `effective_hand_attack(side, index)` | 应用手牌实例修正后的有效费用/攻击 |
 | `hand_card_display(side, index)` | 给 UI 的手牌显示副本（已带有效费用/攻击） |
@@ -451,6 +453,9 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 - `BattlePlayerState.hand` / `deck` / `discard` 为 `BattleCardInstance` 数组（带 `instance_id`、`card_id`、`zone`、`attack_bonus`、`cost_delta`）
 - `BattleCardInstance.to_dict()` / `from_dict()` 供联机快照使用
 - `BattlePlayerState.markers` 为 `Dictionary`（字符串名字、整数数量，允许负数）
+- `BattlePlayerState.hero_shield` 为英雄护盾；`hero_damage_immune` 为伤害免疫标记（预留）
+- `give_keyword` / `give_keyword_handle` 支持带数值词缀；`CardKeywords.can_receive` 做卡牌种类白名单过滤
+- 先攻（first_strike）伤害与普通英雄伤害共用 `damage_hero`，会经过免疫、护盾并触发 `hero_damaged`
 - `CardEffectScript.target_requirement()` 返回入场 `choose(count, selector)` 的目标需求
 - 区域被动用 `when ally_die(zone == 'deck'|'hand')`，原语 `gain_attack` / `reduce_cost`
 - 多目标用 `choose(count, "other_allies")` + `buff_stats(chosen, ...)`

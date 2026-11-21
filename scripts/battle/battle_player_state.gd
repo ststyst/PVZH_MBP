@@ -6,6 +6,10 @@ var side: String = "p"
 var hero: HeroData = null
 var hero_max_health: int = 20
 var hero_health: int = 20
+## 英雄护盾：先吸收伤害，再扣生命。
+var hero_shield: int = 0
+## 英雄伤害免疫（预留；为 true 时不受到任何伤害）。
+var hero_damage_immune: bool = false
 var energy: int = 0
 var energy_cap: int = 99
 var hand: Array[BattleCardInstance] = []

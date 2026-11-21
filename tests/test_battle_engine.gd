@@ -189,6 +189,62 @@ func test_first_strike_damages_hero_then_normal_attack() -> void:
 	assert_eq(striker.attack, 1)
 
 
+func test_first_strike_uses_hero_shield_and_damage_event() -> void:
+	var engine: BattleEngine = _started_engine()
+	var striker_card: CardData = _make_test_card("pvzh:test_first_shield", "")
+	striker_card.health = 5
+	striker_card.keywords.append("first_strike")
+	striker_card.keyword_values["first_strike"] = 2
+	engine.summon_card("p", striker_card, 0, 0)
+	engine.summon_card("z", cards.get_card("pvzh:hound"), 0, 0)
+	engine.players["z"].hero_shield = 1
+	var damage_events: Array = []
+	engine.hero_damaged.connect(func(side: String, amount: int, _keywords: Array) -> void:
+		damage_events.append({"side": side, "amount": amount})
+	)
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "z"
+	engine.advance_phase()
+	assert_eq(int(engine.players["z"].hero_shield), 0, "先攻伤害应先扣英雄护盾")
+	assert_eq(int(engine.players["z"].hero_health), 19, "先攻 2 被护盾挡 1 后应造成 1 点")
+	assert_eq(damage_events.size(), 1)
+	assert_eq(str(damage_events[0].get("side", "")), "z")
+	assert_eq(int(damage_events[0].get("amount", 0)), 1, "事件应报告实际伤害")
+
+
+func test_first_strike_respects_hero_damage_immunity() -> void:
+	var engine: BattleEngine = _started_engine()
+	var striker_card: CardData = _make_test_card("pvzh:test_first_immune", "")
+	striker_card.health = 5
+	striker_card.keywords.append("first_strike")
+	striker_card.keyword_values["first_strike"] = 2
+	engine.summon_card("p", striker_card, 0, 0)
+	engine.summon_card("z", cards.get_card("pvzh:hound"), 0, 0)
+	engine.players["z"].hero_shield = 3
+	engine.players["z"].hero_damage_immune = true
+	var damage_events: Array = []
+	engine.hero_damaged.connect(func(_side: String, _amount: int, _keywords: Array) -> void:
+		damage_events.append(true)
+	)
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "z"
+	engine.advance_phase()
+	assert_eq(int(engine.players["z"].hero_health), 20, "免疫时先攻不应造成英雄伤害")
+	assert_eq(int(engine.players["z"].hero_shield), 3, "免疫时不应消耗护盾")
+	assert_true(damage_events.is_empty(), "完全免疫时不应发伤害事件")
+
+
+func test_normal_attack_hero_damage_uses_shield() -> void:
+	var engine: BattleEngine = _started_engine()
+	engine.summon_card("z", cards.get_card("pvzh:gnoll"), 0, 0)
+	engine.players["p"].hero_shield = 1
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "z"
+	engine.advance_phase()
+	assert_eq(int(engine.players["p"].hero_shield), 0, "普通英雄伤害也应先扣护盾")
+	assert_eq(int(engine.players["p"].hero_health), 20)
+
+
 func test_keyword_values_stack_and_respect_whitelist() -> void:
 	var engine: BattleEngine = _started_engine()
 	var entity_card: CardData = _make_test_card("pvzh:test_keyword_entity", "")

@@ -5,6 +5,8 @@ extends RefCounted
 
 signal changed()
 signal game_finished(winner_side: String)
+## 英雄实际受到伤害（已扣护盾/免疫后）；amount > 0 时才发出。
+signal hero_damaged(side: String, amount: int, source_keywords: Array)
 ## 动画触发：trigger = attack / ability / die；target 为 BattleEntity 或 "hero:x"
 signal animation_cue(trigger: String, actor: BattleEntity, target: Variant)
 
@@ -692,12 +694,25 @@ func damage_entity(entity: BattleEntity, amount: int, source_keywords: Array = [
 	_log("%s 受到 %d 点伤害（生命 %d，护盾 %d）" % [entity.display_name(), amount, entity.health, entity.shield])
 
 
-func damage_hero(side: String, amount: int) -> void:
+func damage_hero(side: String, amount: int, source_keywords: Array = []) -> void:
 	var state: BattlePlayerState = players.get(side, null)
 	if state == null or amount <= 0:
 		return
-	state.hero_health -= amount
-	_log("%s 英雄受到 %d 点伤害（生命 %d）" % [side.to_upper(), amount, state.hero_health])
+	if state.hero_damage_immune:
+		_log("%s 英雄免疫本次伤害（%d）" % [side.to_upper(), amount])
+		return
+	var damage: int = amount
+	var absorbed: int = mini(state.hero_shield, damage)
+	state.hero_shield -= absorbed
+	damage -= absorbed
+	if damage <= 0:
+		_log("%s 英雄护盾吸收本次伤害（剩余护盾 %d）" % [side.to_upper(), state.hero_shield])
+		return
+	state.hero_health -= damage
+	hero_damaged.emit(side, damage, source_keywords.duplicate())
+	_log("%s 英雄受到 %d 点伤害（生命 %d，护盾 %d）" % [
+		side.to_upper(), damage, state.hero_health, state.hero_shield,
+	])
 	_check_game_over()
 
 
@@ -714,8 +729,14 @@ func heal_handle(handle: Variant, amount: int) -> void:
 
 
 func gain_shield_handle(handle: Variant, amount: int) -> void:
-	if handle is BattleEntity and amount > 0:
+	if amount <= 0:
+		return
+	if handle is BattleEntity:
 		handle.shield += amount
+	elif handle is String and handle.begins_with("hero:"):
+		var state: BattlePlayerState = players.get(handle.substr(5), null)
+		if state != null:
+			state.hero_shield += amount
 
 
 func buff_handle(handle: Variant, attack_delta: int, health_delta: int) -> void:
@@ -829,13 +850,13 @@ func _combat_column(column: int) -> void:
 		# 先攻：先对敌方英雄造成词缀数值的伤害，再执行正常攻击。
 		var first_strike: int = attacker.keyword_value("first_strike")
 		if first_strike > 0:
-			damage_hero(opposite_side(attacker.side), first_strike)
+			damage_hero(opposite_side(attacker.side), first_strike, attacker.keywords)
 			if winner != "":
 				break
 		if target is BattleEntity:
 			damage_entity(target, attacker.attack, attacker.keywords)
 		else:
-			damage_hero(str(target).substr(5), attacker.attack)
+			damage_hero(str(target).substr(5), attacker.attack, attacker.keywords)
 	_flush_column_deaths(column)
 	if winner != "":
 		return
