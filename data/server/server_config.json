@@ -1,0 +1,49 @@
+{
+  "network": {
+    "bind_host": "0.0.0.0",
+    "port": 45770,
+    "max_players": 8,
+    "tick_rate_hz": 20,
+    "connection_timeout_seconds": 10,
+    "keepalive_interval_seconds": 2,
+    "max_packet_bytes": 65536
+  },
+  "protocol": {
+    "protocol_version": 1,
+    "allow_mods": false,
+    "require_official_card_set": true,
+    "card_set_hash": "",
+    "mode_file": "res://data/modes/default_mode.json",
+    "min_client_version": "0.1.0"
+  },
+  "match": {
+    "team_up_swap_cooldown_seconds": 0.35,
+    "command_rate_limit_per_second": 10,
+    "max_commands_per_turn": 100,
+    "snapshot_interval_seconds": 1,
+    "reconnect_grace_seconds": 30,
+    "surrender_timeout_seconds": 120
+  },
+  "security": {
+    "max_login_attempts_per_minute": 10,
+    "token_ttl_seconds": 3600,
+    "log_commands": false
+  },
+  "persistence": {
+    "save_profiles": false,
+    "profile_store": "user://server_profiles.json",
+    "save_interval_seconds": 30
+  },
+  "logging": {
+    "level": "info",
+    "log_battles": true,
+    "log_commands": false,
+    "log_dir": "user://logs/server"
+  },
+  "server": {
+    "name": "Card Arena Server",
+    "motd": "",
+    "region": "lan",
+    "max_concurrent_matches": 32
+  }
+}

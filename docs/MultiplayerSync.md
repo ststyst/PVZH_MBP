@@ -51,7 +51,7 @@ BattleClientSession ── ENet/UDP ── BattleServerSession
 - 服务器校验后执行，返回 ack + 公共/私有事件；客户端在确认前锁定输入
 - `handles` 用于多目标选择（最多 count 个）
 - 组队换位也是服务器命令：`{"type":"swap_team_up","entity_id":12}`，服务器按 `entity_id` 校验归属/词缀后执行；UI 在任何目标选择/放置状态下不会触发换位
-- 组队换位冷却由 `GameModeConfig.team_up_swap_cooldown_seconds` 配置（默认 0.35s）；UI 与 `execute_command` 共用 `try_swap_team_up`，冷却内命令直接拒绝，减少服务器交互
+- 组队换位冷却由服务器/运行优化配置 `data/server/server_config.json` 的 `match.team_up_swap_cooldown_seconds` 配置（默认 0.35s）；UI 与 `execute_command` 共用 `try_swap_team_up`，冷却内命令直接拒绝，减少服务器交互
 - 引擎统一入口：`BattleEngine.execute_command(side, command, now_msec)`
 - 超时自动 `end_phase`
 

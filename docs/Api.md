@@ -325,7 +325,7 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 `player_initial_energy`(1)、`enemy_initial_energy`(1)、
 `player_initial_draw`(4)、`enemy_initial_draw`(4)、
 `hand_limit`(10)、`energy_cap`(99)、`phase_time_limit_seconds`(40)、
-`player_draw_per_turn`(1)、`enemy_draw_per_turn`(1)、`team_up_swap_cooldown_seconds`(0.35)。
+`player_draw_per_turn`(1)、`enemy_draw_per_turn`(1)。
 
 | API | 说明 |
 |---|---|
@@ -336,6 +336,19 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 | `GameModeConfig.from_file(path)` / `from_dict(data)` / `default_config()` | 构造与加载 |
 | `max_copies_for_rarity_index(index)` | 按稀有度序号取单卡上限 |
 | `turn_draw_for_faction(faction)` | 第二回合起每回合开始时的抽牌数（我方/敌方） |
+
+### 服务器/运行优化配置 `ServerConfig`
+
+文件：`data/server/server_config.json`；字段说明见 `data/server/README.md`。
+当前只有 `match.team_up_swap_cooldown_seconds` 接入代码，其余为预留参数。
+
+| API | 说明 |
+|---|---|
+| `ServerConfig.load_config(path)` | 读取原始配置字典（失败返回空） |
+| `ServerConfig.swap_cooldown_seconds(path)` | 读取组队换位冷却秒数；缺失回退 0.35 |
+
+单机战斗 UI 启动时会把该冷却注入 `BattleEngine.team_up_swap_cooldown_seconds`；
+未来服务器也使用同一字段。
 
 ### 牌组管理 `DeckManager`（autoload）
 

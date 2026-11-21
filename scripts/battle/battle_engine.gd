@@ -28,6 +28,8 @@ const DEFAULT_ENVIRONMENTS: Array = ["highground", "default", "default", "defaul
 const DEFAULT_ENVIRONMENT_LABELS: Array = ["高地", "默认", "默认", "默认", "水池"]
 
 var mode: GameModeConfig = null
+## 由 UI/服务器从 data/server/server_config.json 注入；0 表示不限制。
+var team_up_swap_cooldown_seconds: float = 0.35
 var players: Dictionary = {}
 var entities: Array[BattleEntity] = []
 var environments: Array[String] = []
@@ -581,7 +583,7 @@ func try_swap_team_up(side: String, entity: BattleEntity, now_msec: int = 0) -> 
 		}
 	if not swap_team_up(side, entity):
 		return _fail("这一列没有可交换的另一实体。")
-	var cooldown_ms: int = int(round(mode.team_up_swap_cooldown_seconds * 1000.0))
+	var cooldown_ms: int = int(round(team_up_swap_cooldown_seconds * 1000.0))
 	if cooldown_ms > 0:
 		_swap_ready_at_msec[side] = now + cooldown_ms
 	return {"ok": true, "message": "已交换位置。"}

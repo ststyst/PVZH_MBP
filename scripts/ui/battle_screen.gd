@@ -76,6 +76,7 @@ func _ready() -> void:
 		return
 	mode = ModeManager.get_mode()
 	engine = BattleEngine.new(CardDatabase)
+	engine.team_up_swap_cooldown_seconds = ServerConfig.swap_cooldown_seconds()
 	engine.changed.connect(_on_engine_changed)
 	engine.game_finished.connect(_on_game_finished)
 	engine.animation_cue.connect(_on_animation_cue)

@@ -17,7 +17,6 @@ const DEFAULT_INITIAL_DRAW: int = 4
 const DEFAULT_HAND_LIMIT: int = 10
 const DEFAULT_ENERGY_CAP: int = 99
 const DEFAULT_PHASE_TIME_SECONDS: int = 40
-const DEFAULT_TEAM_UP_SWAP_COOLDOWN_SECONDS: float = 0.35
 const DEFAULT_TURN_DRAW: int = 1
 
 var deck_max_size: int = DEFAULT_DECK_MAX_SIZE
@@ -40,9 +39,6 @@ var phase_time_limit_seconds: int = DEFAULT_PHASE_TIME_SECONDS
 ## 从第二回合起，每回合开始时我方/敌方各抽几张（第一回合不触发）
 var player_draw_per_turn: int = DEFAULT_TURN_DRAW
 var enemy_draw_per_turn: int = DEFAULT_TURN_DRAW
-## 组队实体点击换位冷却（秒）；0 表示不限制
-var team_up_swap_cooldown_seconds: float = DEFAULT_TEAM_UP_SWAP_COOLDOWN_SECONDS
-
 ## 来源文件路径（调试/服务器配置用）
 var source_path: String = ""
 var load_errors: Array[String] = []
@@ -70,10 +66,6 @@ static func from_dict(data: Dictionary) -> GameModeConfig:
 	)
 	config.player_draw_per_turn = maxi(_int_value(data, "player_draw_per_turn", DEFAULT_TURN_DRAW), 0)
 	config.enemy_draw_per_turn = maxi(_int_value(data, "enemy_draw_per_turn", DEFAULT_TURN_DRAW), 0)
-	config.team_up_swap_cooldown_seconds = maxf(
-		_float_value(data, "team_up_swap_cooldown_seconds", DEFAULT_TEAM_UP_SWAP_COOLDOWN_SECONDS),
-		0.0
-	)
 	return config
 
 
@@ -136,7 +128,6 @@ func to_dict() -> Dictionary:
 		"phase_time_limit_seconds": phase_time_limit_seconds,
 		"player_draw_per_turn": player_draw_per_turn,
 		"enemy_draw_per_turn": enemy_draw_per_turn,
-		"team_up_swap_cooldown_seconds": team_up_swap_cooldown_seconds,
 	}
 
 

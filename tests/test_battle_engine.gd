@@ -198,7 +198,7 @@ func test_team_up_swap() -> void:
 		"type": "swap_team_up", "entity_id": team.entity_id,
 	}, 1000)
 	assert_false(bool(cooldown_block.get("ok", true)), "冷却内换位命令应被拒绝")
-	var cooldown_ms: int = int(round(engine.mode.team_up_swap_cooldown_seconds * 1000.0))
+	var cooldown_ms: int = int(round(engine.team_up_swap_cooldown_seconds * 1000.0))
 	var after_cooldown: Dictionary = engine.execute_command("p", {
 		"type": "swap_team_up", "entity_id": team.entity_id,
 	}, 1000 + cooldown_ms + 1)

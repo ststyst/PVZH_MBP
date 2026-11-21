@@ -22,7 +22,6 @@
 | `phase_time_limit_seconds` | int | 40 | 单个回合阶段真实时间上限（秒），到点强制结束；**与电脑对战时不生效（不限时）**，预留给玩家对玩家 |
 | `player_draw_per_turn` | int | 1 | 从第二回合起，每回合开始时我方抽牌数（第一回合不触发；0 = 不抽） |
 | `enemy_draw_per_turn` | int | 1 | 从第二回合起，每回合开始时敌方抽牌数（第一回合不触发；0 = 不抽） |
-| `team_up_swap_cooldown_seconds` | float | 0.35 | 点击组队实体换位的冷却（秒）；0 = 不限制。单机与联机服务器命令共用此值 |
 
 玩家对战时：p 阵营英雄使用 `player_*` 数据，z 阵营英雄使用 `enemy_*` 数据。
 
@@ -43,8 +42,7 @@
   "energy_cap": 99,
   "phase_time_limit_seconds": 40,
   "player_draw_per_turn": 1,
-  "enemy_draw_per_turn": 1,
-  "team_up_swap_cooldown_seconds": 0.35
+  "enemy_draw_per_turn": 1
 }
 ```
 
