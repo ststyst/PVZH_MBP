@@ -23,6 +23,7 @@ func test_default_server_config() -> void:
 	assert_true(match_config.has("protected_environments"))
 	assert_true(ServerConfig.protected_environments().has("highground"))
 	assert_true(ServerConfig.protected_environments().has("water"))
+	assert_eq(str(ServerConfig.environment_keyword_filters().get("water", "")), "amphibious")
 	var protocol: Dictionary = data.get("protocol", {})
 	assert_false(bool(protocol.get("allow_mods", true)))
 	assert_true(data.has("network") and data.has("security") and data.has("logging"))

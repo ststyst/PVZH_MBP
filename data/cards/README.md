@@ -9,6 +9,8 @@ data/cards/official/
 游戏启动时由 `CardDatabase`（autoload）扫描载入；缺列、非法职业/稀有度会**跳过该行**并记录到 `CardDatabase.load_errors`；
 未知词缀/流派会被忽略并记入 `load_errors`，不会让整张卡失效。
 
+CSV 必须保存为 **UTF-8 无 BOM、LF 换行**；`tests/test_card_database.gd` 会检查 BOM、NUL 字节和替换字符，防止编辑器误存为本地编码。
+
 ---
 
 ## 一、全局配置 `config.csv`
@@ -73,8 +75,12 @@ english_name,chinese_name,kind,cost,attack,health,shield,class,rarity,keywords,t
 
 ### 词缀（由代码决定）
 
-`charge` 冲锋、`taunt` 嘲讽、`deadly` 剧毒、`armored` 护甲、`strikethrough` 穿透、
-`bullseye` 必中、`double_strike` 双击、`overshoot` 溅射、`frenzy` 狂怒、`untrickable` 免疫锦囊、`team_up` 组队。
+`charge` 冲锋、`taunt` 嘲讽、`deadly` 致命、`armored` 护甲、`strikethrough` 穿透、
+`bullseye` 必中、`double_strike` 双重打击、`overshoot` 溅射、`frenzy` 狂热、`untrickable` 免疫锦囊、
+`spell_immune` 锦囊免疫、`hero_counter` 克制英雄、`invincible` 无敌、`hunt` 捕猎、`amphibious` 两栖、
+`debuff_immune` 免疫负面、`frost` 寒霜、`thorns` 反伤、`team_up` 组队。
+
+Buff/Debuff（只存在于实体上，不是卡牌词缀）见 `scripts/data/card_buffs.gd`。
 
 完整定义见 `scripts/data/card_keywords.gd`。
 

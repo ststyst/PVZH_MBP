@@ -43,3 +43,24 @@ static func protected_environments(path: String = DEFAULT_PATH) -> Array[String]
 			for item: Variant in raw:
 				result.append(str(item))
 	return result
+
+
+## 环境 id -> 词缀限制表达式。默认水池要求两栖。
+static func environment_keyword_filters(path: String = DEFAULT_PATH) -> Dictionary:
+	var result: Dictionary = {"water": "amphibious"}
+	var data: Dictionary = load_config(path)
+	var match_config: Variant = data.get("match", {})
+	if match_config is Dictionary:
+		var raw: Variant = (match_config as Dictionary).get("environment_keyword_filters", null)
+		if raw is Dictionary:
+			result.clear()
+			for environment_id: Variant in raw.keys():
+				var value: Variant = (raw as Dictionary)[environment_id]
+				if value is Array:
+					var parts: Array[String] = []
+					for keyword_id: Variant in value:
+						parts.append(str(keyword_id))
+					result[str(environment_id)] = " and ".join(parts)
+				else:
+					result[str(environment_id)] = str(value)
+	return result

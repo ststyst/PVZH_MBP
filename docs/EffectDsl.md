@@ -22,6 +22,9 @@
 | `summon(card_name, column)` | 英文名、列 | 法术/环境：绝对列 1~5；实体异能：相对自身列 -4~4（0=本列） |
 | `summon(card_name, min_column, max_column)` | 英文名、范围 | 在范围内随机尝试一个合法列；坐标含义同上 |
 | `place_environment(offset, card_name)` | 相对列偏移、环境英文名 | 在基准列偏移位置尝试放置环境；受保护环境不可覆盖 |
+| `apply_buff(target, buff_id, amount = 1)` | 实体、Buff id、层数 | 施加内置 Buff/Debuff |
+| `remove_buff(target, buff_id)` | 实体、Buff id | 解除内置 Buff/Debuff |
+| `force_attack(target)` | 实体 | 让实体按当前列目标攻击一次；冰冻时失败 |
 | `add_random_cards_to_deck(target, count, filter)` | 目标、数量、筛选条件 | 从卡牌数据库筛选随机牌，塞入目标阵营牌库随机位置 |
 | `add_random_cards_to_hand(target, count, filter)` | 目标、数量、筛选条件 | 从卡牌数据库筛选随机牌，塞入目标阵营手牌随机位置 |
 | `choose_column()` | — | 锦囊打出时要求玩家选择一列；`chosen_column` 生效 |
@@ -313,6 +316,35 @@ when enter(side == 'enemy'):
 - 环境监听自己所在列的实体事件；`turn_start` / `turn_end` 每列触发一次
 - `place_environment` 和普通环境打出都受服务器 `protected_environments` 限制
 - `column` 对实体/环境以自身所在列为 0；对无基准的上下文回退为绝对 1~5 列
+- 初始环境没有打出者，视为中立；中立环境不能执行需要判断 ally/enemy 的效果
+
+### Buff / Debuff 与新增词缀
+
+内置 Buff：
+
+```text
+apply_buff(self, "frozen")
+apply_buff(self, "invincible")
+apply_buff(self, "spell_immune")
+remove_buff(self, "frozen")
+```
+
+事件：
+
+```text
+when buff_applied:
+	gain_attack(1)
+when buff_removed:
+	add_marker("buff_removed", 1)
+```
+
+- Buff 不是词缀，只存在于战场实体上；可在代码中解除
+- `frozen`：不能攻击；所在列战斗结算完成后解除
+- `invincible`：免疫伤害和直接消灭；所在列战斗结算完成后解除
+- `spell_immune`：不作为锦囊目标，锦囊效果/伤害不生效
+- 相关实体词缀：双重打击、狂热、锦囊免疫、克制英雄、穿透、致命、无敌、捕猎、两栖、溅射、寒霜、反伤、免疫负面
+- `debuff_immune` 会阻止冰冻等 Debuff 被施加
+- 词缀定义在 `scripts/data/card_keywords.gd`，Buff 定义在 `scripts/data/card_buffs.gd`，战斗实现在 `scripts/battle/battle_engine.gd`
 
 ### 随机塞牌与筛选条件
 

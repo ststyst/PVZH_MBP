@@ -500,6 +500,175 @@ func test_card_filter_and_random_insert() -> void:
 	assert_true(found_gnoll, "塞入的卡牌英文名应为 gnoll")
 
 
+func test_buff_and_keyword_combat_features() -> void:
+	var engine: BattleEngine = _started_engine()
+	var striker_card: CardData = _make_test_card("pvzh:test_buff_striker", "")
+	striker_card.health = 5
+	striker_card.keywords.append("double_strike")
+	var striker: BattleEntity = engine.summon_card("p", striker_card, 0, 0)
+	var target: BattleEntity = engine.summon_card("z", cards.get_card("pvzh:gnoll"), 0, 0)
+	target.max_health = 2
+	target.health = 2
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "z"
+	engine.advance_phase()
+	assert_true(striker != null)
+	assert_false(target.alive, "双重打击应在第一次攻击和死亡结算后再次攻击")
+
+	var frozen_engine: BattleEngine = _started_engine()
+	var frozen_entity: BattleEntity = frozen_engine.summon_card("p", cards.get_card("pvzh:gnoll"), 0, 0)
+	assert_true(frozen_engine.apply_buff_handle(frozen_entity, "frozen", 1))
+	assert_false(frozen_engine.force_entity_attack(frozen_entity), "冰冻实体不能攻击")
+	assert_true(frozen_engine.remove_buff_handle(frozen_entity, "frozen"))
+
+	var buff_listener_card: CardData = _make_test_card(
+		"pvzh:test_buff_listener",
+		"when buff_applied:\n    add_marker(\"buff_applied\", 1)\nwhen buff_removed:\n    add_marker(\"buff_removed\", 1)"
+	)
+	var buff_listener: BattleEntity = frozen_engine.summon_card_in_column("p", buff_listener_card, 1)
+	frozen_engine.apply_buff_handle(buff_listener, "frozen", 1)
+	frozen_engine.remove_buff_handle(buff_listener, "frozen")
+	assert_eq(frozen_engine.players["p"].marker_count("buff_applied"), 1, "Buff 施加事件应触发")
+	assert_eq(frozen_engine.players["p"].marker_count("buff_removed"), 1, "Buff 解除事件应触发")
+
+	var debuff_immune_card: CardData = _make_test_card("pvzh:test_debuff_immune", "")
+	debuff_immune_card.keywords.append("debuff_immune")
+	var debuff_immune: BattleEntity = frozen_engine.summon_card("p", debuff_immune_card, 2, 0)
+	assert_false(frozen_engine.apply_buff_handle(debuff_immune, "frozen", 1), "免疫负面应拒绝冰冻")
+	assert_true(frozen_engine.apply_buff_handle(debuff_immune, "invincible", 1), "免疫负面不影响 Buff")
+
+	var invincible_entity: BattleEntity = frozen_engine.summon_card("p", cards.get_card("pvzh:gnoll"), 1, 0)
+	assert_true(frozen_engine.apply_buff_handle(invincible_entity, "invincible", 1))
+	var health_before: int = invincible_entity.health
+	frozen_engine.damage_entity(invincible_entity, 99, [])
+	assert_eq(invincible_entity.health, health_before, "无敌 Buff 应免疫伤害")
+	frozen_engine.destroy_handle(invincible_entity)
+	assert_true(invincible_entity.alive, "无敌 Buff 应免疫直接消灭")
+
+
+func test_environment_keyword_restriction() -> void:
+	var engine: BattleEngine = _started_engine()
+	var normal_card: CardData = _make_test_card("pvzh:test_water_normal", "")
+	var amphibious_card: CardData = _make_test_card("pvzh:test_water_amphibious", "")
+	amphibious_card.keywords.append("amphibious")
+	var state: BattlePlayerState = engine.players["p"]
+	_set_hand(engine, "p", [normal_card.card_id, amphibious_card.card_id])
+	state.energy = 10
+	engine.phase = BattleEngine.PHASE_HAND
+	engine.active_side = "p"
+	var normal_slots: Array[Dictionary] = engine.valid_slots("p", normal_card)
+	for slot_info: Dictionary in normal_slots:
+		assert_true(int(slot_info.get("column", -1)) != 4, "非两栖实体不能进入水池列")
+	var amphibious_slots: Array[Dictionary] = engine.valid_slots("p", amphibious_card)
+	var water_allowed: bool = false
+	for slot_info: Dictionary in amphibious_slots:
+		if int(slot_info.get("column", -1)) == 4:
+			water_allowed = true
+	assert_true(water_allowed, "两栖实体可以进入水池列")
+	assert_eq(str(engine.environment_owners[0]), "", "初始环境应为中立")
+
+
+func test_counter_and_hunt_keywords() -> void:
+	var engine: BattleEngine = _started_engine()
+	var counter_card: CardData = _make_test_card("pvzh:test_counter", "")
+	counter_card.keywords.append("hero_counter")
+	counter_card.keyword_values["hero_counter"] = 2
+	var counter: BattleEntity = engine.summon_card("p", counter_card, 0, 0)
+	assert_eq(counter.attack, counter_card.attack + 2, "无敌方实体时应获得克制英雄攻击")
+	var enemy: BattleEntity = engine.summon_card("z", cards.get_card("pvzh:gnoll"), 0, 0)
+	assert_eq(counter.attack, counter_card.attack, "敌方实体在场时应移除克制加成")
+	engine.entities.erase(enemy)
+	enemy.alive = false
+	engine._refresh_all_counter_bonuses()
+	assert_eq(counter.attack, counter_card.attack + 2)
+	assert_eq(str(engine.environment_owners[0]), "", "初始环境应为中立")
+
+	var hunt_card: CardData = _make_test_card("pvzh:test_hunt", "")
+	hunt_card.keywords.append("hunt")
+	hunt_card.health = 5
+	var hunter: BattleEntity = engine.summon_card("p", hunt_card, 1, 0)
+	var entering_card: CardData = _make_test_card("pvzh:test_hunt_target", "")
+	entering_card.health = 5
+	engine.summon_card_in_column("z", entering_card, 3)
+	assert_eq(hunter.column, 3, "捕猎实体应移动到敌方入场列")
+
+
+func test_frenzy_piercing_and_splash() -> void:
+	var frenzy_engine: BattleEngine = _started_engine()
+	var frenzy_card: CardData = _make_test_card("pvzh:test_frenzy", "")
+	frenzy_card.attack = 5
+	frenzy_card.health = 5
+	frenzy_card.keywords.append("frenzy")
+	var frenzy: BattleEntity = frenzy_engine.summon_card("p", frenzy_card, 0, 0)
+	var victim: BattleEntity = frenzy_engine.summon_card("z", cards.get_card("pvzh:gnoll"), 0, 0)
+	frenzy_engine._execute_entity_attack(frenzy, victim, 0)
+	frenzy_engine._flush_column_deaths(0)
+	assert_eq(int(frenzy_engine.players["z"].hero_health), 15, "狂热击杀后应追加一次攻击")
+
+	var pierce_engine: BattleEngine = _started_engine()
+	var pierce_card: CardData = _make_test_card("pvzh:test_pierce", "")
+	pierce_card.attack = 2
+	pierce_card.health = 5
+	pierce_card.keywords.append("strikethrough")
+	var pierce: BattleEntity = pierce_engine.summon_card("p", pierce_card, 0, 0)
+	var z_first: BattleEntity = pierce_engine.summon_card("z", cards.get_card("pvzh:gnoll"), 0, 0)
+	var z_second_card: CardData = _make_test_card("pvzh:test_pierce_second", "")
+	z_second_card.health = 5
+	var z_second: BattleEntity = pierce_engine.summon_card("z", z_second_card, 0, 1)
+	pierce_engine._execute_entity_attack(pierce, z_first, 0)
+	assert_true(z_first.health <= 0, "穿透应命中列内所有敌方实体")
+	assert_eq(z_second.health, 3, "穿透应命中列内所有敌方实体")
+	assert_eq(int(pierce_engine.players["z"].hero_health), 18, "穿透还应命中敌方英雄")
+
+	var splash_engine: BattleEngine = _started_engine()
+	var splash_card: CardData = _make_test_card("pvzh:test_splash", "")
+	splash_card.attack = 1
+	splash_card.health = 5
+	splash_card.keywords.append("overshoot")
+	splash_card.keyword_values["overshoot"] = 2
+	splash_engine.summon_card("p", splash_card, 2, 0)
+	var side_target: BattleEntity = splash_engine.summon_card("z", cards.get_card("pvzh:gnoll"), 1, 0)
+	side_target.max_health = 5
+	side_target.health = 5
+	var splash_attacker: BattleEntity = splash_engine._entity_at(2, "p", 0)
+	splash_engine._execute_entity_attack(splash_attacker, splash_engine.hero_handle("z"), 0)
+	assert_eq(side_target.health, 3, "溅射应伤害相邻列的实体")
+
+
+func test_spell_immune_frost_and_thorns() -> void:
+	var engine: BattleEngine = _started_engine()
+	var target: BattleEntity = engine.summon_card("z", cards.get_card("pvzh:gnoll"), 0, 0)
+	assert_true(engine.apply_buff_handle(target, "spell_immune", 1))
+	var fireball: CardData = cards.get_card("pvzh:fireball")
+	var candidates: Array = engine.target_candidates(fireball, "p")
+	assert_false(candidates.has(target), "临时锦囊免疫实体不应成为锦囊目标")
+	engine.damage_entity(target, 2, [], true)
+	assert_eq(target.health, target.max_health, "锦囊伤害不应影响临时锦囊免疫实体")
+
+	var frost_target: BattleEntity = engine.summon_card("z", cards.get_card("pvzh:gnoll"), 1, 0)
+	engine.damage_entity(frost_target, 1, ["frost"])
+	assert_true(frost_target.is_frozen(), "寒霜伤害应施加冰冻 Buff")
+
+	var attacker: BattleEntity = engine.summon_card("p", cards.get_card("pvzh:gnoll"), 2, 0)
+	var thorn_card: CardData = _make_test_card("pvzh:test_thorns", "")
+	thorn_card.health = 5
+	thorn_card.keywords.append("thorns")
+	thorn_card.keyword_values["thorns"] = 2
+	var thorn_target: BattleEntity = engine.summon_card("z", thorn_card, 2, 0)
+	var attacker_health: int = attacker.health
+	engine._execute_entity_attack(attacker, thorn_target, 0)
+	assert_eq(attacker.health, attacker_health - 2, "反伤应对攻击来源造成伤害")
+
+
+func test_neutral_environment_rejects_side_effects() -> void:
+	var engine: BattleEngine = _started_engine()
+	var p_entity: BattleEntity = engine.summon_card("p", cards.get_card("pvzh:gnoll"), 2, 0)
+	var neutral := EnvironmentEffectContext.new(engine, "", 2)
+	assert_eq(str(neutral.describe_entity(p_entity).get("side", "")), "neutral")
+	assert_true(neutral.entities_in_column(0, 0, "ally").is_empty(), "中立环境拒绝判断我方")
+	assert_true(neutral.entities_in_column(0, 0, "enemy").is_empty(), "中立环境拒绝判断敌方")
+
+
 func test_column_event_relative_condition_and_query() -> void:
 	var engine: BattleEngine = _started_engine()
 	var source_card: CardData = _make_test_card(

@@ -40,6 +40,7 @@
 | `snapshot_interval_seconds` | `1` | 全量快照最小间隔；期间用事件增量 |
 | `effect_resolution_limit` | `100` | 单次出牌/战斗行为允许的连锁事件上限；超限强制结束连锁 |
 | `protected_environments` | `["highground","water"]` | 不能被环境牌覆盖的环境 id；默认高地、水池 |
+| `environment_keyword_filters` | `{"water":"amphibious"}` | 环境位置对实体词缀的限制；支持 and/or/not |
 | `reconnect_grace_seconds` | `30` | 断线后保留座位的宽限时间（预留） |
 | `surrender_timeout_seconds` | `120` | 投降/超时判定的等待时间（预留） |
 

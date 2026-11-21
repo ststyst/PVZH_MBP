@@ -10,6 +10,7 @@ var source_keywords: Array = []
 var chosen_column: int = -1
 var chosen_slot: int = -1
 var base_column: int = -1
+var is_spell_source: bool = false
 var _self_handle: Variant = null
 var _event_handle: Variant = null
 
@@ -46,6 +47,18 @@ func set_chosen_position(column: int, slot: int) -> void:
 
 func set_base_column(column: int) -> void:
 	base_column = column
+
+
+func set_spell_source(value: bool) -> void:
+	is_spell_source = value
+
+
+func can_target(handle) -> bool:
+	if not is_spell_source:
+		return true
+	if handle is BattleEntity:
+		return not handle.is_spell_immune()
+	return true
 
 
 func resolve_selector(selector: String) -> Array:
@@ -94,7 +107,7 @@ func describe_entity(handle) -> Dictionary:
 		var side: String = handle.substr(5)
 		var state: BattlePlayerState = engine.players.get(side, null)
 		return {
-			"side": "ally" if side == caster_side else "enemy",
+			"side": "neutral" if caster_side.is_empty() else ("ally" if side == caster_side else "enemy"),
 			"class": "hero",
 			"tribes": [],
 			"attack": 0,
@@ -150,7 +163,7 @@ func draw_cards(count: int) -> int:
 
 
 func deal_damage(target, amount: int) -> void:
-	engine.damage_handle(target, amount, source_keywords)
+	engine.damage_handle(target, amount, source_keywords, is_spell_source)
 
 
 func heal(target, amount: int) -> void:
@@ -174,14 +187,20 @@ func give_keyword(target, keyword: String, value: int = 0) -> void:
 
 
 func destroy(target) -> void:
+	if target is BattleEntity and is_spell_source and target.is_spell_immune():
+		return
 	engine.destroy_handle(target)
 
 
 func move_entity(target, column: int, slot: int) -> bool:
+	if is_spell_source and target is BattleEntity and target.is_spell_immune():
+		return false
 	return engine.move_entity_handle(target, column, slot)
 
 
 func move_entity_to_chosen_position(target) -> bool:
+	if is_spell_source and target is BattleEntity and target.is_spell_immune():
+		return false
 	if chosen_column < 0 or chosen_slot < 0:
 		return false
 	return engine.move_entity_handle(target, chosen_column, chosen_slot)
@@ -199,6 +218,8 @@ func add_random_cards(zone: String, target, count: int, filter_text: String) -> 
 
 
 func entities_in_column(min_offset: int, max_offset: int, side_filter: String, min_attack: int = 0) -> Array:
+	if caster_side.is_empty() and side_filter in ["ally", "enemy"]:
+		return []
 	var reference_column: int = base_column
 	if reference_column < 0 and _self_handle is BattleEntity:
 		reference_column = _self_handle.column
@@ -231,6 +252,28 @@ func place_environment(column_offset: int, card_name: String) -> bool:
 	if reference_column < 0:
 		return false
 	return engine.place_environment_by_name(caster_side, reference_column + column_offset, card_name)
+
+
+func apply_buff(target, buff_id: String, amount: int = 1) -> bool:
+	if not target is BattleEntity:
+		return false
+	if engine.is_spell_source and target.is_spell_immune():
+		return false
+	return engine.apply_buff_handle(target, buff_id, amount)
+
+
+func remove_buff(target, buff_id: String) -> bool:
+	if not target is BattleEntity:
+		return false
+	return engine.remove_buff_handle(target, buff_id)
+
+
+func force_attack(target) -> bool:
+	if not target is BattleEntity:
+		return false
+	if is_spell_source and target.is_spell_immune():
+		return false
+	return engine.force_entity_attack(target)
 
 
 func choose_targets(count: int, selector: String) -> bool:
@@ -298,12 +341,16 @@ func _random_one(handles: Array) -> Array:
 
 
 func _side_fact(entity: BattleEntity) -> String:
+	if caster_side.is_empty():
+		return "neutral"
 	if _self_handle is BattleEntity and _self_handle == entity:
 		return "self"
 	return "ally" if entity.side == caster_side else "enemy"
 
 
 func _relative_side(side: String) -> String:
+	if caster_side.is_empty():
+		return "neutral"
 	if _self_handle is BattleEntity and _self_handle.side == side:
 		return "self"
 	return "ally" if side == caster_side else "enemy"

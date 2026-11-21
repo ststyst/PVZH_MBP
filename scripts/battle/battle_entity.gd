@@ -14,8 +14,12 @@ var max_health: int = 0
 var shield: int = 0
 var keywords: Array[String] = []
 var keyword_values: Dictionary = {}
+## 内置 Buff/Debuff：buff_id -> 层数（默认 1）
+var buffs: Dictionary = {}
 var team_up: bool = false
 var alive: bool = true
+## 克制英雄词缀提供的临时攻击力
+var counter_bonus: int = 0
 
 
 func setup(source_card: CardData, owner_side: String, target_column: int, target_slot: int) -> void:
@@ -72,3 +76,37 @@ func is_team_up() -> bool:
 
 func is_alive() -> bool:
 	return alive and health > 0
+
+
+func add_buff(buff_id: String) -> bool:
+	var normalized: String = buff_id.strip_edges().to_lower()
+	if not CardBuffs.has(normalized):
+		return false
+	if has_keyword("debuff_immune") and CardBuffs.kind(normalized) == "debuff":
+		return false
+	buffs[normalized] = int(buffs.get(normalized, 0)) + 1
+	return true
+
+
+func remove_buff(buff_id: String) -> bool:
+	var normalized: String = buff_id.strip_edges().to_lower()
+	if not buffs.has(normalized):
+		return false
+	buffs.erase(normalized)
+	return true
+
+
+func has_buff(buff_id: String) -> bool:
+	return buffs.has(buff_id.strip_edges().to_lower())
+
+
+func is_frozen() -> bool:
+	return has_buff("frozen")
+
+
+func is_invincible() -> bool:
+	return has_buff("invincible") or has_keyword("invincible")
+
+
+func is_spell_immune() -> bool:
+	return has_buff("spell_immune") or has_keyword("spell_immune") or has_keyword("untrickable")

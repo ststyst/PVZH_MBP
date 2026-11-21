@@ -51,6 +51,8 @@ var environment_cards: Dictionary = {}
 var environment_owners: Dictionary = {}
 ## 不能被环境牌覆盖的环境 id
 var protected_environments: Array[String] = ["highground", "water"]
+## 环境 id -> 实体词缀限制表达式
+var environment_keyword_filters: Dictionary = {"water": "amphibious"}
 
 var _next_entity_id: int = 1
 var _next_card_instance_id: int = 1
@@ -105,6 +107,8 @@ func setup(
 		environments.append(str(entry))
 	for entry: Variant in DEFAULT_ENVIRONMENT_LABELS:
 		environment_labels.append(str(entry))
+	for column: int in range(COLUMN_COUNT):
+		environment_owners[column] = ""
 	var enemy_side: String = opposite_side(player_side)
 	players[player_side] = _create_player(player_side, player_hero, player_deck)
 	players[enemy_side] = _create_player(enemy_side, enemy_hero, enemy_deck)
@@ -555,6 +559,8 @@ func valid_slots(side: String, card: CardData) -> Array[Dictionary]:
 		return result
 	var comes_with_team_up: bool = card.has_keyword("team_up")
 	for column: int in range(COLUMN_COUNT):
+		if not _keywords_allowed_in_column(card.keywords, column):
+			continue
 		var existing: Array[BattleEntity] = []
 		for entity: BattleEntity in entities:
 			if entity.alive and entity.column == column and entity.side == side:
@@ -628,14 +634,17 @@ func target_candidates(card: CardData, caster_side: String) -> Array:
 	var target_side: String = caster_side if target_mode == "ally" else opposite_side(caster_side)
 	var handles: Array = []
 	for entity: BattleEntity in entities:
-		if entity.is_alive() and entity.side == target_side:
-			handles.append(entity)
+		if not entity.is_alive() or entity.side != target_side:
+			continue
+		if card != null and card.is_spell() and entity.is_spell_immune():
+			continue
+		handles.append(entity)
 	handles.append(hero_handle(target_side))
 	return handles
 
 
 ## 多目标锦囊 choose(count, selector) 的候选实体。
-func choose_candidates(selector: String, caster_side: String) -> Array:
+func choose_candidates(selector: String, caster_side: String, exclude_spell_immune: bool = false) -> Array:
 	var wanted_side: String = caster_side
 	match selector:
 		"all_enemies", "random_enemy":
@@ -646,8 +655,11 @@ func choose_candidates(selector: String, caster_side: String) -> Array:
 			return []
 	var handles: Array = []
 	for entity: BattleEntity in entities:
-		if entity.is_alive() and entity.side == wanted_side:
-			handles.append(entity)
+		if not entity.is_alive() or entity.side != wanted_side:
+			continue
+		if exclude_spell_immune and entity.is_spell_immune():
+			continue
+		handles.append(entity)
 	return handles
 
 
@@ -701,6 +713,7 @@ func play_card(side: String, hand_index: int, target: Dictionary = {}) -> Dictio
 		)
 		entity.apply_instance_keywords(instance)
 		_fire_event("enter", entity, target_handles)
+		_apply_enter_keywords(entity)
 	elif card.is_environment():
 		var column: int = int(target.get("column", -1))
 		if column < 0 or column >= COLUMN_COUNT:
@@ -723,6 +736,8 @@ func play_card(side: String, hand_index: int, target: Dictionary = {}) -> Dictio
 			for handle: Variant in chosen:
 				if not choose_pool.has(handle):
 					return _fail("目标无效。")
+				if card.is_spell() and handle is BattleEntity and handle.is_spell_immune():
+					return _fail("目标免疫锦囊。")
 		elif card_needs_target(card):
 			if chosen.is_empty():
 				return _fail("这张牌需要选择目标。")
@@ -730,6 +745,8 @@ func play_card(side: String, hand_index: int, target: Dictionary = {}) -> Dictio
 			for handle: Variant in chosen:
 				if not candidates.has(handle):
 					return _fail("目标无效。")
+				if card.is_spell() and handle is BattleEntity and handle.is_spell_immune():
+					return _fail("目标免疫锦囊。")
 		if card.ability_script != null and card.ability_script.move_requires_position():
 			if int(target.get("column", -1)) < 0 or int(target.get("slot", -1)) < 0:
 				return _fail("这张牌需要选择移动位置。")
@@ -774,6 +791,19 @@ func place_environment_by_name(side: String, column: int, card_name: String) -> 
 	return _place_environment(side, column, card)
 
 
+func _keywords_allowed_in_column(keywords: Array, column: int) -> bool:
+	if column < 0 or column >= COLUMN_COUNT:
+		return false
+	var environment_id: String = str(environments[column])
+	var filter_text: String = str(environment_keyword_filters.get(environment_id, ""))
+	if filter_text.is_empty():
+		return true
+	var filter := KeywordFilter.new()
+	if not filter.parse(filter_text):
+		return false
+	return filter.matches(keywords)
+
+
 func _target_handles(target: Dictionary) -> Array:
 	var handles: Array = []
 	var raw_handles: Variant = target.get("handles", null)
@@ -808,6 +838,7 @@ func _run_script(card: CardData, side: String, chosen: Variant, position: Dictio
 		return
 	var context := BattleEffectContext.new(self, side)
 	context.set_chosen_position(int(position.get("column", -1)), int(position.get("slot", -1)))
+	context.set_spell_source(card.is_spell())
 	if int(position.get("column", -1)) >= 0:
 		context.set_base_column(int(position.get("column", -1)))
 	var chosen_handles: Array = []
@@ -836,6 +867,8 @@ func summon_card(side: String, card: CardData, column: int, slot: int, attack_bo
 		side.to_upper(), "z" if side == SIDE_Z else "p", column + 1,
 		"组队" if slot == SLOT_TEAM_UP else "普通", card.display_name(),
 	])
+	_apply_enter_keywords(entity)
+	_refresh_all_counter_bonuses()
 	return entity
 
 
@@ -851,6 +884,7 @@ func summon_card_by_name(side: String, card_name: String) -> Array:
 		side, card, int(slot_info.get("column", 0)), int(slot_info.get("slot", SLOT_NORMAL))
 	)
 	_fire_event("enter", entity)
+	_apply_enter_keywords(entity)
 	result.append(entity)
 	return result
 
@@ -858,6 +892,8 @@ func summon_card_by_name(side: String, card_name: String) -> Array:
 ## 指定列是否还能召唤（召唤不会挤开已有实体）。
 func can_summon_in_column(side: String, card: CardData, column: int) -> bool:
 	if card == null or not card.is_entity() or column < 0 or column >= COLUMN_COUNT:
+		return false
+	if not _keywords_allowed_in_column(card.keywords, column):
 		return false
 	var occupants: Array[BattleEntity] = []
 	for entity: BattleEntity in entities:
@@ -886,6 +922,7 @@ func summon_card_in_column(side: String, card: CardData, column: int) -> BattleE
 		slot = SLOT_NORMAL if occupants[0].slot == SLOT_TEAM_UP else SLOT_TEAM_UP
 	var summoned: BattleEntity = summon_card(side, card, column, slot)
 	_fire_event("enter", summoned)
+	_apply_enter_keywords(summoned)
 	return summoned
 
 
@@ -913,6 +950,8 @@ func valid_move_slots(entity: BattleEntity) -> Array[Dictionary]:
 		return result
 	var side: String = entity.side
 	for column: int in range(COLUMN_COUNT):
+		if not _keywords_allowed_in_column(entity.keywords, column):
+			continue
 		var others: Array[BattleEntity] = []
 		for other: BattleEntity in entities:
 			if other != entity and other.alive and other.column == column and other.side == side:
@@ -973,6 +1012,7 @@ func move_entity(entity: BattleEntity, column: int, slot: int, fire_event: bool 
 	])
 	if fire_event:
 		_fire_event("position_changed", entity)
+	_refresh_all_counter_bonuses()
 	changed.emit()
 	return true
 
@@ -1042,17 +1082,20 @@ func side_of_handle(handle: Variant) -> String:
 
 # ----- 伤害 / 治疗 / 原语 -----
 
-func damage_handle(handle: Variant, amount: int, source_keywords: Array = []) -> void:
+func damage_handle(handle: Variant, amount: int, source_keywords: Array = [], from_spell: bool = false) -> void:
 	if amount <= 0:
 		return
 	if handle is BattleEntity:
-		damage_entity(handle, amount, source_keywords)
+		damage_entity(handle, amount, source_keywords, from_spell)
 	elif handle is String and handle.begins_with("hero:"):
 		damage_hero(handle.substr(5), amount, source_keywords)
 
 
-func damage_entity(entity: BattleEntity, amount: int, source_keywords: Array = []) -> void:
+func damage_entity(entity: BattleEntity, amount: int, source_keywords: Array = [], from_spell: bool = false, source_entity: BattleEntity = null) -> void:
 	if entity == null or not entity.alive:
+		return
+	if entity.is_invincible() or (from_spell and entity.is_spell_immune()):
+		_log("%s 免疫本次伤害" % entity.display_name())
 		return
 	var damage: int = amount
 	if entity.has_keyword("armored"):
@@ -1062,11 +1105,86 @@ func damage_entity(entity: BattleEntity, amount: int, source_keywords: Array = [
 	damage -= absorbed
 	if damage > 0:
 		entity.health -= damage
-	if source_keywords.has("deadly"):
+	if source_keywords.has("deadly") and damage > 0:
 		entity.health = 0
 	_log("%s 受到 %d 点伤害（生命 %d，护盾 %d）" % [entity.display_name(), amount, entity.health, entity.shield])
 	if damage > 0 or source_keywords.has("deadly"):
 		_fire_event("health_changed", entity)
+	if source_keywords.has("frost") and damage > 0:
+		apply_buff_handle(entity, "frozen", 1)
+
+
+func apply_buff_handle(entity: BattleEntity, buff_id: String, amount: int = 1) -> bool:
+	if entity == null or not entity.alive or not CardBuffs.has(buff_id):
+		return false
+	var applied: bool = false
+	for _index: int in range(maxi(amount, 1)):
+		if entity.add_buff(buff_id):
+			applied = true
+	if applied:
+		_log("%s 获得 %s" % [entity.display_name(), CardBuffs.label(buff_id)])
+		_fire_event("buff_applied", entity)
+	return applied
+
+
+func remove_buff_handle(entity: BattleEntity, buff_id: String) -> bool:
+	if entity == null or not entity.remove_buff(buff_id):
+		return false
+	_log("%s 解除 %s" % [entity.display_name(), CardBuffs.label(buff_id)])
+	_fire_event("buff_removed", entity)
+	return true
+
+
+func _clear_column_combat_buffs(column: int) -> void:
+	for entity: BattleEntity in entities.duplicate():
+		if entity.column != column or not entity.alive:
+			continue
+		for buff_id: Variant in entity.buffs.keys():
+			if CardBuffs.clear_after_combat(str(buff_id)):
+				remove_buff_handle(entity, str(buff_id))
+
+
+func _apply_enter_keywords(entity: BattleEntity) -> void:
+	if entity == null:
+		return
+	if entity.has_keyword("invincible") and not entity.has_buff("invincible"):
+		apply_buff_handle(entity, "invincible", 1)
+	_refresh_counter_bonus(entity)
+
+
+func _trigger_hunt(entered: BattleEntity) -> void:
+	if entered == null:
+		return
+	for hunter: BattleEntity in entities.duplicate():
+		if hunter == entered or not hunter.alive or hunter.side == entered.side:
+			continue
+		if not hunter.has_keyword("hunt") or hunter.column == entered.column:
+			continue
+		for slot_info: Dictionary in valid_move_slots(hunter):
+			if int(slot_info.get("column", -1)) == entered.column:
+				move_entity(hunter, entered.column, int(slot_info.get("slot", SLOT_NORMAL)))
+				break
+
+
+func _refresh_all_counter_bonuses() -> void:
+	for entity: BattleEntity in entities:
+		_refresh_counter_bonus(entity)
+
+
+func _refresh_counter_bonus(entity: BattleEntity) -> void:
+	if entity == null or not entity.alive:
+		return
+	var value: int = entity.keyword_value("hero_counter")
+	var has_enemy: bool = false
+	for other: BattleEntity in entities:
+		if other != entity and other.alive and other.column == entity.column and other.side != entity.side:
+			has_enemy = true
+			break
+	var desired: int = value if (value > 0 and not has_enemy) else 0
+	if entity.counter_bonus != desired:
+		entity.attack = maxi(entity.attack - entity.counter_bonus + desired, 0)
+		entity.counter_bonus = desired
+
 
 
 func damage_hero(side: String, amount: int, source_keywords: Array = []) -> void:
@@ -1180,6 +1298,8 @@ func give_keyword_to_hand_card(side: String, hand_index: int, keyword: String, v
 
 func destroy_handle(handle: Variant) -> void:
 	if handle is BattleEntity:
+		if handle.is_invincible() or handle.is_spell_immune():
+			return
 		handle.health = 0
 	elif handle is String and handle.begins_with("hero:"):
 		var state: BattlePlayerState = players.get(handle.substr(5), null)
@@ -1214,6 +1334,8 @@ func _fire_event(event_name: String, event_entity: BattleEntity, chosen_targets:
 		_effect_limit_hit = true
 		_log("本次结算达到连锁上限（%d），强制结束后续连锁。" % effect_resolution_limit)
 		return
+	if event_name == "enter" and event_entity != null:
+		_trigger_hunt(event_entity)
 	for listener: BattleEntity in entities.duplicate():
 		if listener.card == null or listener.card.ability_script == null:
 			continue
@@ -1235,6 +1357,7 @@ func _fire_event(event_name: String, event_entity: BattleEntity, chosen_targets:
 		_trigger_zone_effects(event_name, event_entity)
 	if event_name != "turn_start" and event_name != "turn_end":
 		_fire_environment_event(event_name, event_entity)
+	_refresh_all_counter_bonuses()
 
 
 func _fire_environment_event(event_name: String, event_entity: BattleEntity, only_column: int = -1) -> void:
@@ -1251,7 +1374,7 @@ func _fire_environment_event(event_name: String, event_entity: BattleEntity, onl
 			continue
 		if event_entity != null and event_entity.column != column:
 			continue
-		var owner: String = str(environment_owners.get(column, SIDE_P))
+		var owner: String = str(environment_owners.get(column, ""))
 		var context := EnvironmentEffectContext.new(self, owner, column)
 		if event_entity != null:
 			context.set_event_target(event_entity)
@@ -1285,46 +1408,102 @@ func _resolve_combat() -> void:
 
 
 func _combat_column(column: int) -> void:
-	var z_entities: Array[BattleEntity] = alive_entities(column, SIDE_Z)
-	var p_entities: Array[BattleEntity] = alive_entities(column, SIDE_P)
-	if z_entities.is_empty() and p_entities.is_empty():
-		return
-	var attacks: Array[Dictionary] = []
-	for attacker: BattleEntity in z_entities:
-		if p_entities.is_empty():
-			attacks.append({"attacker": attacker, "target": hero_handle(SIDE_P)})
-		else:
-			attacks.append({"attacker": attacker, "target": p_entities[0]})
-	for attacker: BattleEntity in p_entities:
-		if z_entities.is_empty():
-			attacks.append({"attacker": attacker, "target": hero_handle(SIDE_Z)})
-		else:
-			attacks.append({"attacker": attacker, "target": z_entities[0]})
-	for attack: Dictionary in attacks:
-		var attacker: BattleEntity = attack["attacker"]
-		var target: Variant = attack["target"]
-		if not attacker.alive:
+	var attackers: Array[BattleEntity] = []
+	attackers.append_array(alive_entities(column, SIDE_Z))
+	attackers.append_array(alive_entities(column, SIDE_P))
+	# 先让整列的第一轮攻击都发生，再统一结算死亡；这样普通同列互击仍会同时出手。
+	for attacker: BattleEntity in attackers:
+		if winner != "":
+			return
+		if not attacker.alive or attacker.is_frozen():
 			continue
-		# 先攻：先对敌方英雄造成词缀数值的伤害，再执行正常攻击。
-		var first_strike: int = attacker.keyword_value("first_strike")
-		if first_strike > 0:
-			damage_hero(opposite_side(attacker.side), first_strike, attacker.keywords)
-			if winner != "":
-				break
-		if target is BattleEntity:
-			damage_entity(target, attacker.attack, attacker.keywords)
-		else:
-			damage_hero(str(target).substr(5), attacker.attack, attacker.keywords)
+		_execute_entity_attack(attacker, _choose_attack_target(attacker), 0)
 	_flush_column_deaths(column)
 	if winner != "":
 		return
-	for attack: Dictionary in attacks:
-		if attack["attacker"] is BattleEntity and attack["attacker"].alive:
-			_fire_event("attack", attack["attacker"])
-		if attack["target"] is BattleEntity and attack["target"].alive:
-			_fire_event("attacked", attack["target"])
-	for attack: Dictionary in attacks:
-		_emit_animation_cue("attack", attack["attacker"] as BattleEntity, attack["target"])
+	# 双重打击：第一轮与死亡结算完成后仍存活，才进行第二次攻击。
+	for attacker: BattleEntity in attackers:
+		if winner != "":
+			return
+		if attacker.alive and attacker.has_keyword("double_strike") and not attacker.is_frozen():
+			_execute_entity_attack(attacker, _choose_attack_target(attacker), 0)
+	_flush_column_deaths(column)
+	if winner != "":
+		return
+	_clear_column_combat_buffs(column)
+
+
+func _choose_attack_target(attacker: BattleEntity) -> Variant:
+	for entity: BattleEntity in entities:
+		if entity.is_alive() and entity.side != attacker.side and entity.column == attacker.column:
+			return entity
+	return hero_handle(opposite_side(attacker.side))
+
+
+func force_entity_attack(attacker: BattleEntity) -> bool:
+	if attacker == null or not attacker.alive or attacker.is_frozen():
+		return false
+	_execute_entity_attack(attacker, _choose_attack_target(attacker), 0)
+	_flush_column_deaths(attacker.column)
+	_clear_column_combat_buffs(attacker.column)
+	return true
+
+
+func _execute_entity_attack(attacker: BattleEntity, target: Variant, frenzy_depth: int) -> void:
+	if attacker == null or not attacker.alive or attacker.is_frozen():
+		return
+	var first_strike: int = attacker.keyword_value("first_strike")
+	if first_strike > 0:
+		damage_hero(opposite_side(attacker.side), first_strike, attacker.keywords)
+		if winner != "":
+			return
+	var killed_enemy: bool = false
+	if attacker.has_keyword("strikethrough"):
+		for entity: BattleEntity in entities.duplicate():
+			if entity.alive and entity.side != attacker.side and entity.column == attacker.column:
+				damage_entity(entity, attacker.attack, attacker.keywords, false, attacker)
+				if not entity.alive or entity.health <= 0:
+					killed_enemy = true
+		damage_hero(opposite_side(attacker.side), attacker.attack, attacker.keywords)
+	else:
+		if target is BattleEntity:
+			var target_entity: BattleEntity = target
+			if target_entity.alive:
+				damage_entity(target_entity, attacker.attack, attacker.keywords, false, attacker)
+				if target_entity.health <= 0:
+					killed_enemy = true
+				_try_thorns(attacker, target_entity)
+		elif target is String and target.begins_with("hero:"):
+			damage_hero(target.substr(5), attacker.attack, attacker.keywords)
+	var splash: int = attacker.keyword_value("overshoot")
+	if splash > 0:
+		for column_offset: int in [-1, 1]:
+			var splash_column: int = attacker.column + column_offset
+			if splash_column < 0 or splash_column >= COLUMN_COUNT:
+				continue
+			for entity: BattleEntity in entities.duplicate():
+				if entity.alive and entity != attacker and entity.column == splash_column:
+					damage_entity(entity, splash, attacker.keywords, false, attacker)
+	_fire_event("attack", attacker)
+	if target is BattleEntity and target.alive:
+		_fire_event("attacked", target)
+	_emit_animation_cue("attack", attacker, target)
+	if killed_enemy and attacker.alive and attacker.has_keyword("frenzy") and frenzy_depth < 8:
+		_flush_column_deaths(attacker.column)
+		if attacker.alive:
+			_execute_entity_attack(attacker, _choose_attack_target(attacker), frenzy_depth + 1)
+		_flush_column_deaths(attacker.column)
+
+
+func _try_thorns(attacker: BattleEntity, target: BattleEntity) -> void:
+	if target == null or not target.alive:
+		return
+	var thorns: int = target.keyword_value("thorns")
+	if thorns <= 0:
+		return
+	if attacker == null or not attacker.alive or attacker.side == target.side:
+		return
+	damage_entity(attacker, thorns, ["thorns"], false, target)
 
 
 func _resolve_turn_start() -> void:
@@ -1366,6 +1545,7 @@ func _flush_deaths() -> void:
 			_fire_event("die", entity)
 			_trigger_zone_ally_death(entity)
 			entities.erase(entity)
+	_refresh_all_counter_bonuses()
 	_check_game_over()
 
 
@@ -1384,6 +1564,7 @@ func _flush_column_deaths(column: int) -> void:
 			_fire_event("die", entity)
 			_trigger_zone_ally_death(entity)
 			entities.erase(entity)
+	_refresh_all_counter_bonuses()
 	_check_game_over()
 
 

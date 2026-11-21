@@ -19,8 +19,9 @@ const DEFINITIONS: Dictionary = {
 		"description": "敌方必须先攻击它，才能攻击其他目标。",
 	},
 	"deadly": {
-		"label": "剧毒",
-		"description": "对随从造成伤害时直接消灭它。",
+		"label": "致命",
+		"description": "伤害类型增加致命；命中没有无敌的实体时直接消灭。",
+		"allowed_kinds": ["entity"],
 	},
 	"armored": {
 		"label": "护甲",
@@ -28,27 +29,76 @@ const DEFINITIONS: Dictionary = {
 	},
 	"strikethrough": {
 		"label": "穿透",
-		"description": "攻击随从时，同时命中敌方英雄。",
+		"description": "攻击时对其所在列的所有敌方实体以及敌方英雄造成伤害。",
+		"allowed_kinds": ["entity"],
 	},
 	"bullseye": {
 		"label": "必中",
-		"description": "该实体或法术造成的伤害类型为必中；必中伤害不会增加充能护盾充能。",
+		"description": "持有该词缀的实体造成的伤害类型增加必中；必中伤害不会增加充能护盾充能。",
+		"allowed_kinds": ["entity"],
 	},
 	"double_strike": {
-		"label": "双击",
-		"description": "每次攻击会打两下。",
+		"label": "双重打击",
+		"description": "战斗回合中会攻击两次；第一次攻击与效果、死亡结算完成后仍存活才攻击第二次。",
+		"allowed_kinds": ["entity"],
 	},
 	"overshoot": {
 		"label": "溅射",
-		"description": "攻击时对相邻目标造成溅射伤害。",
+		"description": "攻击时同时对其所在列相邻两列上的所有实体造成对应数值的伤害。",
+		"value": true,
+		"allowed_kinds": ["entity"],
 	},
 	"frenzy": {
-		"label": "狂怒",
-		"description": "受到伤害后攻击力提升。",
+		"label": "狂热",
+		"description": "攻击击杀被命中的敌方实体后，再攻击一次。",
+		"allowed_kinds": ["entity"],
 	},
 	"untrickable": {
 		"label": "免疫锦囊",
 		"description": "不能被锦囊牌指定。",
+		"allowed_kinds": ["entity"],
+	},
+	"spell_immune": {
+		"label": "锦囊免疫",
+		"description": "不会成为锦囊目标，锦囊效果和伤害无法影响它。",
+		"allowed_kinds": ["entity"],
+	},
+	"hero_counter": {
+		"label": "克制英雄",
+		"description": "所在列没有敌方实体时，攻击力获得对应数值的临时加成；有敌方实体时移除。",
+		"value": true,
+		"allowed_kinds": ["entity"],
+	},
+	"invincible": {
+		"label": "无敌",
+		"description": "入场时获得无敌 Buff。",
+		"allowed_kinds": ["entity"],
+	},
+	"hunt": {
+		"label": "捕猎",
+		"description": "敌方实体入场时，尝试移动到该实体所在列。",
+		"allowed_kinds": ["entity"],
+	},
+	"amphibious": {
+		"label": "两栖",
+		"description": "可以在水池等要求两栖的环境位置打出或移动。",
+		"allowed_kinds": ["entity"],
+	},
+	"debuff_immune": {
+		"label": "免疫负面",
+		"description": "不会获得 Debuff。",
+		"allowed_kinds": ["entity"],
+	},
+	"frost": {
+		"label": "寒霜",
+		"description": "伤害类型增加冰冻攻击；被命中的实体获得冰冻 Debuff。",
+		"allowed_kinds": ["entity"],
+	},
+	"thorns": {
+		"label": "反伤",
+		"description": "受到实体攻击时，对攻击来源造成对应数值的伤害。",
+		"value": true,
+		"allowed_kinds": ["entity"],
 	},
 	"team_up": {
 		"label": "组队",

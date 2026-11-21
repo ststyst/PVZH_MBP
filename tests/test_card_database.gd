@@ -66,6 +66,21 @@ func test_namespacing() -> void:
 		assert_eq(card.card_namespace, "pvzh")
 
 
+func test_official_csv_encoding_is_clean() -> void:
+	for file_name: String in ["cards.csv", "heroes.csv", "config.csv"]:
+		var path: String = "res://data/cards/official/" + file_name
+		var bytes: PackedByteArray = FileAccess.get_file_as_bytes(path)
+		assert_true(bytes.size() > 0, "%s 不应为空" % file_name)
+		assert_false(
+			bytes.size() >= 3 and bytes[0] == 0xEF and bytes[1] == 0xBB and bytes[2] == 0xBF,
+			"%s 不应带 UTF-8 BOM" % file_name,
+		)
+		assert_false(bytes.has(0), "%s 不应包含 NUL 字节" % file_name)
+		var text: String = bytes.get_string_from_utf8()
+		assert_false(text.contains("\uFFFD"), "%s 不应包含 UTF-8 替换字符" % file_name)
+		assert_true(text.find("\n") != -1, "%s 应能按行读取" % file_name)
+
+
 func test_keywords_and_tribes_are_valid() -> void:
 	database.reload()
 	var ids: Array[String] = database.all_card_ids()

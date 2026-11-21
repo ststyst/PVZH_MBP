@@ -117,6 +117,26 @@ func place_environment(_column_offset: int, _card_name: String) -> bool:
 	return false
 
 
+func apply_buff(_target, _buff_id: String, _amount: int = 1) -> bool:
+	push_warning("EffectContext.apply_buff 未实现：需要战斗层提供")
+	return false
+
+
+func remove_buff(_target, _buff_id: String) -> bool:
+	push_warning("EffectContext.remove_buff 未实现：需要战斗层提供")
+	return false
+
+
+func force_attack(_target) -> bool:
+	push_warning("EffectContext.force_attack 未实现：需要战斗层提供")
+	return false
+
+
+## 当前效果来源是否可以作用于该目标；锦囊来源会过滤锦囊免疫。
+func can_target(_target) -> bool:
+	return true
+
+
 ## 多目标选择声明：从 selector 候选中校验最多 count 个已选目标。
 func choose_targets(_count: int, _selector: String) -> bool:
 	push_warning("EffectContext.choose_targets 未实现：需要战斗层提供")

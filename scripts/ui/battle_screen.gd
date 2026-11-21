@@ -99,6 +99,7 @@ func _ready() -> void:
 	engine = BattleEngine.new(CardDatabase)
 	engine.effect_resolution_limit = ServerConfig.effect_resolution_limit()
 	engine.protected_environments = ServerConfig.protected_environments()
+	engine.environment_keyword_filters = ServerConfig.environment_keyword_filters()
 	engine.changed.connect(_on_engine_changed)
 	engine.game_finished.connect(_on_game_finished)
 	engine.animation_cue.connect(_on_animation_cue)
@@ -299,7 +300,7 @@ func _on_hand_pressed(index: int) -> void:
 		_pending_handles.clear()
 		var requirement: Dictionary = _card_multi_target_requirement(card)
 		var selector: String = str(requirement.get("selector", ""))
-		_pending_candidates = engine.choose_candidates(selector, player_side)
+		_pending_candidates = engine.choose_candidates(selector, player_side, card.is_spell())
 		_set_status("最多选择 %d 个目标，然后点击“确认目标”。" % int(requirement.get("count", 0)))
 		_refresh_all()
 	elif engine.card_needs_target(card):
@@ -1032,7 +1033,7 @@ func _on_special_play_pressed() -> void:
 		_special_target_mode = true
 		_pending_mode = "choose_spell"
 		_pending_handles.clear()
-		_pending_candidates = engine.choose_candidates(str(requirement.get("selector", "")), player_side)
+		_pending_candidates = engine.choose_candidates(str(requirement.get("selector", "")), player_side, card.is_spell())
 		_special_overlay.visible = false
 		_set_status("最多选择 %d 个超能力目标，然后点击“确认目标”。" % int(requirement.get("count", 0)))
 		_refresh_all()

@@ -129,6 +129,25 @@ func _exec_primitive(statement: Dictionary) -> void:
 				_as_int(_eval(arguments[0], {})),
 				_as_string(_eval(arguments[1], {})),
 			)
+		"apply_buff", "remove_buff":
+			var buff_targets: Array = _resolve_argument_target(arguments[0])
+			if buff_targets.size() != 1:
+				_error("%s 需要单个实体目标" % primitive_name, line)
+			else:
+				var buff_id: String = _as_string(_eval(arguments[1], {}))
+				if primitive_name == "apply_buff":
+					var buff_amount: int = 1
+					if arguments.size() > 2:
+						buff_amount = maxi(_as_int(_eval(arguments[2], {})), 1)
+					context.apply_buff(buff_targets[0], buff_id, buff_amount)
+				else:
+					context.remove_buff(buff_targets[0], buff_id)
+		"force_attack":
+			var attack_targets: Array = _resolve_argument_target(arguments[0])
+			if attack_targets.size() != 1:
+				_error("force_attack 需要单个实体目标", line)
+			else:
+				context.force_attack(attack_targets[0])
 		"add_random_cards_to_deck", "add_random_cards_to_hand":
 			var card_targets: Array = _resolve_argument_target(arguments[0])
 			if card_targets.size() != 1:
@@ -150,7 +169,7 @@ func _exec_target_primitive(primitive_name: String, arguments: Array, line: int)
 	for argument_index: int in range(1, arguments.size()):
 		extra_values.append(_eval(arguments[argument_index], {}))
 	for handle: Variant in handles:
-		if handle == null:
+		if handle == null or not context.can_target(handle):
 			continue
 		match primitive_name:
 			"deal_damage":

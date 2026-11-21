@@ -27,6 +27,8 @@ const EVENTS: Array[String] = [
 	"turn_end",
 	"ally_die",
 	"position_changed",
+	"buff_applied",
+	"buff_removed",
 ]
 const SELECTORS: Array[String] = [
 	"self",
@@ -62,6 +64,9 @@ const PRIMITIVES: Dictionary = {
 	"add_random_cards_to_hand": {"min": 3, "max": 3},
 	"choose_column": {"min": 0, "max": 0},
 	"place_environment": {"min": 2, "max": 2},
+	"apply_buff": {"min": 2, "max": 3},
+	"remove_buff": {"min": 2, "max": 2},
+	"force_attack": {"min": 1, "max": 1},
 }
 
 ## 查询函数（可以出现在表达式里）
