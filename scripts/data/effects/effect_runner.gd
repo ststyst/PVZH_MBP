@@ -122,6 +122,13 @@ func _exec_primitive(statement: Dictionary) -> void:
 				var move_slot: int = _as_int(_eval(arguments[2], {}))
 				if not context.move_entity(move_targets[0], move_column, move_slot):
 					_error("移动实体失败（位置无效或目标格不可用）", line)
+		"choose_column":
+			pass
+		"place_environment":
+			context.place_environment(
+				_as_int(_eval(arguments[0], {})),
+				_as_string(_eval(arguments[1], {})),
+			)
 		"add_random_cards_to_deck", "add_random_cards_to_hand":
 			var card_targets: Array = _resolve_argument_target(arguments[0])
 			if card_targets.size() != 1:
@@ -170,8 +177,8 @@ func _exec_target_primitive(primitive_name: String, arguments: Array, line: int)
 func _matches_trigger(trigger: Dictionary, event_handle) -> bool:
 	var predicate: Variant = trigger.get("predicate")
 	if predicate == null:
-		# 无过滤条件：默认只响应自己（实体自身的事件）
-		return _is_self(event_handle)
+		# 无过滤条件：普通实体默认只响应自己；环境监听其所在列。
+		return _is_self(event_handle) or context.get_zone() == "environment"
 	var facts: Dictionary = context.describe_entity(event_handle)
 	facts["zone"] = context.get_zone()
 	return _truthy(_eval(predicate, facts))
@@ -240,6 +247,14 @@ func _eval_call(expression: Dictionary, facts: Dictionary) -> Variant:
 			return tribes is Array and tribes.has(tribe_name)
 		"marker_count":
 			return context.marker_count(_as_string(_eval(arguments[0], facts)))
+		"entities_in_column":
+			var first_offset: int = _as_int(_eval(arguments[0], facts))
+			var last_offset: int = _as_int(_eval(arguments[1], facts))
+			var side_filter: String = _as_string(_eval(arguments[2], facts))
+			var min_attack: int = 0
+			if arguments.size() > 3:
+				min_attack = _as_int(_eval(arguments[3], facts))
+			return context.entities_in_column(first_offset, last_offset, side_filter, min_attack)
 		_:
 			_error("原语只能作为语句调用：%s" % function_name, _line_of(expression))
 			return null

@@ -105,6 +105,18 @@ func add_random_cards(_zone: String, _target, _count: int, _filter_text: String)
 	return 0
 
 
+## 返回相对基准列偏移范围内的实体；side_filter 为 ally / enemy / both。
+func entities_in_column(_min_offset: int, _max_offset: int, _side_filter: String, _min_attack: int = 0) -> Array:
+	push_warning("EffectContext.entities_in_column 未实现：需要战斗层提供")
+	return []
+
+
+## 在基准列（实体列/环境列/锦囊选择列）加上偏移的位置尝试放置环境。
+func place_environment(_column_offset: int, _card_name: String) -> bool:
+	push_warning("EffectContext.place_environment 未实现：需要战斗层提供")
+	return false
+
+
 ## 多目标选择声明：从 selector 候选中校验最多 count 个已选目标。
 func choose_targets(_count: int, _selector: String) -> bool:
 	push_warning("EffectContext.choose_targets 未实现：需要战斗层提供")

@@ -437,6 +437,9 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 | `can_summon_in_column(side, card, column)` | 指定列是否可召唤（不挤压已有实体） |
 | `summon_card_in_column(side, card, column)` | 在合法列召唤一个实体 |
 | `add_random_cards(side, zone, count, filter_text)` | 从卡牌数据库筛选并随机插入牌库/手牌；返回插入数量 |
+| `place_environment_by_name(side, column, card_name)` | 尝试放置环境；受保护环境不可覆盖 |
+| `can_change_environment(column)` | 该列环境是否允许被改变 |
+| `entities_in_column(min, max, side, min_attack)` | 相对基准列范围查询实体数组 |
 | `CardFilter.parse(text)` / `matches(card)` | 支持 and/or/not 的卡牌筛选表达式 |
 | `move_entity(entity, column, slot)` | 卡牌效果移动实体；合法位置仅限该实体所属阵营，触发 `position_changed` |
 | `valid_move_slots(entity)` | 返回可移动的列/位置；排除当前位置；目标格有友方时该列至少一方需 `team_up` |
@@ -473,6 +476,8 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 - `BattlePlayerState.charge_shield` / `charge_shield_durability` / `charge_shield_emergency_uses` 为充能护盾状态
 - `BattlePlayerState.superpower_pool` / `special_offer_id` 为超能力牌池与特殊回合临时牌
 - 超能力在双方完成起手重选后发放；第一回合不触发每回合固定抽牌，超能力不进入起手重选
+- 环境拥有者、环境卡与所在列保存在 `environment_owners` / `environment_cards`；环境事件按列触发
+- 服务器 `match.protected_environments` 默认 `["highground","water"]`，这些环境不可被环境牌覆盖
 - 战斗棋盘长按任意在场实体，弹出与牌组界面相同的 `CardInfoDialog`
 - 战斗手牌调用 `CardTile.setup(..., false)`，不显示收藏拥有状态
 - `first_strike` 伤害与普通英雄伤害共用 `damage_hero`，会经过免疫、护盾并触发 `hero_damaged`

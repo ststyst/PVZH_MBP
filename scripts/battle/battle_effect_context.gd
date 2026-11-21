@@ -9,6 +9,7 @@ var chosen_targets: Array = []
 var source_keywords: Array = []
 var chosen_column: int = -1
 var chosen_slot: int = -1
+var base_column: int = -1
 var _self_handle: Variant = null
 var _event_handle: Variant = null
 
@@ -43,6 +44,10 @@ func set_chosen_position(column: int, slot: int) -> void:
 	chosen_slot = slot
 
 
+func set_base_column(column: int) -> void:
+	base_column = column
+
+
 func resolve_selector(selector: String) -> Array:
 	match selector:
 		"self":
@@ -72,19 +77,24 @@ func resolve_selector(selector: String) -> Array:
 func describe_entity(handle) -> Dictionary:
 	if handle is BattleEntity:
 		var entity: BattleEntity = handle
+		var reference_column: int = base_column
+		if reference_column < 0 and _self_handle is BattleEntity:
+			reference_column = _self_handle.column
 		return {
-			"side": _relative_side(entity.side),
+			"side": _side_fact(entity),
 			"class": entity.card.card_class if entity.card != null else "",
 			"tribes": entity.card.tribes if entity.card != null else [],
 			"attack": entity.attack,
 			"health": entity.health,
 			"shield": entity.shield,
+			"column": entity.column - reference_column if reference_column >= 0 else entity.column + 1,
+			"column_abs": entity.column + 1,
 		}
 	if handle is String and handle.begins_with("hero:"):
 		var side: String = handle.substr(5)
 		var state: BattlePlayerState = engine.players.get(side, null)
 		return {
-			"side": _relative_side(side),
+			"side": "ally" if side == caster_side else "enemy",
 			"class": "hero",
 			"tribes": [],
 			"attack": 0,
@@ -188,6 +198,41 @@ func add_random_cards(zone: String, target, count: int, filter_text: String) -> 
 	return engine.add_random_cards(target_side, zone, count, filter_text)
 
 
+func entities_in_column(min_offset: int, max_offset: int, side_filter: String, min_attack: int = 0) -> Array:
+	var reference_column: int = base_column
+	if reference_column < 0 and _self_handle is BattleEntity:
+		reference_column = _self_handle.column
+	if reference_column < 0:
+		return []
+	var first_column: int = reference_column + mini(min_offset, max_offset)
+	var last_column: int = reference_column + maxi(min_offset, max_offset)
+	var result: Array = []
+	for entity: BattleEntity in engine.entities:
+		if not entity.alive:
+			continue
+		if entity.column < first_column or entity.column > last_column:
+			continue
+		if min_attack > 0 and entity.attack < min_attack:
+			continue
+		if side_filter == "ally" and entity.side != caster_side:
+			continue
+		if side_filter == "enemy" and entity.side == caster_side:
+			continue
+		result.append(entity)
+	return result
+
+
+func place_environment(column_offset: int, card_name: String) -> bool:
+	var reference_column: int = base_column
+	if reference_column < 0 and _self_handle is BattleEntity:
+		reference_column = _self_handle.column
+	if reference_column < 0:
+		reference_column = chosen_column
+	if reference_column < 0:
+		return false
+	return engine.place_environment_by_name(caster_side, reference_column + column_offset, card_name)
+
+
 func choose_targets(count: int, selector: String) -> bool:
 	if chosen_targets.size() > maxi(count, 0):
 		return false
@@ -250,6 +295,12 @@ func _random_one(handles: Array) -> Array:
 	if handles.is_empty():
 		return []
 	return [handles[engine.rng.randi_range(0, handles.size() - 1)]]
+
+
+func _side_fact(entity: BattleEntity) -> String:
+	if _self_handle is BattleEntity and _self_handle == entity:
+		return "self"
+	return "ally" if entity.side == caster_side else "enemy"
 
 
 func _relative_side(side: String) -> String:

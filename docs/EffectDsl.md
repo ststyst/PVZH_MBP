@@ -21,8 +21,11 @@
 | `summon(card_name)` | 英文名 | 在合法位置召唤一个实体；每次语句只召唤一个 |
 | `summon(card_name, column)` | 英文名、列 | 法术/环境：绝对列 1~5；实体异能：相对自身列 -4~4（0=本列） |
 | `summon(card_name, min_column, max_column)` | 英文名、范围 | 在范围内随机尝试一个合法列；坐标含义同上 |
+| `place_environment(offset, card_name)` | 相对列偏移、环境英文名 | 在基准列偏移位置尝试放置环境；受保护环境不可覆盖 |
 | `add_random_cards_to_deck(target, count, filter)` | 目标、数量、筛选条件 | 从卡牌数据库筛选随机牌，塞入目标阵营牌库随机位置 |
 | `add_random_cards_to_hand(target, count, filter)` | 目标、数量、筛选条件 | 从卡牌数据库筛选随机牌，塞入目标阵营手牌随机位置 |
+| `choose_column()` | — | 锦囊打出时要求玩家选择一列；`chosen_column` 生效 |
+| `entities_in_column(min, max, side, min_attack = 0)` | 相对偏移、偏移、阵营、最低攻击 | 返回基准列偏移范围内的实体数组 |
 | `draw_cards(count)` | 数值 | 抽牌 |
 | `deal_damage(target, amount)` | 目标、数值 | 造成伤害 |
 | `heal(target, amount)` | 目标、数值 | 治疗 |
@@ -263,6 +266,53 @@ summon("gnoll", 2, 4)       # 在范围内随机尝试合法列
 - 范围形式会在范围内随机选择列，并逐个尝试；全部不合法则放弃召唤
 - 召唤不会挤开已有实体；列满或不满足组队条件时该列召唤失败
 - 每一条 `summon(...)` 语句只召唤一个实体；需要多个实体就写多条语句
+
+### 列、实体事件与环境
+
+实体事件条件中可使用 `column`（相对技能拥有者所在列）和 `column_abs`（绝对列 1~5）：
+
+```text
+when enter(side == 'ally' and column == -1):
+	buff_stats(entities_in_column(1, 1, "ally", 4), 1, 0)
+```
+
+上例：左侧一列有友方实体入场时，为右侧一列攻击力至少 4 的友方实体 +1 攻击。
+
+锦囊选择一列：
+
+```text
+choose_column()
+destroy(entities_in_column(0, 0, "both"))
+```
+
+范围列：
+
+```text
+choose_column()
+destroy(entities_in_column(-1, 1, "both"))
+```
+
+实体异能按自身列偏移放置环境：
+
+```text
+when enter:
+	place_environment(-1, "sunny_field")
+```
+
+环境牌的事件能力就是该环境所在列的效果：
+
+```text
+when turn_end:
+	heal(entities_in_column(0, 0, "ally"), 1)
+
+when enter(side == 'enemy'):
+	deal_damage(event, 5)
+```
+
+- 环境拥有者决定 `side` 的基准
+- 环境监听自己所在列的实体事件；`turn_start` / `turn_end` 每列触发一次
+- `place_environment` 和普通环境打出都受服务器 `protected_environments` 限制
+- `column` 对实体/环境以自身所在列为 0；对无基准的上下文回退为绝对 1~5 列
 
 ### 随机塞牌与筛选条件
 

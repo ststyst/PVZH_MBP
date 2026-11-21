@@ -500,6 +500,123 @@ func test_card_filter_and_random_insert() -> void:
 	assert_true(found_gnoll, "塞入的卡牌英文名应为 gnoll")
 
 
+func test_column_event_relative_condition_and_query() -> void:
+	var engine: BattleEngine = _started_engine()
+	var source_card: CardData = _make_test_card(
+		"pvzh:test_column_listener",
+		"when enter(side == 'ally' and column == -1):\n    buff_stats(entities_in_column(1, 1, \"ally\", 4), 1, 0)"
+	)
+	var strong_card: CardData = _make_test_card("pvzh:test_column_strong", "")
+	strong_card.attack = 4
+	strong_card.health = 5
+	var source: BattleEntity = engine.summon_card_in_column("p", source_card, 2)
+	var strong: BattleEntity = engine.summon_card_in_column("p", strong_card, 3)
+	assert_true(source != null and strong != null)
+	var trigger: BattleEntity = engine.summon_card_in_column("p", cards.get_card("pvzh:gnoll"), 1)
+	assert_true(trigger != null)
+	assert_eq(strong.attack, 5, "左侧一列友方入场应增强右侧一列攻击 >3 的友方")
+
+
+func test_spell_choose_column_destroy_both_sides() -> void:
+	var engine: BattleEngine = _started_engine()
+	var spell: CardData = _make_test_card(
+		"pvzh:test_column_spell",
+		"choose_column()\ndestroy(entities_in_column(0, 0, \"both\"))"
+	)
+	spell.kind = "spell"
+	spell.cost = 1
+	var p_entity: BattleEntity = engine.summon_card("p", cards.get_card("pvzh:gnoll"), 2, 0)
+	var z_entity: BattleEntity = engine.summon_card("z", cards.get_card("pvzh:gnoll"), 2, 0)
+	var state: BattlePlayerState = engine.players["p"]
+	_set_hand(engine, "p", [spell.card_id])
+	state.energy = 10
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "p"
+	assert_true(spell.ability_script.column_requirement())
+	var result: Dictionary = engine.play_card("p", 0, {"column": 2})
+	assert_true(bool(result.get("ok", false)))
+	assert_false(p_entity.alive)
+	assert_false(z_entity.alive)
+
+
+func test_spell_choose_column_range() -> void:
+	var engine: BattleEngine = _started_engine()
+	var spell: CardData = _make_test_card(
+		"pvzh:test_column_range_spell",
+		"choose_column()\ndestroy(entities_in_column(-1, 1, \"both\"))"
+	)
+	spell.kind = "spell"
+	spell.cost = 1
+	var left: BattleEntity = engine.summon_card("p", cards.get_card("pvzh:gnoll"), 1, 0)
+	var center: BattleEntity = engine.summon_card("z", cards.get_card("pvzh:gnoll"), 2, 0)
+	var right: BattleEntity = engine.summon_card("p", cards.get_card("pvzh:gnoll"), 3, 0)
+	var state: BattlePlayerState = engine.players["p"]
+	_set_hand(engine, "p", [spell.card_id])
+	state.energy = 10
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "p"
+	var result: Dictionary = engine.play_card("p", 0, {"column": 2})
+	assert_true(bool(result.get("ok", false)))
+	assert_false(left.alive)
+	assert_false(center.alive)
+	assert_false(right.alive)
+
+
+func test_place_environment_in_relative_column() -> void:
+	var engine: BattleEngine = _started_engine()
+	var source_card: CardData = _make_test_card(
+		"pvzh:test_environment_placer",
+		"when enter:\n    place_environment(-1, \"sunny_field\")"
+	)
+	var source: BattleEntity = engine.summon_card_in_column("p", source_card, 2)
+	assert_true(source != null)
+	assert_eq(str(engine.environments[1]), "sunny_field")
+	assert_eq(str(engine.environment_owners[1]), "p")
+
+
+func test_protected_environment_cannot_be_replaced() -> void:
+	var engine: BattleEngine = _started_engine()
+	var state: BattlePlayerState = engine.players["p"]
+	_set_hand(engine, "p", ["pvzh:sunny_field"])
+	state.energy = 10
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "p"
+	var blocked: Dictionary = engine.play_card("p", 0, {"column": 0})
+	assert_false(bool(blocked.get("ok", true)), "高地默认不可被环境牌覆盖")
+	var allowed: Dictionary = engine.play_card("p", 0, {"column": 2})
+	assert_true(bool(allowed.get("ok", false)), "普通环境列可以打出环境牌")
+	assert_eq(str(engine.environments[2]), "sunny_field")
+
+
+func test_environment_events_and_turn_end() -> void:
+	var engine: BattleEngine = _started_engine()
+	var environment_card: CardData = _make_test_card(
+		"pvzh:test_environment_effects",
+		"when turn_end:\n    heal(entities_in_column(0, 0, \"ally\"), 1)\nwhen enter(side == 'enemy'):\n    deal_damage(event, 5)"
+	)
+	environment_card.kind = "environment"
+	environment_card.english_name = "test_environment_effects"
+	environment_card.chinese_name = "测试环境效果"
+	environment_card.cost = 1
+	var p_entity: BattleEntity = engine.summon_card("p", cards.get_card("pvzh:gnoll"), 2, 0)
+	p_entity.max_health = 5
+	p_entity.health = 3
+	var state: BattlePlayerState = engine.players["p"]
+	_set_hand(engine, "p", [environment_card.card_id])
+	state.energy = 10
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "p"
+	var placed: Dictionary = engine.play_card("p", 0, {"column": 2})
+	assert_true(bool(placed.get("ok", false)))
+	engine._resolve_turn_end()
+	assert_eq(p_entity.health, 4, "环境应在回合结束治疗同列友方")
+	var enemy_card: CardData = _make_test_card("pvzh:test_environment_enemy", "")
+	enemy_card.health = 10
+	var enemy: BattleEntity = engine.summon_card_in_column("z", enemy_card, 2)
+	assert_true(enemy != null)
+	assert_eq(enemy.health, 5, "环境应在敌方实体入场时造成 5 点伤害")
+
+
 func test_summon_absolute_column_and_range() -> void:
 	var engine: BattleEngine = _started_engine()
 	var spell: CardData = _make_test_card(

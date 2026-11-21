@@ -60,6 +60,8 @@ const PRIMITIVES: Dictionary = {
 	"move_entity": {"min": 1, "max": 3},
 	"add_random_cards_to_deck": {"min": 3, "max": 3},
 	"add_random_cards_to_hand": {"min": 3, "max": 3},
+	"choose_column": {"min": 0, "max": 0},
+	"place_environment": {"min": 2, "max": 2},
 }
 
 ## 查询函数（可以出现在表达式里）
@@ -71,6 +73,7 @@ const QUERIES: Dictionary = {
 	"min": {"min": 2, "max": 2},
 	"max": {"min": 2, "max": 2},
 	"marker_count": {"min": 1, "max": 1},
+	"entities_in_column": {"min": 3, "max": 4},
 }
 
 var tokens: Array[Dictionary] = []

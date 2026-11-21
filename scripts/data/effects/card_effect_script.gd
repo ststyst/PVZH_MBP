@@ -76,6 +76,26 @@ func move_requires_position() -> bool:
 	return _find_move_to_chosen_position(on_play)
 
 
+## 该卡是否要求玩家在打出时选择一列。
+func column_requirement() -> bool:
+	return _find_call(on_play, "choose_column")
+
+
+func _find_call(block: Variant, call_name: String) -> bool:
+	if not block is Array:
+		return false
+	for statement: Variant in block:
+		if not statement is Dictionary:
+			continue
+		var data: Dictionary = statement
+		if str(data.get("type", "")) == "call" and str(data.get("name", "")) == call_name:
+			return true
+		for key: String in ["body", "else"]:
+			if _find_call(data.get(key, []), call_name):
+				return true
+	return false
+
+
 func _find_move_to_chosen_position(block: Variant) -> bool:
 	if not block is Array:
 		return false

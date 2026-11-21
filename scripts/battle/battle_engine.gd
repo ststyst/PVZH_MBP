@@ -46,6 +46,11 @@ var mulligan_ready: Dictionary = {SIDE_P: false, SIDE_Z: false}
 
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var card_database: Object = null
+## 当前环境牌与所属阵营：column -> card_id / side
+var environment_cards: Dictionary = {}
+var environment_owners: Dictionary = {}
+## 不能被环境牌覆盖的环境 id
+var protected_environments: Array[String] = ["highground", "water"]
 
 var _next_entity_id: int = 1
 var _next_card_instance_id: int = 1
@@ -79,6 +84,8 @@ func setup(
 	mode = mode_config if mode_config != null else GameModeConfig.default_config()
 	players.clear()
 	entities.clear()
+	environment_cards.clear()
+	environment_owners.clear()
 	log_entries.clear()
 	winner = ""
 	_emitting_game_over = false
@@ -698,12 +705,10 @@ func play_card(side: String, hand_index: int, target: Dictionary = {}) -> Dictio
 		var column: int = int(target.get("column", -1))
 		if column < 0 or column >= COLUMN_COUNT:
 			return _fail("请选择一列。")
+		if not can_change_environment(column):
+			return _fail("该列环境不可被覆盖。")
 		_spend_and_remove(state, hand_index, card, effective_cost)
-		environments[column] = card.english_name.to_lower().replace(" ", "_")
-		environment_labels[column] = card.display_name()
-		_log("第 %d 列环境变为：%s" % [column + 1, card.display_name()])
-		if card.ability_script != null and card.ability_script.has_effect():
-			_run_script(card, side, [])
+		_place_environment(side, column, card)
 	else:
 		var chosen: Array = target_handles
 		var requirement: Dictionary = {}
@@ -728,6 +733,10 @@ func play_card(side: String, hand_index: int, target: Dictionary = {}) -> Dictio
 		if card.ability_script != null and card.ability_script.move_requires_position():
 			if int(target.get("column", -1)) < 0 or int(target.get("slot", -1)) < 0:
 				return _fail("这张牌需要选择移动位置。")
+		if card.ability_script != null and card.ability_script.column_requirement():
+			var chosen_column: int = int(target.get("column", -1))
+			if chosen_column < 0 or chosen_column >= COLUMN_COUNT:
+				return _fail("这张牌需要选择一列。")
 		_spend_and_remove(state, hand_index, card, effective_cost)
 		_run_script(card, side, chosen, target)
 	_flush_deaths()
@@ -737,6 +746,32 @@ func play_card(side: String, hand_index: int, target: Dictionary = {}) -> Dictio
 		_maybe_begin_special_turn(phase)
 	_end_effect_resolution()
 	return {"ok": true, "message": "已打出：%s" % card.display_name()}
+
+
+func can_change_environment(column: int) -> bool:
+	if column < 0 or column >= COLUMN_COUNT:
+		return false
+	return not protected_environments.has(str(environments[column]))
+
+
+func _place_environment(side: String, column: int, card: CardData) -> bool:
+	if card == null or not card.is_environment() or not can_change_environment(column):
+		return false
+	environments[column] = card.english_name.to_lower().replace(" ", "_")
+	environment_labels[column] = card.display_name()
+	environment_cards[column] = card.card_id
+	environment_owners[column] = side
+	_log("第 %d 列环境变为：%s（%s）" % [column + 1, card.display_name(), side.to_upper()])
+	if card.ability_script != null and card.ability_script.has_effect():
+		_run_script(card, side, [], {"column": column})
+	return true
+
+
+func place_environment_by_name(side: String, column: int, card_name: String) -> bool:
+	var card: CardData = get_card_by_english(card_name)
+	if card == null or not card.is_environment():
+		return false
+	return _place_environment(side, column, card)
 
 
 func _target_handles(target: Dictionary) -> Array:
@@ -773,6 +808,8 @@ func _run_script(card: CardData, side: String, chosen: Variant, position: Dictio
 		return
 	var context := BattleEffectContext.new(self, side)
 	context.set_chosen_position(int(position.get("column", -1)), int(position.get("slot", -1)))
+	if int(position.get("column", -1)) >= 0:
+		context.set_base_column(int(position.get("column", -1)))
 	var chosen_handles: Array = []
 	if chosen is Array:
 		chosen_handles = chosen
@@ -1186,6 +1223,7 @@ func _fire_event(event_name: String, event_entity: BattleEntity, chosen_targets:
 		context.set_self_target(listener)
 		context.set_event_target(event_entity)
 		context.set_source_keywords(listener.keywords)
+		context.set_base_column(listener.column)
 		if not chosen_targets.is_empty():
 			context.set_chosen_targets(chosen_targets)
 		var errors: Array[String] = listener.card.ability_script.run_event(context, event_name, event_entity)
@@ -1195,6 +1233,35 @@ func _fire_event(event_name: String, event_entity: BattleEntity, chosen_targets:
 			_emit_animation_cue("ability", listener, event_entity)
 	if event_name != "die" and event_entity != null:
 		_trigger_zone_effects(event_name, event_entity)
+	if event_name != "turn_start" and event_name != "turn_end":
+		_fire_environment_event(event_name, event_entity)
+
+
+func _fire_environment_event(event_name: String, event_entity: BattleEntity, only_column: int = -1) -> void:
+	for column: int in range(COLUMN_COUNT):
+		if only_column >= 0 and column != only_column:
+			continue
+		var card_id: String = str(environment_cards.get(column, ""))
+		if card_id.is_empty():
+			continue
+		var card: CardData = get_card(card_id)
+		if card == null or card.ability_script == null:
+			continue
+		if not card.ability_script.has_event(event_name):
+			continue
+		if event_entity != null and event_entity.column != column:
+			continue
+		var owner: String = str(environment_owners.get(column, SIDE_P))
+		var context := EnvironmentEffectContext.new(self, owner, column)
+		if event_entity != null:
+			context.set_event_target(event_entity)
+		var errors: Array[String] = card.ability_script.run_event(context, event_name, event_entity)
+		for message: String in errors:
+			_log("环境效果错误（第 %d 列）：%s" % [column + 1, message])
+
+
+func _fire_environment_turn_event(column: int, event_name: String) -> void:
+	_fire_environment_event(event_name, null, column)
 
 
 func _emit_animation_cue(trigger: String, actor: BattleEntity, target: Variant = null) -> void:
@@ -1267,6 +1334,7 @@ func _resolve_turn_start() -> void:
 		for side: String in [SIDE_Z, SIDE_P]:
 			for entity: BattleEntity in alive_entities(column, side).duplicate():
 				_fire_event("turn_start", entity)
+		_fire_environment_turn_event(column, "turn_start")
 		_flush_column_deaths(column)
 		if winner != "":
 			return
@@ -1279,6 +1347,7 @@ func _resolve_turn_end() -> void:
 		for side: String in [SIDE_Z, SIDE_P]:
 			for entity: BattleEntity in alive_entities(column, side).duplicate():
 				_fire_event("turn_end", entity)
+		_fire_environment_turn_event(column, "turn_end")
 		_flush_column_deaths(column)
 
 

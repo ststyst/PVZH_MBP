@@ -29,3 +29,17 @@ static func effect_resolution_limit(path: String = DEFAULT_PATH) -> int:
 		if raw is String and raw.is_valid_int():
 			return maxi(int(raw), 1)
 	return 100
+
+
+## 不能被环境牌覆盖的环境 id；默认高地和水池。
+static func protected_environments(path: String = DEFAULT_PATH) -> Array[String]:
+	var data: Dictionary = load_config(path)
+	var result: Array[String] = ["highground", "water"]
+	var match_config: Variant = data.get("match", {})
+	if match_config is Dictionary:
+		var raw: Variant = (match_config as Dictionary).get("protected_environments", null)
+		if raw is Array:
+			result.clear()
+			for item: Variant in raw:
+				result.append(str(item))
+	return result

@@ -98,6 +98,7 @@ func _ready() -> void:
 	mode = ModeManager.get_mode()
 	engine = BattleEngine.new(CardDatabase)
 	engine.effect_resolution_limit = ServerConfig.effect_resolution_limit()
+	engine.protected_environments = ServerConfig.protected_environments()
 	engine.changed.connect(_on_engine_changed)
 	engine.game_finished.connect(_on_game_finished)
 	engine.animation_cue.connect(_on_animation_cue)
@@ -285,6 +286,13 @@ func _on_hand_pressed(index: int) -> void:
 		_pending_candidates.clear()
 		_set_status("请选择一列，将其环境变为这张环境牌。")
 		_refresh_all()
+	elif card.ability_script != null and card.ability_script.column_requirement():
+		_pending_card_index = index
+		_pending_mode = "column_spell"
+		_pending_handles.clear()
+		_pending_candidates.clear()
+		_set_status("请选择一列打出这张锦囊。")
+		_refresh_all()
 	elif _card_multi_target_requirement(card).get("count", 0) > 0:
 		_pending_card_index = index
 		_pending_mode = "choose_spell"
@@ -356,6 +364,13 @@ func _on_card_info_closed() -> void:
 
 func _on_slot_pressed(side: String, column: int, slot: int) -> void:
 	if not _started or engine == null:
+		return
+	if _pending_mode == "column_spell":
+		var column_target: Dictionary = {"column": column}
+		if _special_target_mode:
+			_resolve_special_target(column_target)
+		else:
+			_play_pending(column_target)
 		return
 	if _pending_mode == "move_position":
 		if _pending_move_entity == null or side != _pending_move_entity.side:
@@ -654,6 +669,8 @@ func _update_slot_button(
 					break
 	elif _pending_mode == "column":
 		actionable = side == player_side
+	elif _pending_mode == "column_spell":
+		actionable = true
 	elif _pending_mode == "target":
 		actionable = entity != null and _pending_candidates.has(entity)
 	elif _pending_mode == "choose":
@@ -686,6 +703,7 @@ func _update_slot_button(
 			or _pending_mode == "column"
 			or _pending_mode == "choose"
 			or _pending_mode == "move_position"
+			or _pending_mode == "column_spell"
 		):
 			_apply_highlight_slot_style(button)
 			button.disabled = false
@@ -705,6 +723,7 @@ func _update_slot_button(
 			or (_pending_mode == "choose" and _pending_candidates.has(entity))
 			or (_pending_mode == "choose_spell" and _pending_candidates.has(entity))
 			or (_pending_mode == "move_position" and actionable)
+			or _pending_mode == "column_spell"
 		)
 	)
 	button.text = ""
@@ -1002,6 +1021,13 @@ func _on_special_play_pressed() -> void:
 		return
 	_pending_card_index = index
 	var requirement: Dictionary = _card_multi_target_requirement(card)
+	if card.ability_script != null and card.ability_script.column_requirement():
+		_special_target_mode = true
+		_pending_mode = "column_spell"
+		_special_overlay.visible = false
+		_set_status("请选择一列打出超能力。")
+		_refresh_all()
+		return
 	if int(requirement.get("count", 0)) > 0:
 		_special_target_mode = true
 		_pending_mode = "choose_spell"
