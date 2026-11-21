@@ -84,6 +84,29 @@ func _exec_primitive(statement: Dictionary) -> void:
 			context.gain_energy(_as_int(_eval(arguments[0], {})))
 		"deal_damage", "heal", "gain_shield", "buff_stats", "give_keyword", "destroy":
 			_exec_target_primitive(primitive_name, arguments, line)
+		"choose":
+			var choose_count: int = maxi(_as_int(_eval(arguments[0], {})), 0)
+			var choose_selector: String = _as_string(_eval(arguments[1], {}))
+			if not context.choose_targets(choose_count, choose_selector):
+				_error("选择目标无效（最多 %d 个，选择器 %s）" % [choose_count, choose_selector], line)
+		"gain_attack":
+			context.gain_attack(_as_int(_eval(arguments[0], {})))
+		"reduce_cost":
+			context.reduce_cost(_as_int(_eval(arguments[0], {})))
+		"add_marker":
+			var marker_name: String = _as_string(_eval(arguments[0], {}))
+			var marker_amount: int = _as_int(_eval(arguments[1], {}))
+			if marker_name.is_empty():
+				_error("特殊标志物名字不能为空", line)
+			else:
+				context.add_marker(marker_name, marker_amount)
+		"remove_marker":
+			var remove_name: String = _as_string(_eval(arguments[0], {}))
+			var remove_amount: int = _as_int(_eval(arguments[1], {}))
+			if remove_name.is_empty():
+				_error("特殊标志物名字不能为空", line)
+			else:
+				context.remove_marker(remove_name, remove_amount)
 		_:
 			_error("未知原语：%s" % primitive_name, line)
 
@@ -123,6 +146,7 @@ func _matches_trigger(trigger: Dictionary, event_handle) -> bool:
 		# 无过滤条件：默认只响应自己（实体自身的事件）
 		return _is_self(event_handle)
 	var facts: Dictionary = context.describe_entity(event_handle)
+	facts["zone"] = context.get_zone()
 	return _truthy(_eval(predicate, facts))
 
 
@@ -187,6 +211,8 @@ func _eval_call(expression: Dictionary, facts: Dictionary) -> Variant:
 			var tribe_name: String = _as_string(_eval(arguments[0], facts))
 			var tribes: Variant = facts.get("tribes", [])
 			return tribes is Array and tribes.has(tribe_name)
+		"marker_count":
+			return context.marker_count(_as_string(_eval(arguments[0], facts)))
 		_:
 			_error("原语只能作为语句调用：%s" % function_name, _line_of(expression))
 			return null

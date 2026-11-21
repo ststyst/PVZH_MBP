@@ -14,8 +14,8 @@ extends RefCounted
 ## 模式：whole（背景+外观+数值整体）/ background（仅背景）/ art（仅外观）。
 ## 动画名对应 assets/animations/<mode>.tres 中的 AnimationLibrary 动画名。
 
-const TRIGGERS: Array[String] = ["attack", "ability", "die"]
-const SELECTORS: Array[String] = ["self", "target"]
+const TRIGGERS: Array[String] = ["attack", "ability", "die", "cast"]
+const SELECTORS: Array[String] = ["self", "target", "global"]
 const MODES: Array[String] = ["whole", "background", "art"]
 
 var blocks: Dictionary = {}
@@ -119,8 +119,8 @@ func _parse_statement(text: String, trigger: String, line: int) -> void:
 				_error("play_animation 需要 2~3 个参数：目标、动画名、模式（可选）", line)
 				return
 			var selector: String = _unquote(args[0])
-			if not SELECTORS.has(selector):
-				_error("未知动画目标：%s（可用：self, target）" % selector, line)
+			if not SELECTORS.has(selector) or selector == "global":
+				_error("play_animation 的目标只能是 self 或 target（global 仅用于 play_fx）", line)
 				return
 			var animation_name: String = _unquote(args[1])
 			if animation_name.is_empty():
@@ -156,7 +156,7 @@ func _parse_statement(text: String, trigger: String, line: int) -> void:
 				return
 			var selector: String = _unquote(args[0])
 			if not SELECTORS.has(selector):
-				_error("未知特效目标：%s" % selector, line)
+				_error("未知特效目标：%s（可用：self, target, global）" % selector, line)
 				return
 			var fx_name: String = _unquote(args[1])
 			if fx_name.is_empty():

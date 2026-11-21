@@ -21,6 +21,20 @@ func set_event_target(_handle) -> void:
 	pass
 
 
+## 玩家/UI 选择的目标列表（支持多选；旧接口 set_chosen_target 仍可用）。
+func set_chosen_targets(_handles: Array) -> void:
+	pass
+
+
+func set_chosen_target(handle) -> void:
+	set_chosen_targets([] if handle == null else [handle])
+
+
+## 当前卡牌所在的区域：deck / hand / board / discard；用于 when 过滤中的 zone 变量。
+func get_zone() -> String:
+	return ""
+
+
 ## 解析选择器，返回实体句柄数组（空数组表示没有目标）。
 func resolve_selector(_selector: String) -> Array:
 	push_warning("EffectContext.resolve_selector 未实现：需要战斗层提供")
@@ -71,3 +85,32 @@ func give_keyword(_target, _keyword: String) -> void:
 
 func destroy(_target) -> void:
 	push_warning("EffectContext.destroy 未实现：需要战斗层提供")
+
+
+## 多目标选择声明：从 selector 候选中校验最多 count 个已选目标。
+func choose_targets(_count: int, _selector: String) -> bool:
+	push_warning("EffectContext.choose_targets 未实现：需要战斗层提供")
+	return false
+
+
+## 区域卡牌被动：修改自身卡牌实例的攻击/费用。
+func gain_attack(_amount: int) -> void:
+	pass
+
+
+func reduce_cost(_amount: int) -> void:
+	pass
+
+
+# ----- 玩家特殊标志物（字符串名字，数量允许负数） -----
+
+func add_marker(_marker_name: String, _amount: int) -> void:
+	push_warning("EffectContext.add_marker 未实现：需要战斗层提供")
+
+
+func remove_marker(_marker_name: String, _amount: int) -> void:
+	push_warning("EffectContext.remove_marker 未实现：需要战斗层提供")
+
+
+func marker_count(_marker_name: String) -> int:
+	return 0

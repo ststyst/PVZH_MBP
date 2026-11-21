@@ -27,15 +27,20 @@
 | `gain_energy(amount)` | 数值 | 获得费用 |
 | `give_keyword(target, keyword)` | 目标、词缀 id（字符串） | 赋予词缀 |
 | `destroy(target)` | 目标 | 消灭 |
+| `choose(count, selector)` | 数量、选择器 | 声明最多选择 N 个目标（玩家选择；`chosen` 为目标数组） |
+| `gain_attack(amount)` | 数值 | 修改当前卡牌实例的攻击（用于牌库/手牌被动，打出后转为实体攻击） |
+| `reduce_cost(amount)` | 数值 | 修改当前卡牌实例的费用（最低 0，用于手牌被动） |
+| `add_marker(name, amount)` | 标志物名、增减值 | 修改玩家特殊标志物数量（允许负数） |
+| `remove_marker(name, amount)` | 标志物名、数量 | 减少玩家特殊标志物（等价于负数 add_marker） |
 
-多目标选择器（`all_enemies` / `all_allies`）会被解释器**逐个**调用原语。
+多目标选择器（`all_enemies` / `all_allies` / `other_allies`）会被解释器**逐个**调用原语。
 
 ## 三、表达式与变量
 
 - 变量：`x = 2 + 3 * 2`（后续语句可用 `x`）
 - 四则运算：`+ - * /`（整数运算，除数为 0 会记录运行错误）
 - 比较：`== != < <= > >=`；逻辑：`and` `or` `not`
-- 查询函数：`attack(target)`、`health(target)`、`shield(target)`、`min(a,b)`、`max(a,b)`、`has_tribe("pea")`（仅事件过滤/条件目标中有意义）
+- 查询函数：`attack(target)`、`health(target)`、`shield(target)`、`min(a,b)`、`max(a,b)`、`has_tribe("pea")`、`marker_count("名字")`（`marker_count` 用于玩家特殊标志物数量）
 - 字符串可用单引号或双引号：`side == 'enemy'` / `side == "enemy"`
 
 ## 四、目标选择器
@@ -44,10 +49,11 @@
 |---|---|
 | `self` | 技能拥有者（实体自己） |
 | `event` | 触发本次事件的实体 |
-| `chosen` | 玩家本次选中的目标 |
+| `chosen` | 玩家本次选中的目标（**数组**；可以用 `choose` 选多个） |
 | `chosen_if(<条件>)` | 选中目标中满足条件的（没有则本次原语跳过） |
 | `hero` / `enemy_hero` | 我方 / 敌方英雄 |
 | `all_enemies` / `all_allies` | 所有敌方 / 友方实体 |
+| `other_allies` | 除技能拥有者外的友方实体 |
 | `random_enemy` / `random_ally` | 随机敌方 / 友方实体 |
 
 条件目标示例：`destroy(chosen_if(attack <= 3))`、`deal_damage(chosen_if(has_tribe('pea') and side == 'enemy'), 4)`。
@@ -57,7 +63,24 @@
 目前支持：
 
 `enter`（入场）、`die`（死亡）、`attack`（攻击）、`attacked`（受击）、`healed`（被治疗）、
-`attack_changed`（攻击力变化）、`health_changed`（生命值变化）、`turn_start`（回合开始）、`turn_end`（回合结束）。
+`attack_changed`（攻击力变化）、`health_changed`（生命值变化）、`turn_start`（回合开始）、`turn_end`（回合结束）、
+`ally_die`（友方实体死亡，可触发牌库/手牌中的卡牌被动）。
+
+### 区域被动
+
+`ally_die` 会对技能拥有者的**手牌/牌库卡牌实例**触发，配合 `zone` 过滤：
+
+```
+when ally_die(zone == 'deck'):
+    gain_attack(1)
+
+when ally_die(zone == 'hand'):
+    gain_attack(1)
+    reduce_cost(1)
+```
+
+`zone` 取值为 `'deck'` / `'hand'` / `'board'` / `'discard'`。手牌/牌库中的攻击与费用修正会跟随卡牌移动，
+在打出时转为实体攻击/实际费用；费用最低为 0。
 
 > 扩展事件只需改 `EffectParser.EVENTS` 与战斗层触发点。
 
@@ -135,6 +158,42 @@ destroy(chosen_if(attack <= 3))
 ```
 deal_damage(all_enemies, 2); heal(all_allies, 2)
 ```
+
+### 区域/多目标示例
+
+入场选择最多两个其他友方实体 +2 攻击（不足两个也可打出）：
+
+```
+when enter:
+    choose(2, "other_allies")
+    buff_stats(chosen, 2, 0)
+```
+
+牌库内友方死亡时自身攻击 +1：
+
+```
+when ally_die(zone == 'deck'):
+    gain_attack(1)
+```
+
+手牌内友方死亡时自身攻击 +1、费用 -1：
+
+```
+when ally_die(zone == 'hand'):
+    gain_attack(1)
+    reduce_cost(1)
+```
+
+入场检查特殊标志物：
+
+```
+when enter:
+    if marker_count("special_marker_1") > 1:
+        add_marker("special_marker_2", 3)
+        add_marker("special_marker_3", -1)
+```
+
+特殊标志物名字是任意英文字符串，不注册种类，数量允许负数。
 
 ## 八、书写规则
 

@@ -59,3 +59,21 @@ func test_program_roundtrip() -> void:
 	var restored: CardAnimationScript = CardAnimationScript.from_program(script.to_program())
 	assert_true(restored.has_trigger("attack"))
 	assert_eq(str(restored.instructions_for("attack")[0].get("animation", "")), "slash")
+
+
+func test_cast_and_global_fx() -> void:
+	var script: CardAnimationScript = CardAnimationScript.parse(
+		"when cast:\n    play_animation(self, \"cast\", \"whole\")\n    play_fx(global, \"explosion\")"
+	)
+	assert_eq(script.errors.size(), 0, "cast/global 应通过：%s" % [script.errors])
+	assert_true(script.has_trigger("cast"))
+	var instructions: Array = script.instructions_for("cast")
+	assert_eq(str(instructions[1].get("type", "")), "play_fx")
+	assert_eq(str(instructions[1].get("target", "")), "global")
+
+
+func test_global_is_rejected_for_entity_animation() -> void:
+	var script: CardAnimationScript = CardAnimationScript.parse(
+		"when attack:\n    play_animation(global, \"a\", \"whole\")"
+	)
+	assert_true(script.errors.size() >= 1, "play_animation(global) 应报错")

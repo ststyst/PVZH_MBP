@@ -37,6 +37,29 @@ func _deck(card_id: String, count: int) -> Array[String]:
 	return ids
 
 
+func _make_test_card(card_id: String, ability: String) -> CardData:
+	var template: CardData = cards.get_card("pvzh:gnoll")
+	var card := CardData.new()
+	card.card_id = card_id
+	card.card_namespace = "pvzh"
+	card.english_name = template.english_name
+	card.chinese_name = template.chinese_name
+	card.description = template.description
+	card.kind = template.kind
+	card.cost = template.cost
+	card.attack = template.attack
+	card.health = template.health
+	card.shield = template.shield
+	card.card_class = template.card_class
+	card.rarity = template.rarity
+	card.keywords = template.keywords.duplicate()
+	card.tribes = template.tribes.duplicate()
+	card.ability = ability
+	card.ability_script = CardEffectScript.parse(ability)
+	cards.cards[card_id] = card
+	return card
+
+
 func _new_engine(p_card: String = "pvzh:gnoll", z_card: String = "pvzh:hound") -> BattleEngine:
 	var engine := BattleEngine.new(cards, 12345)
 	engine.setup(
@@ -272,6 +295,118 @@ func test_animation_cues_on_attack_and_death() -> void:
 	engine.advance_phase()
 	assert_true(cues.has("attack"), "攻击应触发动画 cue：%s" % [cues])
 	assert_true(cues.has("die"), "死亡应触发动画 cue：%s" % [cues])
+
+
+func test_zone_deck_death_bonus_and_play_attack() -> void:
+	var card: CardData = _make_test_card(
+		"pvzh:test_deck_bonus",
+		"when ally_die(zone == 'deck'):\n    gain_attack(1)"
+	)
+	var engine: BattleEngine = _started_engine()
+	var state: BattlePlayerState = engine.players["p"]
+	state.hand.clear()
+	state.hand_modifiers.clear()
+	state.deck = [card.card_id]
+	state.deck_modifiers = [{}]
+	var ally: BattleEntity = engine.summon_card("p", cards.get_card("pvzh:gnoll"), 0, 0)
+	engine.damage_handle(ally, 99)
+	engine._flush_deaths()
+	assert_eq(int(state.deck_modifier(0).get("attack", 0)), 1, "牌库中的卡应累计攻击加成")
+	engine.draw_cards("p", 1)
+	assert_eq(state.hand.size(), 1)
+	assert_eq(int(state.hand_modifier(0).get("attack", 0)), 1, "抽到后加成应保留")
+	var display: CardData = engine.hand_card_display("p", 0)
+	assert_true(display != null)
+	if display != null:
+		assert_eq(display.display_name(), card.display_name(), "手牌显示副本应保留卡名")
+		assert_eq(display.attack, card.attack + 1)
+	engine.phase = BattleEngine.PHASE_HAND
+	engine.active_side = "p"
+	state.energy = 10
+	var result: Dictionary = engine.play_card("p", 0, {"column": 1, "slot": 0})
+	assert_true(bool(result.get("ok", false)), "应可打出带有手牌加成的卡")
+	var played: BattleEntity = null
+	for entity: BattleEntity in engine.entities:
+		if entity.card != null and entity.card.card_id == card.card_id:
+			played = entity
+	assert_true(played != null)
+	if played != null:
+		assert_eq(played.attack, card.attack + 1, "打出后攻击加成应转为实体属性")
+
+
+func test_zone_hand_death_bonus_cost_and_play() -> void:
+	var card: CardData = _make_test_card(
+		"pvzh:test_hand_bonus",
+		"when ally_die(zone == 'hand'):\n    gain_attack(1)\n    reduce_cost(1)"
+	)
+	var engine: BattleEngine = _started_engine()
+	var state: BattlePlayerState = engine.players["p"]
+	state.hand = [card.card_id]
+	state.hand_modifiers = [{}]
+	var ally: BattleEntity = engine.summon_card("p", cards.get_card("pvzh:gnoll"), 0, 0)
+	engine.damage_handle(ally, 99)
+	engine._flush_deaths()
+	assert_eq(int(state.hand_modifier(0).get("attack", 0)), 1)
+	assert_eq(int(state.hand_modifier(0).get("cost", 0)), -1)
+	assert_eq(engine.effective_hand_cost("p", 0), maxi(card.cost - 1, 0))
+	engine.phase = BattleEngine.PHASE_HAND
+	engine.active_side = "p"
+	state.energy = 10
+	var result: Dictionary = engine.play_card("p", 0, {"column": 1, "slot": 0})
+	assert_true(bool(result.get("ok", false)), "应可打出减费后的卡")
+	var played: BattleEntity = null
+	for entity: BattleEntity in engine.entities:
+		if entity.card != null and entity.card.card_id == card.card_id:
+			played = entity
+	assert_true(played != null)
+	if played != null:
+		assert_eq(played.attack, card.attack + 1)
+
+
+func test_choose_two_other_allies_buffs_both() -> void:
+	var card: CardData = _make_test_card(
+		"pvzh:test_choose_allies",
+		"when enter:\n    choose(2, \"other_allies\")\n    buff_stats(chosen, 2, 0)"
+	)
+	var engine: BattleEngine = _started_engine()
+	var state: BattlePlayerState = engine.players["p"]
+	state.hand = [card.card_id]
+	state.hand_modifiers = [{}]
+	state.energy = 10
+	engine.phase = BattleEngine.PHASE_HAND
+	engine.active_side = "p"
+	var first: BattleEntity = engine.summon_card("p", cards.get_card("pvzh:gnoll"), 0, 0)
+	var second: BattleEntity = engine.summon_card("p", cards.get_card("pvzh:gnoll"), 1, 0)
+	var first_attack: int = first.attack
+	var second_attack: int = second.attack
+	var requirement: Dictionary = card.ability_script.target_requirement()
+	assert_eq(int(requirement.get("count", 0)), 2)
+	assert_eq(str(requirement.get("selector", "")), "other_allies")
+	var result: Dictionary = engine.play_card(
+		"p", 0, {"column": 2, "slot": 0, "handles": [first, second]}
+	)
+	assert_true(bool(result.get("ok", false)), "选择两个其他友方实体应可打出")
+	assert_eq(first.attack, first_attack + 2)
+	assert_eq(second.attack, second_attack + 2)
+
+
+func test_special_markers_are_string_names_with_int_values() -> void:
+	var card: CardData = _make_test_card(
+		"pvzh:test_markers",
+		"when enter:\n    if marker_count(\"special_marker_1\") > 1:\n        add_marker(\"special_marker_2\", 3)\n        add_marker(\"special_marker_3\", -1)"
+	)
+	var engine: BattleEngine = _started_engine()
+	var state: BattlePlayerState = engine.players["p"]
+	state.markers["special_marker_1"] = 2
+	state.hand = [card.card_id]
+	state.hand_modifiers = [{}]
+	state.energy = 10
+	engine.phase = BattleEngine.PHASE_HAND
+	engine.active_side = "p"
+	var result: Dictionary = engine.play_card("p", 0, {"column": 0, "slot": 0})
+	assert_true(bool(result.get("ok", false)))
+	assert_eq(state.marker_count("special_marker_2"), 3)
+	assert_eq(state.marker_count("special_marker_3"), -1)
 
 
 func test_team_up_placement_rule() -> void:

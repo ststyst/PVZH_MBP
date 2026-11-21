@@ -177,7 +177,7 @@ func _rebuild_mulligan_row() -> void:
 		child.queue_free()
 	var state: BattlePlayerState = engine.players[player_side]
 	for index: int in range(state.hand.size()):
-		var card: CardData = engine.hand_card(player_side, index)
+		var card: CardData = engine.hand_card_display(player_side, index)
 		if card == null:
 			continue
 		var column := VBoxContainer.new()
@@ -185,7 +185,7 @@ func _rebuild_mulligan_row() -> void:
 		_mulligan_row.add_child(column)
 		var tile: CardTile = CARD_TILE_SCENE.instantiate()
 		column.add_child(tile)
-		tile.setup(card, 0, "费用 %d" % card.cost)
+		tile.setup(card, 0, "")
 		var refresh := Button.new()
 		refresh.text = "刷新"
 		refresh.disabled = index < _mulligan_used.size() and _mulligan_used[index]
@@ -218,13 +218,13 @@ func _on_hand_pressed(index: int) -> void:
 	if not _can_player_act():
 		_set_status("现在不是你的出牌阶段。", true)
 		return
-	var card: CardData = engine.hand_card(player_side, index)
+	var card: CardData = engine.hand_card_display(player_side, index)
 	if card == null:
 		return
 	if engine.phase == BattleEngine.PHASE_SPELL and not (card.is_spell() or card.is_environment()):
 		_set_status("锦囊/环境阶段不能打出实体牌。", true)
 		return
-	if card.cost > int(engine.players[player_side].energy):
+	if engine.effective_hand_cost(player_side, index) > int(engine.players[player_side].energy):
 		_set_status("费用不足。", true)
 		return
 	if card.is_entity():
@@ -426,17 +426,17 @@ func _rebuild_hand() -> void:
 		return
 	var state: BattlePlayerState = engine.players[player_side]
 	for index: int in range(state.hand.size()):
-		var card: CardData = engine.hand_card(player_side, index)
+		var card: CardData = engine.hand_card_display(player_side, index)
 		if card == null:
 			continue
 		var tile: CardTile = CARD_TILE_SCENE.instantiate()
 		_hand_row.add_child(tile)
-		tile.setup(card, 0, "费用 %d" % card.cost)
+		tile.setup(card, 0, "")
 		tile.pressed.connect(_on_hand_pressed.bind(index))
 		var disabled: bool = not _can_player_act()
 		if engine.phase == BattleEngine.PHASE_SPELL and not (card.is_spell() or card.is_environment()):
 			disabled = true
-		if card.cost > int(state.energy):
+		if engine.effective_hand_cost(player_side, index) > int(state.energy):
 			disabled = true
 		tile.disabled = disabled
 

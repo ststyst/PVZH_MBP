@@ -102,7 +102,10 @@ func _create_player(side: String, hero: HeroData, deck_ids: Array[String]) -> Ba
 	state.energy = 0
 	state.energy_cap = mode.energy_cap
 	state.deck = deck_ids.duplicate()
-	_shuffle(state.deck)
+	state.deck_modifiers.clear()
+	for _index: int in range(state.deck.size()):
+		state.deck_modifiers.append({})
+	_shuffle_zones(state)
 	return state
 
 
@@ -125,6 +128,48 @@ func hand_card(side: String, index: int) -> CardData:
 	return get_card(state.hand[index])
 
 
+## 当前手牌的有效费用/攻击（手牌实例修正后，最低费用 0）。
+func effective_hand_cost(side: String, hand_index: int) -> int:
+	var state: BattlePlayerState = players.get(side, null)
+	if state == null or hand_index < 0 or hand_index >= state.hand.size():
+		return 0
+	var card: CardData = get_card(state.hand[hand_index])
+	if card == null:
+		return 0
+	var modifier: Dictionary = state.hand_modifier(hand_index)
+	return maxi(card.cost + int(modifier.get("cost", 0)), 0)
+
+
+func effective_hand_attack(side: String, hand_index: int) -> int:
+	var state: BattlePlayerState = players.get(side, null)
+	if state == null or hand_index < 0 or hand_index >= state.hand.size():
+		return 0
+	var card: CardData = get_card(state.hand[hand_index])
+	if card == null:
+		return 0
+	return maxi(card.attack + int(state.hand_modifier(hand_index).get("attack", 0)), 0)
+
+
+## 给 UI 用的手牌显示卡：费用/攻击已应用手牌实例修正。
+func hand_card_display(side: String, hand_index: int) -> CardData:
+	var state: BattlePlayerState = players.get(side, null)
+	if state == null or hand_index < 0 or hand_index >= state.hand.size():
+		return null
+	var base: CardData = get_card(state.hand[hand_index])
+	if base == null:
+		return null
+	var display: CardData = base.copy_card()
+	display.cost = effective_hand_cost(side, hand_index)
+	if display.is_entity():
+		display.attack = effective_hand_attack(side, hand_index)
+	return display
+
+
+func get_markers(side: String) -> Dictionary:
+	var state: BattlePlayerState = players.get(side, null)
+	return state.markers.duplicate() if state != null else {}
+
+
 # ----- 起手 / 调度 -----
 
 func replace_mulligan_card(side: String, hand_index: int) -> bool:
@@ -134,11 +179,12 @@ func replace_mulligan_card(side: String, hand_index: int) -> bool:
 	if state == null or hand_index < 0 or hand_index >= state.hand.size():
 		return false
 	var card_id: String = state.hand[hand_index]
+	var modifier: Dictionary = state.take_hand_modifier(hand_index)
 	state.hand.remove_at(hand_index)
-	state.deck.append(card_id)
-	_shuffle(state.deck)
+	state.add_to_deck(card_id, modifier)
+	_shuffle_zones(state)
 	if not state.deck.is_empty():
-		state.hand.append(state.deck.pop_back())
+		_move_top_deck_to_hand(state)
 	changed.emit()
 	return true
 
@@ -244,7 +290,7 @@ func draw_cards(side: String, count: int) -> int:
 		if state.deck.is_empty():
 			_log("%s 牌库已空，无法抽牌" % side.to_upper())
 			break
-		state.hand.append(state.deck.pop_back())
+		_move_top_deck_to_hand(state)
 		drawn += 1
 	return drawn
 
@@ -338,10 +384,13 @@ func play_card(side: String, hand_index: int, target: Dictionary = {}) -> Dictio
 	var card: CardData = get_card(state.hand[hand_index])
 	if card == null:
 		return _fail("卡牌不存在。")
-	if card.cost > state.energy:
-		return _fail("费用不足（需要 %d，当前 %d）。" % [card.cost, state.energy])
+	var modifier: Dictionary = state.hand_modifier(hand_index)
+	var effective_cost: int = maxi(card.cost + int(modifier.get("cost", 0)), 0)
+	if effective_cost > state.energy:
+		return _fail("费用不足（需要 %d，当前 %d）。" % [effective_cost, state.energy])
 	if phase == PHASE_SPELL and not (card.is_spell() or card.is_environment()):
 		return _fail("锦囊/环境阶段只能打出锦囊牌或环境牌。")
+	var target_handles: Array = _target_handles(target)
 	if card.is_entity():
 		if phase != PHASE_HAND:
 			return _fail("实体牌只能在出牌阶段打出。")
@@ -354,29 +403,31 @@ func play_card(side: String, hand_index: int, target: Dictionary = {}) -> Dictio
 				break
 		if not valid:
 			return _fail("该位置不能放置这张实体。")
-		_spend_and_remove(state, hand_index, card)
-		var entity: BattleEntity = summon_card(side, card, column, slot)
-		_fire_event("enter", entity)
+		_spend_and_remove(state, hand_index, card, effective_cost)
+		var entity: BattleEntity = summon_card(
+			side, card, column, slot, int(modifier.get("attack", 0))
+		)
+		_fire_event("enter", entity, target_handles)
 	elif card.is_environment():
 		var column: int = int(target.get("column", -1))
 		if column < 0 or column >= COLUMN_COUNT:
 			return _fail("请选择一列。")
-		_spend_and_remove(state, hand_index, card)
+		_spend_and_remove(state, hand_index, card, effective_cost)
 		environments[column] = card.english_name.to_lower().replace(" ", "_")
 		environment_labels[column] = card.display_name()
 		_log("第 %d 列环境变为：%s" % [column + 1, card.display_name()])
 		if card.ability_script != null and card.ability_script.has_effect():
-			_run_script(card, side, null)
+			_run_script(card, side, [])
 	else:
-		var chosen: Variant = null
+		var chosen: Array = target_handles
 		if card_needs_target(card):
-			chosen = target.get("handle", null)
-			if chosen == null:
+			if chosen.is_empty():
 				return _fail("这张牌需要选择目标。")
 			var candidates: Array = target_candidates(card, side)
-			if not candidates.has(chosen):
-				return _fail("目标无效。")
-		_spend_and_remove(state, hand_index, card)
+			for handle: Variant in chosen:
+				if not candidates.has(handle):
+					return _fail("目标无效。")
+		_spend_and_remove(state, hand_index, card, effective_cost)
 		_run_script(card, side, chosen)
 	_flush_deaths()
 	_check_game_over()
@@ -384,8 +435,30 @@ func play_card(side: String, hand_index: int, target: Dictionary = {}) -> Dictio
 	return {"ok": true, "message": "已打出：%s" % card.display_name()}
 
 
-func _spend_and_remove(state: BattlePlayerState, hand_index: int, card: CardData) -> void:
-	state.energy = maxi(state.energy - card.cost, 0)
+func _target_handles(target: Dictionary) -> Array:
+	var handles: Array = []
+	var raw_handles: Variant = target.get("handles", null)
+	if raw_handles is Array:
+		for handle: Variant in raw_handles:
+			if handle != null:
+				handles.append(handle)
+	elif raw_handles != null:
+		handles.append(raw_handles)
+	var single: Variant = target.get("handle", null)
+	if single != null and not handles.has(single):
+		handles.append(single)
+	return handles
+
+
+func _spend_and_remove(
+	state: BattlePlayerState,
+	hand_index: int,
+	card: CardData,
+	effective_cost: int = -1,
+) -> void:
+	var cost: int = card.cost if effective_cost < 0 else effective_cost
+	state.energy = maxi(state.energy - cost, 0)
+	state.take_hand_modifier(hand_index)
 	state.hand.remove_at(hand_index)
 	state.discard.append(card.card_id)
 
@@ -394,8 +467,12 @@ func _run_script(card: CardData, side: String, chosen: Variant) -> void:
 	if card.ability_script == null or not card.ability_script.has_effect():
 		return
 	var context := BattleEffectContext.new(self, side)
-	if chosen != null:
-		context.set_chosen_target(chosen)
+	var chosen_handles: Array = []
+	if chosen is Array:
+		chosen_handles = chosen
+	elif chosen != null:
+		chosen_handles = [chosen]
+	context.set_chosen_targets(chosen_handles)
 	var errors: Array[String] = card.ability_script.run_on_play(context)
 	for message: String in errors:
 		_log("效果错误（%s）：%s" % [card.display_name(), message])
@@ -403,11 +480,13 @@ func _run_script(card: CardData, side: String, chosen: Variant) -> void:
 
 # ----- 场地 -----
 
-func summon_card(side: String, card: CardData, column: int, slot: int) -> BattleEntity:
+func summon_card(side: String, card: CardData, column: int, slot: int, attack_bonus: int = 0) -> BattleEntity:
 	var entity := BattleEntity.new()
 	entity.entity_id = _next_entity_id
 	_next_entity_id += 1
 	entity.setup(card, side, column, slot)
+	if attack_bonus != 0:
+		entity.attack = maxi(entity.attack + attack_bonus, 0)
 	entities.append(entity)
 	_log("%s 在 %s 第 %d 列（%s位）召唤 %s" % [
 		side.to_upper(), "z" if side == SIDE_Z else "p", column + 1,
@@ -575,7 +654,7 @@ func gain_energy(side: String, amount: int) -> void:
 
 # ----- 事件 -----
 
-func _fire_event(event_name: String, event_entity: BattleEntity) -> void:
+func _fire_event(event_name: String, event_entity: BattleEntity, chosen_targets: Array = []) -> void:
 	for listener: BattleEntity in entities.duplicate():
 		if listener.card == null or listener.card.ability_script == null:
 			continue
@@ -584,6 +663,8 @@ func _fire_event(event_name: String, event_entity: BattleEntity) -> void:
 		var context := BattleEffectContext.new(self, listener.side)
 		context.set_self_target(listener)
 		context.set_event_target(event_entity)
+		if not chosen_targets.is_empty():
+			context.set_chosen_targets(chosen_targets)
 		var errors: Array[String] = listener.card.ability_script.run_event(context, event_name, event_entity)
 		for message: String in errors:
 			_log("效果错误（%s）：%s" % [listener.display_name(), message])
@@ -680,6 +761,7 @@ func _flush_deaths() -> void:
 			_log("%s 死亡" % entity.display_name())
 			_emit_animation_cue("die", entity, null)
 			_fire_event("die", entity)
+			_trigger_zone_ally_death(entity)
 			entities.erase(entity)
 	_check_game_over()
 
@@ -697,6 +779,7 @@ func _flush_column_deaths(column: int) -> void:
 			_log("%s 死亡" % entity.display_name())
 			_emit_animation_cue("die", entity, null)
 			_fire_event("die", entity)
+			_trigger_zone_ally_death(entity)
 			entities.erase(entity)
 	_check_game_over()
 
@@ -722,6 +805,57 @@ func _set_winner(side: String) -> void:
 	if not _emitting_game_over:
 		_emitting_game_over = true
 		game_finished.emit(side)
+
+
+func _trigger_zone_ally_death(dead_entity: BattleEntity) -> void:
+	var state: BattlePlayerState = players.get(dead_entity.side, null)
+	if state == null:
+		return
+	for zone: String in ["hand", "deck"]:
+		var cards: Array[String] = state.hand if zone == "hand" else state.deck
+		for index: int in range(cards.size()):
+			var card: CardData = get_card(cards[index])
+			if card == null or card.ability_script == null:
+				continue
+			if not card.ability_script.has_event("ally_die"):
+				continue
+			var modifier: Dictionary = (
+				state.hand_modifier(index) if zone == "hand" else state.deck_modifier(index)
+			)
+			var context := ZoneCardEffectContext.new(self, dead_entity.side, zone, modifier)
+			context.set_event_target(dead_entity)
+			var errors: Array[String] = card.ability_script.run_event(context, "ally_die", dead_entity)
+			for message: String in errors:
+				_log("区域效果错误（%s·%s）：%s" % [card.display_name(), zone, message])
+
+
+func _shuffle_zones(state: BattlePlayerState) -> void:
+	_ensure_zone_modifiers(state)
+	for index: int in range(state.deck.size() - 1, 0, -1):
+		var swap_index: int = rng.randi_range(0, index)
+		var temp_card: String = state.deck[index]
+		state.deck[index] = state.deck[swap_index]
+		state.deck[swap_index] = temp_card
+		var temp_modifier: Dictionary = state.deck_modifiers[index]
+		state.deck_modifiers[index] = state.deck_modifiers[swap_index]
+		state.deck_modifiers[swap_index] = temp_modifier
+
+
+func _ensure_zone_modifiers(state: BattlePlayerState) -> void:
+	while state.hand_modifiers.size() < state.hand.size():
+		state.hand_modifiers.append({})
+	while state.deck_modifiers.size() < state.deck.size():
+		state.deck_modifiers.append({})
+
+
+func _move_top_deck_to_hand(state: BattlePlayerState) -> void:
+	if state.deck.is_empty():
+		return
+	_ensure_zone_modifiers(state)
+	var card_id: String = state.deck.pop_back()
+	var modifier: Dictionary = state.deck_modifiers.pop_back()
+	state.hand.append(card_id)
+	state.hand_modifiers.append(modifier)
 
 
 func _shuffle(cards: Array[String]) -> void:

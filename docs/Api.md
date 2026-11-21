@@ -401,6 +401,10 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 | `damage_handle / heal_handle / buff_handle / ...` | 效果原语入口 |
 | `changed` / `game_finished(winner)` 信号 | 状态变化 / 胜负 |
 | `animation_cue(trigger, actor, target)` 信号 | 攻击/能力触发/死亡时发出动画请求（UI 排队播放，不阻塞逻辑） |
+| `effective_hand_cost(side, index)` / `effective_hand_attack(side, index)` | 应用手牌实例修正后的有效费用/攻击 |
+| `hand_card_display(side, index)` | 给 UI 的手牌显示副本（已带有效费用/攻击） |
+| `play_card(..., target.handles)` | 多目标选择；`handles` 为实体数组 |
+| `get_markers(side)` | 返回玩家特殊标志物 `{名字: 数量}` 副本 |
 
 卡牌动画：`CardData.animation_script`（`CardAnimationScript`）解析 `animation` 列，
 支持 `when attack/ability/die`、`play_animation(self|target, name, mode)`、`wait(秒)`、`play_fx`；
@@ -409,6 +413,14 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 实体显示：`BattleEntityView`（`scenes/battle/BattleEntityView.tscn`）提供
 `play_animation(name, mode)`、`play_fx(name)` 与 `set_highlight()`；动画库在
 `assets/animations/whole.tres` / `background.tres` / `art.tres`。
+
+区域/多目标/标志物：
+- `BattlePlayerState.hand_modifiers` / `deck_modifiers` 与手牌/牌库一一对应（攻击/费用修正）
+- `BattlePlayerState.markers` 为 `Dictionary`（字符串名字、整数数量，允许负数）
+- `CardEffectScript.target_requirement()` 返回入场 `choose(count, selector)` 的目标需求
+- 区域被动用 `when ally_die(zone == 'deck'|'hand')`，原语 `gain_attack` / `reduce_cost`
+- 多目标用 `choose(count, "other_allies")` + `buff_stats(chosen, ...)`
+- 标志物用 `add_marker("名字", 数量)` / `marker_count("名字")`
 
 规则：5 列 × 双方各 2 位（位置不固定）；同一列最多 2 个实体，且该列已有 1 个实体时，
 再放入的实体必须与已有实体至少有一个带「组队」词缀，否则不能放入。

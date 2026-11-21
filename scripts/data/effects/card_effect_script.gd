@@ -48,6 +48,45 @@ func has_effect() -> bool:
 	return not on_play.is_empty() or not events.is_empty()
 
 
+func has_event(event_name: String) -> bool:
+	for trigger: Dictionary in events:
+		if str(trigger.get("event", "")) == event_name:
+			return true
+	return false
+
+
+## 检查入场事件是否声明了多目标选择（choose），供 UI/服务器生成目标需求。
+## 返回 {} 或 {"count": int, "selector": String}。
+func target_requirement() -> Dictionary:
+	for trigger: Dictionary in events:
+		if str(trigger.get("event", "")) != "enter":
+			continue
+		var found: Dictionary = _find_choose(trigger.get("body", []))
+		if not found.is_empty():
+			return found
+	return {}
+
+
+func _find_choose(block: Variant) -> Dictionary:
+	if not block is Array:
+		return {}
+	for statement: Variant in block:
+		if not statement is Dictionary:
+			continue
+		var data: Dictionary = statement
+		if str(data.get("type", "")) == "call" and str(data.get("name", "")) == "choose":
+			var args: Array = data.get("args", [])
+			if args.size() >= 2:
+				var count: int = int((args[0] as Dictionary).get("value", 0))
+				var selector: String = str((args[1] as Dictionary).get("value", ""))
+				return {"count": count, "selector": selector}
+		for key: String in ["body", "else"]:
+			var found: Dictionary = _find_choose(data.get(key, []))
+			if not found.is_empty():
+				return found
+	return {}
+
+
 ## 按卡牌种类校验语义；返回错误列表。
 func validate_for_kind(kind: String) -> Array[String]:
 	var problems: Array[String] = []

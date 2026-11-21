@@ -5,7 +5,7 @@ extends EffectContext
 
 var engine: BattleEngine = null
 var caster_side: String = "p"
-var chosen_handle: Variant = null
+var chosen_targets: Array = []
 var _self_handle: Variant = null
 var _event_handle: Variant = null
 
@@ -24,7 +24,11 @@ func set_event_target(handle) -> void:
 
 
 func set_chosen_target(handle) -> void:
-	chosen_handle = handle
+	set_chosen_targets([] if handle == null else [handle])
+
+
+func set_chosen_targets(handles: Array) -> void:
+	chosen_targets = handles.duplicate()
 
 
 func resolve_selector(selector: String) -> Array:
@@ -34,7 +38,7 @@ func resolve_selector(selector: String) -> Array:
 		"event":
 			return [] if _event_handle == null else [_event_handle]
 		"chosen":
-			return [] if chosen_handle == null else [chosen_handle]
+			return chosen_targets.duplicate()
 		"hero":
 			return [engine.hero_handle(caster_side)]
 		"enemy_hero":
@@ -45,6 +49,8 @@ func resolve_selector(selector: String) -> Array:
 			return _random_one(_entities_of(engine.opposite_side(caster_side)))
 		"all_allies":
 			return _entities_of(caster_side)
+		"other_allies":
+			return _other_allies()
 		"random_ally":
 			return _random_one(_entities_of(caster_side))
 		_:
@@ -110,6 +116,56 @@ func give_keyword(target, keyword: String) -> void:
 
 func destroy(target) -> void:
 	engine.destroy_handle(target)
+
+
+func choose_targets(count: int, selector: String) -> bool:
+	if chosen_targets.size() > maxi(count, 0):
+		return false
+	var candidates: Array = resolve_selector(selector)
+	var seen: Dictionary = {}
+	for handle: Variant in chosen_targets:
+		if not candidates.has(handle):
+			return false
+		var key: Variant = handle if not handle is BattleEntity else (handle as BattleEntity).entity_id
+		if seen.has(key):
+			return false
+		seen[key] = true
+	return true
+
+
+func gain_attack(amount: int) -> void:
+	if _self_handle is BattleEntity:
+		engine.buff_handle(_self_handle, amount, 0)
+
+
+func reduce_cost(_amount: int) -> void:
+	pass
+
+
+func add_marker(marker_name: String, amount: int) -> void:
+	if marker_name.is_empty() or amount == 0:
+		return
+	var state: BattlePlayerState = engine.players.get(caster_side, null)
+	if state == null:
+		return
+	state.add_marker(marker_name, amount)
+
+
+func remove_marker(marker_name: String, amount: int) -> void:
+	add_marker(marker_name, -abs(amount))
+
+
+func marker_count(marker_name: String) -> int:
+	var state: BattlePlayerState = engine.players.get(caster_side, null)
+	return state.marker_count(marker_name) if state != null else 0
+
+
+func _other_allies() -> Array:
+	var result: Array = []
+	for entity: BattleEntity in _entities_of(caster_side):
+		if entity != _self_handle:
+			result.append(entity)
+	return result
 
 
 func _entities_of(side: String) -> Array:

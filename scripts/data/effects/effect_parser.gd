@@ -25,6 +25,7 @@ const EVENTS: Array[String] = [
 	"health_changed",
 	"turn_start",
 	"turn_end",
+	"ally_die",
 ]
 const SELECTORS: Array[String] = [
 	"self",
@@ -35,6 +36,7 @@ const SELECTORS: Array[String] = [
 	"all_enemies",
 	"random_enemy",
 	"all_allies",
+	"other_allies",
 	"random_ally",
 ]
 
@@ -49,6 +51,11 @@ const PRIMITIVES: Dictionary = {
 	"gain_energy": {"min": 1, "max": 1},
 	"give_keyword": {"min": 2, "max": 2},
 	"destroy": {"min": 1, "max": 1},
+	"choose": {"min": 2, "max": 2},
+	"gain_attack": {"min": 1, "max": 1},
+	"reduce_cost": {"min": 1, "max": 1},
+	"add_marker": {"min": 2, "max": 2},
+	"remove_marker": {"min": 2, "max": 2},
 }
 
 ## 查询函数（可以出现在表达式里）
@@ -59,6 +66,7 @@ const QUERIES: Dictionary = {
 	"has_tribe": {"min": 1, "max": 1},
 	"min": {"min": 2, "max": 2},
 	"max": {"min": 2, "max": 2},
+	"marker_count": {"min": 1, "max": 1},
 }
 
 var tokens: Array[Dictionary] = []

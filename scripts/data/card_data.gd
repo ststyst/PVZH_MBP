@@ -65,6 +65,37 @@ func display_name() -> String:
 	return chinese_name if not chinese_name.is_empty() else english_name
 
 
+## 显式复制静态卡牌数据。不依赖 Resource.duplicate() 的属性拷贝行为，
+## 用于手牌有效费用/攻击的显示副本。
+func copy_card() -> CardData:
+	var copy := CardData.new()
+	copy.card_id = card_id
+	copy.card_namespace = card_namespace
+	copy.english_name = english_name
+	copy.chinese_name = chinese_name
+	copy.description = description
+	copy.kind = kind
+	copy.cost = cost
+	copy.attack = attack
+	copy.health = health
+	copy.shield = shield
+	copy.card_class = card_class
+	copy.rarity = rarity
+	copy.keywords = keywords.duplicate()
+	copy.tribes = tribes.duplicate()
+	copy.deck_includable = deck_includable
+	copy.ability = ability
+	copy.art_path = art_path
+	copy.animation = animation
+	copy.ability_script = ability_script
+	copy.animation_script = animation_script
+	copy.class_label = class_label
+	copy.rarity_label = rarity_label
+	copy.keyword_labels = keyword_labels.duplicate()
+	copy.tribe_labels = tribe_labels.duplicate()
+	return copy
+
+
 func is_entity() -> bool:
 	return kind == "entity"
 
