@@ -76,28 +76,36 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "保存"
 
-[node name="Tabs" type="TabContainer" parent="Margin/VBox"]
-unique_name_in_owner = true
+[node name="Sections" type="VBoxContainer" parent="Margin/VBox"]
 layout_mode = 2
 size_flags_vertical = 3
-
-[node name="AvailableTab" type="VBoxContainer" parent="Margin/VBox/Tabs"]
-layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="AvailableHint" type="Label" parent="Margin/VBox/Tabs/AvailableTab"]
+[node name="DeckSection" type="VBoxContainer" parent="Margin/VBox/Sections"]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.45
+theme_override_constants/separation = 6
+
+[node name="DeckTitle" type="Label" parent="Margin/VBox/Sections/DeckSection"]
 unique_name_in_owner = true
 layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.72, 0.32, 1)
+theme_override_font_sizes/font_size = 18
+text = "已编入卡牌"
+
+[node name="DeckHint" type="Label" parent="Margin/VBox/Sections/DeckSection"]
+layout_mode = 2
 theme_override_colors/font_color = Color(0.65098, 0.678431, 0.760784, 1)
-text = "点击卡牌可选择“选中”或查看“信息”"
+text = "点击已编入的卡牌可选择“移除”或查看“信息”"
 autowrap_mode = 2
 
-[node name="AvailableScroll" type="ScrollContainer" parent="Margin/VBox/Tabs/AvailableTab"]
+[node name="DeckScroll" type="ScrollContainer" parent="Margin/VBox/Sections/DeckSection"]
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
-[node name="AvailableGrid" type="GridContainer" parent="Margin/VBox/Tabs/AvailableTab/AvailableScroll"]
+[node name="DeckGrid" type="GridContainer" parent="Margin/VBox/Sections/DeckSection/DeckScroll"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -105,22 +113,47 @@ theme_override_constants/h_separation = 8
 theme_override_constants/v_separation = 8
 columns = 4
 
-[node name="DeckTab" type="VBoxContainer" parent="Margin/VBox/Tabs"]
+[node name="SeparatorRow" type="HBoxContainer" parent="Margin/VBox/Sections"]
 layout_mode = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 12
 
-[node name="DeckHint" type="Label" parent="Margin/VBox/Tabs/DeckTab"]
+[node name="LeftSeparator" type="HSeparator" parent="Margin/VBox/Sections/SeparatorRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+
+[node name="SelectLabel" type="Label" parent="Margin/VBox/Sections/SeparatorRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.74902, 0.780392, 0.858824, 1)
+theme_override_font_sizes/font_size = 16
+text = "待选择卡牌"
+horizontal_alignment = 1
+
+[node name="RightSeparator" type="HSeparator" parent="Margin/VBox/Sections/SeparatorRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+
+[node name="AvailableSection" type="VBoxContainer" parent="Margin/VBox/Sections"]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.55
+theme_override_constants/separation = 6
+
+[node name="AvailableHint" type="Label" parent="Margin/VBox/Sections/AvailableSection"]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.65098, 0.678431, 0.760784, 1)
-text = "点击已编入的卡牌可选择“移除”或查看“信息”"
+text = "点击卡牌可选择“选中”或查看“信息”"
 autowrap_mode = 2
 
-[node name="DeckScroll" type="ScrollContainer" parent="Margin/VBox/Tabs/DeckTab"]
+[node name="AvailableScroll" type="ScrollContainer" parent="Margin/VBox/Sections/AvailableSection"]
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
-[node name="DeckGrid" type="GridContainer" parent="Margin/VBox/Tabs/DeckTab/DeckScroll"]
+[node name="AvailableGrid" type="GridContainer" parent="Margin/VBox/Sections/AvailableSection/AvailableScroll"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -139,4 +172,3 @@ unique_name_in_owner = true
 
 [node name="CardInfoDialog" parent="." instance=ExtResource("2_card_info")]
 unique_name_in_owner = true
-

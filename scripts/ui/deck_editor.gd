@@ -16,7 +16,6 @@ const MENU_ACTION_INFO: int = 1
 @onready var count_label: Label = %CountLabel
 @onready var tag_label: Label = %TagLabel
 @onready var save_button: Button = %SaveButton
-@onready var tabs: TabContainer = %Tabs
 @onready var available_hint: Label = %AvailableHint
 @onready var available_grid: GridContainer = %AvailableGrid
 @onready var deck_grid: GridContainer = %DeckGrid
@@ -33,8 +32,6 @@ func _ready() -> void:
 	back_button.pressed.connect(_on_back_pressed)
 	save_button.pressed.connect(_on_save_pressed)
 	card_menu.id_pressed.connect(_on_menu_id_pressed)
-	tabs.set_tab_title(0, "可选卡牌")
-	tabs.set_tab_title(1, "当前牌组")
 	_load_deck()
 
 

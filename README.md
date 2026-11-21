@@ -24,7 +24,8 @@
 - 牌组管理 API：新建/删除/编辑/加牌/去牌/改名/换英雄、重名规则、`default` 标签。
 - 收藏合成/分解：收藏数量无上限（只看钻石），`max_copies_for()` 返回 0 表示不限。
 - 牌组列表（`scenes/deck/DeckList.tscn`）：牌组数量、选择进入编辑、新建牌组；编辑页可返回列表。
-- 牌组编辑界面（`scenes/deck/DeckEditor.tscn`）：可选卡牌列表、选中/移除/信息下拉菜单、卡牌信息弹窗。
+- 牌组编辑界面（`scenes/deck/DeckEditor.tscn`）：上方「已编入卡牌」、中间「待选择卡牌」分隔、下方可选卡牌；选中/移除/信息下拉菜单、卡牌信息弹窗。
+- 主界面 / 牌组列表 / 设置界面均为场景节点搭建（动态牌组行使用 `DeckRow.tscn`），便于直接在编辑器替换 UI 素材。
 - 卡牌美术：稀有度卡牌背景（`assets/cards/backgrounds/`）+ CSV `art_path` 外观图；缺图回退纯色外观。
 - 单机战斗：`scenes/battle/BattlePrep.tscn` 准备 + `Battle.tscn` 对战；战斗 UI 已全部节点化，可直接在编辑器部署素材；推荐卡组 CSV（`data/battle`）；简单 AI。
 - 战斗卡牌/实体：手牌与牌组编辑共用 `CardTile.tscn`，实体使用 `BattleEntityView.tscn`；背景、外观、费用/攻击/生命图标均为空 Sprite2D 挂点。
@@ -38,7 +39,7 @@
   （`docs/EffectDsl.md`：变量、四则运算、条件目标、实体事件与过滤）。
 - 旧版占位界面（LoginScreen / MainScreen / Battle）；正式 UI 由后续开发替换。
 
-尚未实现：牌组编辑器、战斗逻辑、联机协议、社交与活动、正式 UI。
+尚未实现：完整联机对局会话、社交与活动、正式 UI 素材。
 
 ## 运行
 

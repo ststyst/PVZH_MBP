@@ -1,6 +1,8 @@
 extends Control
 ## 牌组列表：展示玩家全部牌组与数量，选择后进入牌组编辑；新建牌组入口也在这里。
 
+const DECK_ROW_SCENE: PackedScene = preload("res://scenes/deck/DeckRow.tscn")
+
 @onready var back_button: Button = %BackButton
 @onready var deck_count_label: Label = %DeckCountLabel
 @onready var new_deck_button: Button = %NewDeckButton
@@ -39,12 +41,10 @@ func _refresh_list() -> void:
 	for deck: DeckData in decks:
 		var hero: HeroData = HeroDatabase.get_hero(deck.hero_id)
 		var hero_name: String = hero.display_name() if hero != null else "无英雄"
-		var tag: String = " · 默认" if deck.has_tag(DeckRules.TAG_DEFAULT) else ""
-		var button := Button.new()
-		button.text = "%s — %s（%d/40%s）" % [deck.deck_name, hero_name, deck.card_count(), tag]
-		button.custom_minimum_size = Vector2(0, 56)
-		button.pressed.connect(_on_deck_selected.bind(deck.deck_id))
-		deck_list_container.add_child(button)
+		var row: DeckRow = DECK_ROW_SCENE.instantiate() as DeckRow
+		deck_list_container.add_child(row)
+		row.setup(deck, hero_name, deck.has_tag(DeckRules.TAG_DEFAULT))
+		row.pressed.connect(_on_deck_selected.bind(deck.deck_id))
 
 
 func _on_deck_selected(deck_id: String) -> void:
