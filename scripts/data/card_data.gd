@@ -37,6 +37,8 @@ var rarity: String = ""
 
 ## 已通过校验的词缀 id（未知词缀在加载时被忽略）
 var keywords: Array[String] = []
+## 带数值词缀的数值：first_strike -> 2；无数值词缀不记录
+var keyword_values: Dictionary = {}
 ## 已通过校验的流派 id
 var tribes: Array[String] = []
 
@@ -82,6 +84,7 @@ func copy_card() -> CardData:
 	copy.card_class = card_class
 	copy.rarity = rarity
 	copy.keywords = keywords.duplicate()
+	copy.keyword_values = keyword_values.duplicate(true)
 	copy.tribes = tribes.duplicate()
 	copy.deck_includable = deck_includable
 	copy.ability = ability
@@ -140,6 +143,10 @@ func has_keyword(keyword: String) -> bool:
 	return keywords.has(CardKeywords.normalize(keyword))
 
 
+func keyword_value(keyword: String) -> int:
+	return int(keyword_values.get(CardKeywords.normalize(keyword), 0))
+
+
 ## 是否可以被牌组编入（牌组规则使用）。
 func is_deck_includable() -> bool:
 	return deck_includable
@@ -192,6 +199,7 @@ func to_pack_dict() -> Dictionary:
 		"card_class": card_class,
 		"rarity": rarity,
 		"keywords": keywords.duplicate(),
+		"keyword_values": keyword_values.duplicate(true),
 		"tribes": tribes.duplicate(),
 		"ability": ability,
 		"art_path": art_path,
@@ -240,6 +248,10 @@ static func from_pack_dict(data: Dictionary, card_namespace: String = "") -> Car
 	if raw_keywords is Array:
 		for entry: Variant in raw_keywords:
 			card.keywords.append(str(entry))
+	var raw_keyword_values: Variant = data.get("keyword_values", {})
+	if raw_keyword_values is Dictionary:
+		for key: Variant in (raw_keyword_values as Dictionary).keys():
+			card.keyword_values[str(key)] = int((raw_keyword_values as Dictionary)[key])
 	var raw_tribes: Variant = data.get("tribes", [])
 	if raw_tribes is Array:
 		for entry: Variant in raw_tribes:

@@ -183,6 +183,41 @@ func test_animation_column_roundtrip() -> void:
 		database.free()
 
 
+func test_keyword_values_and_kind_whitelist() -> void:
+	var dir_path: String = TEST_ROOT.path_join("keywords")
+	_write_text(dir_path.path_join("config.csv"), CONFIG_TEXT)
+	_write_text(
+		dir_path.path_join("cards.csv"),
+		HEADER
+		+ 'kw_entity,词缀实体,entity,1,1,1,0,neutral,normal,"first_strike:2,team_up","","",""\n'
+		+ 'kw_spell,词缀锦囊,spell,1,0,0,0,neutral,normal,first_strike:2,"","",""\n'
+	)
+	var result: Dictionary = _compile("keywords")
+	assert_false(bool(result.get("ok", true)), "锦囊牌不应允许先攻词缀")
+	var errors: Array = result.get("errors", [])
+	assert_true(str(errors).find("词缀不允许") != -1, "编译器应报告种类白名单错误：%s" % [errors])
+
+	# 只编译合法实体行，验证数值与显示文本进入编译包
+	_write_text(
+		dir_path.path_join("cards.csv"),
+		HEADER + 'kw_entity,词缀实体,entity,1,1,1,0,neutral,normal,"first_strike:2,team_up","","",""\n'
+	)
+	var valid: Dictionary = _compile("keywords")
+	assert_true(bool(valid.get("ok", false)), "合法词缀应能编译：%s" % [valid.get("errors", [])])
+	var database: Node = CardDatabaseScript.new()
+	database.reload(false)
+	database.load_pack_file(str(valid.get("pack_path", "")), "", true)
+	var card: CardData = database.get_card("testmod:kw_entity")
+	assert_true(card != null)
+	if card != null:
+		assert_eq(card.keyword_value("first_strike"), 2)
+		assert_true(card.has_keyword("first_strike"))
+		assert_true(card.has_keyword("team_up"))
+		assert_eq(card.get_keywords_text(), "先攻 2、组队")
+	if is_instance_valid(database):
+		database.free()
+
+
 func test_environment_kind_compiles() -> void:
 	var dir_path: String = TEST_ROOT.path_join("env")
 	_write_text(dir_path.path_join("config.csv"), CONFIG_TEXT)

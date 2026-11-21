@@ -457,6 +457,7 @@ func play_card(side: String, hand_index: int, target: Dictionary = {}) -> Dictio
 		var entity: BattleEntity = summon_card(
 			side, card, column, slot, instance.attack_bonus
 		)
+		entity.apply_instance_keywords(instance)
 		_fire_event("enter", entity, target_handles)
 	elif card.is_environment():
 		var column: int = int(target.get("column", -1))
@@ -726,12 +727,29 @@ func buff_handle(handle: Variant, attack_delta: int, health_delta: int) -> void:
 	entity.max_health += maxi(health_delta, 0)
 
 
-func give_keyword_handle(handle: Variant, keyword: String) -> void:
-	if not handle is BattleEntity:
-		return
+func give_keyword_handle(handle: Variant, keyword: String, value: int = 0) -> bool:
+	if handle is BattleEntity:
+		return handle.add_keyword(keyword, value)
+	return false
+
+
+## 给手牌中的某张牌实例赋予词缀；同名牌的其他副本不受影响。
+func give_keyword_to_hand_card(side: String, hand_index: int, keyword: String, value: int = 0) -> bool:
+	var state: BattlePlayerState = players.get(side, null)
+	if state == null or hand_index < 0 or hand_index >= state.hand.size():
+		return false
+	var instance: BattleCardInstance = state.hand[hand_index]
+	var card: CardData = get_card(instance.card_id)
+	if card == null:
+		return false
 	var normalized: String = CardKeywords.normalize(keyword)
-	if not handle.keywords.has(normalized):
-		handle.keywords.append(normalized)
+	if not CardKeywords.has(normalized) or not CardKeywords.can_receive(normalized, card.kind):
+		return false
+	if not instance.keyword_values.has(normalized):
+		instance.keyword_values[normalized] = 0
+	if CardKeywords.has_value(normalized):
+		instance.keyword_values[normalized] = int(instance.keyword_values[normalized]) + value
+	return true
 
 
 func destroy_handle(handle: Variant) -> void:
@@ -808,6 +826,12 @@ func _combat_column(column: int) -> void:
 		var target: Variant = attack["target"]
 		if not attacker.alive:
 			continue
+		# 先攻：先对敌方英雄造成词缀数值的伤害，再执行正常攻击。
+		var first_strike: int = attacker.keyword_value("first_strike")
+		if first_strike > 0:
+			damage_hero(opposite_side(attacker.side), first_strike)
+			if winner != "":
+				break
 		if target is BattleEntity:
 			damage_entity(target, attacker.attack, attacker.keywords)
 		else:

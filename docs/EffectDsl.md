@@ -25,7 +25,7 @@
 | `gain_shield(target, amount)` | 目标、数值 | 加护甲 |
 | `buff_stats(target, attack, health)` | 目标、两个增减值 | 修改攻/血 |
 | `gain_energy(amount)` | 数值 | 获得费用 |
-| `give_keyword(target, keyword)` | 目标、词缀 id（字符串） | 赋予词缀 |
+| `give_keyword(target, keyword, value = 0)` | 目标、词缀 id、数值 | 赋予词缀；已有同词缀则累加数值（如先攻 2 + 先攻 3 = 先攻 5） |
 | `destroy(target)` | 目标 | 消灭 |
 | `choose(count, selector)` | 数量、选择器 | 声明最多选择 N 个目标（玩家选择；`chosen` 为目标数组） |
 | `gain_attack(amount)` | 数值 | 修改当前卡牌实例的攻击（用于牌库/手牌被动，打出后转为实体攻击） |
@@ -50,8 +50,7 @@
 |---|---|
 | `self` | 技能拥有者（实体自己） |
 | `event` | 触发本次事件的实体 |
-| `chosen` | 玩家本次选中的目标（**数组**；可以用 `choose` 选多个） |
-| `chosen_if(<条件>)` | 选中目标中满足条件的（没有则本次原语跳过） |
+| `chosen` | 玩家本次选中的目标（**数组**；可以用 `choose` 选多个） || `chosen_if(<条件>)` | 选中目标中满足条件的（没有则本次原语跳过） |
 | `hero` / `enemy_hero` | 我方 / 敌方英雄 |
 | `all_enemies` / `all_allies` | 所有敌方 / 友方实体 |
 | `other_allies` | 除技能拥有者外的友方实体 |
@@ -199,6 +198,14 @@ when enter:
 ```
 move_entity(event, 2, 0)
 ```
+
+赋予/叠加词缀数值（先攻 2）：
+
+```
+give_keyword(self, "first_strike", 2)
+```
+
+若目标已有先攻 2，则变为先攻 4；不同词缀使用不同键，数值互不影响。
 
 拥有位置被动的实体：
 

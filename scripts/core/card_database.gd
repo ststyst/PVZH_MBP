@@ -289,15 +289,36 @@ func _parse_keywords(
 ) -> void:
 	var raw: String = _cell(row, header, "keywords")
 	for part: String in raw.split(","):
-		var keyword_id: String = CardKeywords.normalize(part)
+		var token: String = part.strip_edges()
+		if token.is_empty():
+			continue
+		var pieces: PackedStringArray = token.split(":")
+		var keyword_id: String = CardKeywords.normalize(pieces[0])
 		if keyword_id.is_empty():
 			continue
 		if not CardKeywords.has(keyword_id):
 			load_errors.append("第 %d 行未知词缀已忽略：%s（%s）" % [row_number, part.strip_edges(), english_name])
 			continue
+		if not CardKeywords.can_receive(keyword_id, card.kind):
+			load_errors.append(
+				"第 %d 行词缀不允许用于该卡牌种类，已忽略：%s（%s，%s）"
+				% [row_number, keyword_id, card.kind, english_name]
+			)
+			continue
+		var value: int = 0
+		if pieces.size() > 1:
+			var value_text: String = pieces[1].strip_edges()
+			if value_text.is_valid_int():
+				value = maxi(int(value_text), 0)
+			else:
+				load_errors.append("第 %d 行词缀数值无效：%s（%s）" % [row_number, token, english_name])
+		if CardKeywords.has_value(keyword_id):
+			card.keyword_values[keyword_id] = int(card.keyword_values.get(keyword_id, 0)) + value
 		if not card.keywords.has(keyword_id):
 			card.keywords.append(keyword_id)
-			card.keyword_labels.append(CardKeywords.label(keyword_id))
+			card.keyword_labels.append(
+				CardKeywords.label_with_value(keyword_id, int(card.keyword_values.get(keyword_id, 0)))
+			)
 
 
 func _parse_tribes(

@@ -110,8 +110,8 @@ func gain_energy(amount: int) -> void:
 	engine.gain_energy(caster_side, amount)
 
 
-func give_keyword(target, keyword: String) -> void:
-	engine.give_keyword_handle(target, keyword)
+func give_keyword(target, keyword: String, value: int = 0) -> void:
+	engine.give_keyword_handle(target, keyword, value)
 
 
 func destroy(target) -> void:

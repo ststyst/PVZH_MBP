@@ -140,7 +140,10 @@ func _exec_target_primitive(primitive_name: String, arguments: Array, line: int)
 			"buff_stats":
 				context.buff_stats(handle, _as_int(extra_values[0]), _as_int(extra_values[1]))
 			"give_keyword":
-				context.give_keyword(handle, _as_string(extra_values[0]))
+				var keyword_value: int = 0
+				if extra_values.size() > 1:
+					keyword_value = _as_int(extra_values[1])
+				context.give_keyword(handle, _as_string(extra_values[0]), keyword_value)
 			"destroy":
 				context.destroy(handle)
 			_:

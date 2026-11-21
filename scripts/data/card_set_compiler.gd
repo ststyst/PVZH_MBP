@@ -107,7 +107,9 @@ static func compile_pack(
 			warnings.append("%s：锦囊牌的攻/血/防应为 0（当前 %d/%d/%d）。" % [row_label, attack, health, shield])
 		if kind == "environment" and (attack != 0 or health != 0 or shield != 0):
 			warnings.append("%s：环境牌的攻/血/防应为 0（当前 %d/%d/%d）。" % [row_label, attack, health, shield])
-		var keywords: Array[String] = _parse_keywords(row, header, row_label, errors)
+		var keyword_data: Dictionary = _parse_keywords(row, header, kind, row_label, errors)
+		var keywords: Array[String] = keyword_data.get("ids", [])
+		var keyword_values: Dictionary = keyword_data.get("values", {})
 		var tribes: Array[String] = _parse_tribes(row, header, config, row_label, errors)
 		var deck_includable: bool = _flag_cell(
 			row, header, "deck_includable", "deck_includable（是否可编入牌组）", row_label, errors
@@ -149,6 +151,7 @@ static func compile_pack(
 		card.card_class = card_class
 		card.rarity = rarity
 		card.keywords = keywords
+		card.keyword_values = keyword_values
 		card.tribes = tribes
 		card.deck_includable = deck_includable
 		card.ability = ability
@@ -159,7 +162,9 @@ static func compile_pack(
 		card.class_label = config.class_label(card_class)
 		card.rarity_label = config.rarity_label(rarity)
 		for keyword_id: String in keywords:
-			card.keyword_labels.append(CardKeywords.label(keyword_id))
+			card.keyword_labels.append(
+				CardKeywords.label_with_value(keyword_id, int(keyword_values.get(keyword_id, 0)))
+			)
 		for tribe_id: String in tribes:
 			card.tribe_labels.append(config.tribe_label(tribe_id))
 		pack_cards.append(card.to_pack_dict())
@@ -312,20 +317,37 @@ static func _int_cell(
 static func _parse_keywords(
 	row: PackedStringArray,
 	header: Dictionary,
+	kind: String,
 	row_label: String,
 	errors: Array[String],
-) -> Array[String]:
-	var result: Array[String] = []
+) -> Dictionary:
+	var ids: Array[String] = []
+	var values: Dictionary = {}
 	for part: String in _cell(row, header, "keywords").split(","):
-		var keyword_id: String = CardKeywords.normalize(part)
+		var token: String = part.strip_edges()
+		if token.is_empty():
+			continue
+		var pieces: PackedStringArray = token.split(":")
+		var keyword_id: String = CardKeywords.normalize(pieces[0])
 		if keyword_id.is_empty():
 			continue
 		if not CardKeywords.has(keyword_id):
 			errors.append("%s：未知词缀（%s）。" % [row_label, part.strip_edges()])
 			continue
-		if not result.has(keyword_id):
-			result.append(keyword_id)
-	return result
+		if not CardKeywords.can_receive(keyword_id, kind):
+			errors.append("%s：词缀不允许用于该卡牌种类（%s，%s）。" % [row_label, keyword_id, kind])
+			continue
+		var value: int = 0
+		if pieces.size() > 1:
+			if pieces[1].strip_edges().is_valid_int():
+				value = maxi(int(pieces[1].strip_edges()), 0)
+			else:
+				errors.append("%s：词缀数值无效（%s）。" % [row_label, token])
+		if CardKeywords.has_value(keyword_id):
+			values[keyword_id] = int(values.get(keyword_id, 0)) + value
+		if not ids.has(keyword_id):
+			ids.append(keyword_id)
+	return {"ids": ids, "values": values}
 
 
 static func _parse_tribes(

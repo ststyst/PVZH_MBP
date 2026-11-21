@@ -285,11 +285,13 @@ ConfirmService.show_message(LoginFlow.get_developer_message(), "开发者的话"
 
 ### `CardData`
 
-字段：`card_id`、`card_namespace`、`english_name`、`chinese_name`、`description`、`kind`（entity/spell）、
-`cost`、`attack`、`health`、`shield`、`card_class`、`rarity`、`keywords`、`tribes`、`ability`（伪代码）、
-`art_path`（卡面贴图路径，空 = 纯色占位外观）、`animation`（动画伪代码）、
+字段：`card_id`、`card_namespace`、`english_name`、`chinese_name`、`description`、`kind`（entity/spell/environment）、
+`cost`、`attack`、`health`、`shield`、`card_class`、`rarity`、`keywords`、`keyword_values`（带数值词缀，如 `first_strike:2`）、
+`tribes`、`ability`（伪代码）、`art_path`（卡面贴图路径，空 = 纯色占位外观）、`animation`（动画伪代码）、
 `deck_includable`（是否可被牌组编入，默认 true），
 以及加载时解析的 `class_label` / `rarity_label` / `keyword_labels` / `tribe_labels`。
+
+方法：`keyword_value(id)`、`has_keyword()`、`get_keywords_text()`、`get_tribes_text()`、`max_copies()`、`craft_cost()`、`disenchant_value()`。
 
 卡面加载：`CardArt.get_texture(path)`（带缓存；空/缺失返回 null，回退纯色外观），
 `CardArt.get_card_background(rarity)` / `get_card_background_style(rarity)`
@@ -297,7 +299,7 @@ ConfirmService.show_message(LoginFlow.get_developer_message(), "开发者的话"
 列表格子与详情弹窗会先铺稀有度背景，再叠加 `art_path` 外观图。
 
 方法：`display_name()`、`is_entity()`、`get_type_text()`、`get_class_text()`、`get_rarity_text()`、
-`get_keywords_text()`、`get_tribes_text()`、`has_keyword()`、`max_copies()`、`craft_cost()`、`disenchant_value()`。
+`get_keywords_text()`、`get_tribes_text()`、`has_keyword()`、`keyword_value()`、`max_copies()`、`craft_cost()`、`disenchant_value()`。
 
 ### 能力脚本 `CardEffectScript`
 
@@ -433,6 +435,8 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 | `effective_hand_cost(side, index)` / `effective_hand_attack(side, index)` | 应用手牌实例修正后的有效费用/攻击 |
 | `hand_card_display(side, index)` | 给 UI 的手牌显示副本（已带有效费用/攻击） |
 | `play_card(..., target.handles)` | 多目标选择；`handles` 为实体数组 |
+| `give_keyword_handle(handle, keyword, value)` | 给实体叠加词缀数值；受卡牌种类白名单限制 |
+| `give_keyword_to_hand_card(side, index, keyword, value)` | 给指定手牌实例赋予词缀；同名牌其他副本不受影响 |
 | `get_markers(side)` | 返回玩家特殊标志物 `{名字: 数量}` 副本 |
 
 卡牌动画：`CardData.animation_script`（`CardAnimationScript`）解析 `animation` 列，

@@ -79,7 +79,7 @@ func gain_energy(_amount: int) -> void:
 	push_warning("EffectContext.gain_energy 未实现：需要战斗层提供")
 
 
-func give_keyword(_target, _keyword: String) -> void:
+func give_keyword(_target, _keyword: String, _value: int = 0) -> void:
 	push_warning("EffectContext.give_keyword 未实现：需要战斗层提供")
 
 

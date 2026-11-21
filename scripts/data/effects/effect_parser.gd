@@ -50,7 +50,7 @@ const PRIMITIVES: Dictionary = {
 	"gain_shield": {"min": 2, "max": 2},
 	"buff_stats": {"min": 3, "max": 3},
 	"gain_energy": {"min": 1, "max": 1},
-	"give_keyword": {"min": 2, "max": 2},
+	"give_keyword": {"min": 2, "max": 3},
 	"destroy": {"min": 1, "max": 1},
 	"choose": {"min": 2, "max": 2},
 	"gain_attack": {"min": 1, "max": 1},

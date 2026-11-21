@@ -4,6 +4,12 @@ extends RefCounted
 ## CSV 中出现的未知词缀会被忽略（并记录加载警告），不会让整张卡失效。
 
 const DEFINITIONS: Dictionary = {
+	"first_strike": {
+		"label": "先攻",
+		"description": "攻击时先对敌方英雄造成对应数值的伤害，再执行正常攻击。",
+		"value": true,
+		"allowed_kinds": ["entity"],
+	},
 	"charge": {
 		"label": "冲锋",
 		"description": "打出后召唤的实体可以立刻发起一次攻击。",
@@ -46,7 +52,7 @@ const DEFINITIONS: Dictionary = {
 	},
 	"team_up": {
 		"label": "组队",
-		"description": "只能放在同列的“组队位”；点击可与同列、同阵营的另一个实体交换位置。",
+		"description": "可与已有友方实体同列；打出时可挤开原实体放入已有格子。",
 	},
 }
 
@@ -76,3 +82,28 @@ static func all_ids() -> Array[String]:
 		ids.append(str(keyword_id))
 	ids.sort()
 	return ids
+
+
+## 该词缀是否带数值（如 first_strike:2）。
+static func has_value(keyword: String) -> bool:
+	var definition: Dictionary = DEFINITIONS.get(normalize(keyword), {})
+	return bool(definition.get("value", false))
+
+
+## 卡牌种类白名单：未声明 allowed_kinds 视为所有种类可用。
+static func can_receive(keyword: String, card_kind: String) -> bool:
+	var definition: Dictionary = DEFINITIONS.get(normalize(keyword), {})
+	if definition.is_empty():
+		return false
+	var allowed: Variant = definition.get("allowed_kinds", null)
+	if allowed is Array:
+		return (allowed as Array).has(card_kind)
+	return true
+
+
+## 带数值词缀的显示文本：先攻 2；无数值词缀只显示名字。
+static func label_with_value(keyword: String, value: int) -> String:
+	var base_label: String = label(keyword)
+	if has_value(keyword):
+		return "%s %d" % [base_label, value]
+	return base_label

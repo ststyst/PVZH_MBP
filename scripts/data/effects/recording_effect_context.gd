@@ -85,8 +85,8 @@ func gain_energy(amount: int) -> void:
 	calls.append({"op": "gain_energy", "amount": amount})
 
 
-func give_keyword(target, keyword: String) -> void:
-	calls.append({"op": "give_keyword", "target": target, "keyword": keyword})
+func give_keyword(target, keyword: String, value: int = 0) -> void:
+	calls.append({"op": "give_keyword", "target": target, "keyword": keyword, "value": value})
 
 
 func destroy(target) -> void:

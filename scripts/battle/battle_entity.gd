@@ -13,6 +13,7 @@ var health: int = 0
 var max_health: int = 0
 var shield: int = 0
 var keywords: Array[String] = []
+var keyword_values: Dictionary = {}
 var team_up: bool = false
 var alive: bool = true
 
@@ -27,6 +28,7 @@ func setup(source_card: CardData, owner_side: String, target_column: int, target
 	max_health = source_card.health
 	shield = source_card.shield
 	keywords = source_card.keywords.duplicate()
+	keyword_values = source_card.keyword_values.duplicate(true)
 	team_up = source_card.has_keyword("team_up")
 
 
@@ -36,6 +38,32 @@ func display_name() -> String:
 
 func has_keyword(keyword: String) -> bool:
 	return keywords.has(CardKeywords.normalize(keyword))
+
+
+func keyword_value(keyword: String) -> int:
+	return int(keyword_values.get(CardKeywords.normalize(keyword), 0))
+
+
+## 赋予/叠加词缀数值；返回是否成功（受卡牌种类白名单限制）。
+func add_keyword(keyword: String, value: int = 0) -> bool:
+	var normalized: String = CardKeywords.normalize(keyword)
+	if normalized.is_empty() or not CardKeywords.has(normalized):
+		return false
+	var card_kind: String = card.kind if card != null else "entity"
+	if not CardKeywords.can_receive(normalized, card_kind):
+		return false
+	if not keywords.has(normalized):
+		keywords.append(normalized)
+	if CardKeywords.has_value(normalized):
+		keyword_values[normalized] = int(keyword_values.get(normalized, 0)) + value
+	return true
+
+
+func apply_instance_keywords(instance: BattleCardInstance) -> void:
+	if instance == null:
+		return
+	for keyword: Variant in instance.keyword_values.keys():
+		add_keyword(str(keyword), int(instance.keyword_values[keyword]))
 
 
 func is_team_up() -> bool:

@@ -51,7 +51,7 @@ english_name,chinese_name,kind,cost,attack,health,shield,class,rarity,keywords,t
 | `shield` | int | 防御力（护甲） |
 | `class` | string | 职业，必须是 `config.csv` 中的 class 之一 |
 | `rarity` | string | 稀有度，必须是 `config.csv` 中的 rarity 之一 |
-| `keywords` | string | 词缀，逗号分隔；未知词缀会被忽略 |
+| `keywords` | string | 词缀，逗号分隔；带数值的写 `id:数值`（如 `first_strike:2`）；未知词缀或该卡牌种类不允许获得的词缀会被忽略/报错 |
 | `tribes` | string | 流派，逗号分隔；必须是配置中的 tribe |
 | `ability` | string | 特殊能力，伪代码（见下） |
 | `description` | string | 中文简介，卡牌详情页底部显示 |
@@ -77,6 +77,32 @@ english_name,chinese_name,kind,cost,attack,health,shield,class,rarity,keywords,t
 `bullseye` 必中、`double_strike` 双击、`overshoot` 溅射、`frenzy` 狂怒、`untrickable` 免疫锦囊、`team_up` 组队。
 
 完整定义见 `scripts/data/card_keywords.gd`。
+
+### 带数值的词缀与种类白名单
+
+CSV 的 `keywords` 列支持 `id:数值`，一张牌可以同时有多个词缀：
+
+```csv
+"first_strike:2,team_up"
+```
+
+- 读取后进入 `CardData.keywords` 和 `CardData.keyword_values`
+- `CardData.keyword_value("first_strike")` 返回 2
+- 显示文本为 `先攻 2、组队`
+- 没有数值的词缀写 `team_up` 即可
+
+白名单在 `CardKeywords.DEFINITIONS` 的 `allowed_kinds` 中配置，例如：
+
+```gdscript
+"first_strike": {
+    "label": "先攻",
+    "value": true,
+    "allowed_kinds": ["entity"],
+}
+```
+
+当前 `first_strike` 只允许实体牌；锦囊/环境牌无法通过卡牌数据或效果获得它。
+未来随机赋予手牌时，应先用 `CardKeywords.can_receive(keyword, card.kind)` 过滤候选。
 
 ### 特殊能力（伪代码，方案 D）
 

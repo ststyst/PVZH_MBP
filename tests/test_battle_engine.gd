@@ -71,6 +71,7 @@ func _make_test_card(card_id: String, ability: String) -> CardData:
 	card.card_class = template.card_class
 	card.rarity = template.rarity
 	card.keywords = template.keywords.duplicate()
+	card.keyword_values = template.keyword_values.duplicate(true)
 	card.tribes = template.tribes.duplicate()
 	card.ability = ability
 	card.ability_script = CardEffectScript.parse(ability)
@@ -170,6 +171,53 @@ func test_place_entity() -> void:
 	assert_eq(state.hand.size(), 0)
 	assert_eq(int(engine.entities[0].column), 0)
 	assert_eq(int(engine.entities[0].slot), 0)
+
+
+func test_first_strike_damages_hero_then_normal_attack() -> void:
+	var engine: BattleEngine = _started_engine()
+	var striker_card: CardData = _make_test_card("pvzh:test_first_strike", "")
+	striker_card.health = 5
+	striker_card.keywords.append("first_strike")
+	striker_card.keyword_values["first_strike"] = 2
+	var striker: BattleEntity = engine.summon_card("p", striker_card, 0, 0)
+	var target: BattleEntity = engine.summon_card("z", cards.get_card("pvzh:gnoll"), 0, 0)
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "z"
+	engine.advance_phase()
+	assert_eq(int(engine.players["z"].hero_health), 18, "先攻 2 应先打敌方英雄 2 点")
+	assert_true(not target.alive, "正常攻击仍应命中并击杀实体")
+	assert_eq(striker.attack, 1)
+
+
+func test_keyword_values_stack_and_respect_whitelist() -> void:
+	var engine: BattleEngine = _started_engine()
+	var entity_card: CardData = _make_test_card("pvzh:test_keyword_entity", "")
+	var entity: BattleEntity = engine.summon_card("p", entity_card, 0, 0)
+	assert_true(entity.add_keyword("first_strike", 2))
+	assert_true(entity.add_keyword("first_strike", 3))
+	assert_eq(entity.keyword_value("first_strike"), 5, "同词缀数值应相加")
+	assert_eq(entity.keyword_value("taunt"), 0, "不同词缀数值不互通")
+
+	var spell_card: CardData = _make_test_card("pvzh:test_keyword_spell", "")
+	spell_card.kind = "spell"
+	cards.cards[spell_card.card_id] = spell_card
+	_set_hand(engine, "p", [spell_card.card_id, entity_card.card_id])
+	assert_false(
+		engine.give_keyword_to_hand_card("p", 0, "first_strike", 2),
+		"锦囊牌不能获得先攻",
+	)
+	assert_true(engine.give_keyword_to_hand_card("p", 1, "first_strike", 2))
+	assert_eq(int(engine.players["p"].hand[1].keyword_values.get("first_strike", 0)), 2)
+	assert_false(engine.players["p"].hand[0].keyword_values.has("first_strike"))
+	engine.phase = BattleEngine.PHASE_HAND
+	engine.active_side = "p"
+	engine.players["p"].energy = 10
+	var played: Dictionary = engine.play_card("p", 1, {"column": 1, "slot": 0})
+	assert_true(bool(played.get("ok", false)), "带手牌词缀的实体应能打出")
+	var played_entity: BattleEntity = engine._entity_at(1, "p", 0)
+	assert_true(played_entity != null)
+	if played_entity != null:
+		assert_eq(played_entity.keyword_value("first_strike"), 2, "手牌词缀应转为实体词缀")
 
 
 func test_team_up_placement_displaces_existing() -> void:
