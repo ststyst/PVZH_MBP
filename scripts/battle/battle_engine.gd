@@ -688,8 +688,11 @@ func play_card(side: String, hand_index: int, target: Dictionary = {}) -> Dictio
 			for handle: Variant in chosen:
 				if not candidates.has(handle):
 					return _fail("目标无效。")
+		if card.ability_script != null and card.ability_script.move_requires_position():
+			if int(target.get("column", -1)) < 0 or int(target.get("slot", -1)) < 0:
+				return _fail("这张牌需要选择移动位置。")
 		_spend_and_remove(state, hand_index, card, effective_cost)
-		_run_script(card, side, chosen)
+		_run_script(card, side, chosen, target)
 	_flush_deaths()
 	_check_game_over()
 	changed.emit()
@@ -728,10 +731,11 @@ func _spend_and_remove(
 		state.discard.append(instance)
 
 
-func _run_script(card: CardData, side: String, chosen: Variant) -> void:
+func _run_script(card: CardData, side: String, chosen: Variant, position: Dictionary = {}) -> void:
 	if card.ability_script == null or not card.ability_script.has_effect():
 		return
 	var context := BattleEffectContext.new(self, side)
+	context.set_chosen_position(int(position.get("column", -1)), int(position.get("slot", -1)))
 	var chosen_handles: Array = []
 	if chosen is Array:
 		chosen_handles = chosen
@@ -787,27 +791,66 @@ func find_free_slot(side: String, card: CardData, preferred_column: int = -1) ->
 	return {}
 
 
-## 位置移动（卡牌效果）：移动到空位；若目标列已有实体，需至少一方带“组队”。
-## 成功后会触发 position_changed 事件；打出组队实体导致的位置挪动不会走这里。
+## 移动实体时可选择的合法位置：只能在该实体所属阵营的半场，排除当前位置。
+## 目标格已有同阵营实体时，移动实体必须具备组队词缀，原实体被挤到同列另一格。
+func valid_move_slots(entity: BattleEntity) -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	if entity == null or not entity.alive:
+		return result
+	var side: String = entity.side
+	for column: int in range(COLUMN_COUNT):
+		var others: Array[BattleEntity] = []
+		for other: BattleEntity in entities:
+			if other != entity and other.alive and other.column == column and other.side == side:
+				others.append(other)
+		for slot: int in [SLOT_NORMAL, SLOT_TEAM_UP]:
+			if column == entity.column and slot == entity.slot:
+				continue
+			var occupant: BattleEntity = _entity_at(column, side, slot)
+			if occupant == entity:
+				occupant = null
+			if occupant == null:
+				if others.size() >= 2:
+					continue
+				if others.size() == 1 and not entity.team_up and not others[0].team_up:
+					continue
+				result.append({"column": column, "slot": slot})
+			else:
+				if not entity.team_up:
+					continue
+				var other_slot: int = SLOT_NORMAL if slot == SLOT_TEAM_UP else SLOT_TEAM_UP
+				var displaced_to: BattleEntity = _entity_at(column, side, other_slot)
+				if displaced_to != null and displaced_to != entity:
+					continue
+				result.append({
+					"column": column,
+					"slot": slot,
+					"displace": occupant.entity_id,
+				})
+	return result
+
+
+## 位置移动（卡牌效果）：移动到空位；若目标格已有同阵营实体，需移动实体带“组队”。
+## 成功后会触发 position_changed 事件；被挤开的实体不触发。
 func move_entity(entity: BattleEntity, column: int, slot: int, fire_event: bool = true) -> bool:
 	if entity == null or not entity.alive:
 		return false
-	if column < 0 or column >= COLUMN_COUNT or (slot != SLOT_NORMAL and slot != SLOT_TEAM_UP):
+	var legal: Array[Dictionary] = valid_move_slots(entity)
+	var found: bool = false
+	for slot_info: Dictionary in legal:
+		if int(slot_info.get("column", -1)) == column and int(slot_info.get("slot", -1)) == slot:
+			found = true
+			break
+	if not found:
 		return false
-	if entity.column == column and entity.slot == slot:
-		return false
-	if _entity_at(column, entity.side, slot) != null:
-		return false
-	var occupants: Array[BattleEntity] = []
-	for other: BattleEntity in entities:
-		if other == entity or not other.alive:
-			continue
-		if other.column == column and other.side == entity.side:
-			occupants.append(other)
-	if occupants.size() >= 2:
-		return false
-	if occupants.size() == 1 and not occupants[0].team_up and not entity.team_up:
-		return false
+	var occupant: BattleEntity = _entity_at(column, entity.side, slot)
+	if occupant != null and occupant != entity:
+		var other_slot: int = SLOT_NORMAL if slot == SLOT_TEAM_UP else SLOT_TEAM_UP
+		occupant.slot = other_slot
+		_log("%s 被移动到第 %d 列%s位" % [
+			occupant.display_name(), column + 1,
+			"组队" if other_slot == SLOT_TEAM_UP else "普通",
+		])
 	entity.column = column
 	entity.slot = slot
 	_log("%s 移动到第 %d 列%s位" % [

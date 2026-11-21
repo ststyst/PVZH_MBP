@@ -7,6 +7,8 @@ var engine: BattleEngine = null
 var caster_side: String = "p"
 var chosen_targets: Array = []
 var source_keywords: Array = []
+var chosen_column: int = -1
+var chosen_slot: int = -1
 var _self_handle: Variant = null
 var _event_handle: Variant = null
 
@@ -34,6 +36,11 @@ func set_chosen_targets(handles: Array) -> void:
 
 func set_source_keywords(keywords: Array) -> void:
 	source_keywords = keywords.duplicate()
+
+
+func set_chosen_position(column: int, slot: int) -> void:
+	chosen_column = column
+	chosen_slot = slot
 
 
 func resolve_selector(selector: String) -> Array:
@@ -125,6 +132,12 @@ func destroy(target) -> void:
 
 func move_entity(target, column: int, slot: int) -> bool:
 	return engine.move_entity_handle(target, column, slot)
+
+
+func move_entity_to_chosen_position(target) -> bool:
+	if chosen_column < 0 or chosen_slot < 0:
+		return false
+	return engine.move_entity_handle(target, chosen_column, chosen_slot)
 
 
 func choose_targets(count: int, selector: String) -> bool:

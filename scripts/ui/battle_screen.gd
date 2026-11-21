@@ -60,6 +60,8 @@ var _empty_slot_style: StyleBoxEmpty = null
 var _highlight_slot_style: StyleBoxFlat = null
 var _special_target_mode: bool = false
 var _special_card_tile: CardTile = null
+var _pending_move_entity: BattleEntity = null
+var _pending_move_base_target: Dictionary = {}
 const LONG_PRESS_SECONDS: float = 0.45
 var _long_press_entity: BattleEntity = null
 var _long_press_elapsed: float = 0.0
@@ -355,7 +357,22 @@ func _on_card_info_closed() -> void:
 func _on_slot_pressed(side: String, column: int, slot: int) -> void:
 	if not _started or engine == null:
 		return
-	if _pending_mode == "choose_spell" and side == player_side:
+	if _pending_mode == "move_position":
+		if _pending_move_entity == null or side != _pending_move_entity.side:
+			_set_status("只能移动到目标实体所属阵营的半场。", true)
+			return
+		if not _pending_move_candidate(column, slot):
+			_set_status("该位置不是合法移动位置。", true)
+			return
+		var move_target: Dictionary = _pending_move_base_target.duplicate(true)
+		move_target["column"] = column
+		move_target["slot"] = slot
+		if _special_target_mode:
+			_resolve_special_target(move_target)
+		else:
+			_play_pending(move_target)
+		return
+	if _pending_mode == "choose_spell":
 		var target_entity: BattleEntity = _entity_at(column, side, slot)
 		if target_entity != null and _pending_candidates.has(target_entity):
 			var limit: int = int(_card_multi_target_requirement(
@@ -445,6 +462,8 @@ func _on_hero_target(side: String) -> void:
 func _play_pending(target: Dictionary) -> void:
 	if _pending_card_index < 0:
 		return
+	if _try_begin_move_position(target):
+		return
 	var result: Dictionary = engine.play_card(player_side, _pending_card_index, target)
 	_clear_pending()
 	if not bool(result.get("ok", false)):
@@ -467,8 +486,62 @@ func _clear_pending() -> void:
 	_pending_mode = ""
 	_pending_candidates.clear()
 	_pending_handles.clear()
+	_pending_move_entity = null
+	_pending_move_base_target.clear()
 	_special_target_mode = false
 	_confirm_targets_button.visible = false
+
+
+func _pending_move_candidate(column: int, slot: int) -> bool:
+	for slot_info: Dictionary in _pending_candidates:
+		if int(slot_info.get("column", -1)) == column and int(slot_info.get("slot", -1)) == slot:
+			return true
+	return false
+
+
+func _target_handle_list(target: Dictionary) -> Array:
+	var result: Array = []
+	var raw: Variant = target.get("handles", null)
+	if raw is Array:
+		for handle: Variant in raw:
+			if handle != null:
+				result.append(handle)
+	elif raw != null:
+		result.append(raw)
+	var single: Variant = target.get("handle", null)
+	if single != null and not result.has(single):
+		result.append(single)
+	return result
+
+
+func _try_begin_move_position(target: Dictionary) -> bool:
+	if target.has("column") and target.has("slot"):
+		return false
+	if _pending_card_index < 0:
+		return false
+	var card: CardData = engine.hand_card(player_side, _pending_card_index)
+	if card == null or card.ability_script == null or not card.ability_script.move_requires_position():
+		return false
+	var handles: Array = _target_handle_list(target)
+	if handles.size() != 1 or not (handles[0] is BattleEntity):
+		return false
+	var entity: BattleEntity = handles[0]
+	_pending_move_entity = entity
+	_pending_move_base_target = target.duplicate(true)
+	_pending_mode = "move_position"
+	_pending_candidates = engine.valid_move_slots(entity)
+	_set_status("请选择 %s 要移动到的位置（不能选择当前位置）。" % entity.display_name())
+	_refresh_all()
+	return true
+
+
+func _begin_move_position(entity: BattleEntity, base_target: Dictionary) -> void:
+	_pending_move_entity = entity
+	_pending_move_base_target = base_target.duplicate(true)
+	_pending_mode = "move_position"
+	_pending_candidates = engine.valid_move_slots(entity)
+	_set_status("请选择 %s 要移动到的位置（不能选择当前位置）。" % entity.display_name())
+	_refresh_all()
 
 
 func _card_multi_target_requirement(card: CardData) -> Dictionary:
@@ -592,6 +665,12 @@ func _update_slot_button(
 						break
 			else:
 				actionable = _pending_candidates.has(entity)
+	elif _pending_mode == "move_position":
+		actionable = (
+			_pending_move_entity != null
+			and side == _pending_move_entity.side
+			and _pending_move_candidate(column, slot)
+		)
 	else:
 		actionable = false
 	if _pending_mode == "choose_spell":
@@ -602,7 +681,12 @@ func _update_slot_button(
 			if is_instance_valid(hidden_view):
 				hidden_view.visible = false
 		button.text = ""
-		if actionable and (_pending_mode == "place" or _pending_mode == "column" or _pending_mode == "choose"):
+		if actionable and (
+			_pending_mode == "place"
+			or _pending_mode == "column"
+			or _pending_mode == "choose"
+			or _pending_mode == "move_position"
+		):
 			_apply_highlight_slot_style(button)
 			button.disabled = false
 		else:
@@ -620,6 +704,7 @@ func _update_slot_button(
 			or _pending_mode == "place"
 			or (_pending_mode == "choose" and _pending_candidates.has(entity))
 			or (_pending_mode == "choose_spell" and _pending_candidates.has(entity))
+			or (_pending_mode == "move_position" and actionable)
 		)
 	)
 	button.text = ""
@@ -915,6 +1000,7 @@ func _on_special_play_pressed() -> void:
 	var card: CardData = engine.hand_card(player_side, index)
 	if card == null:
 		return
+	_pending_card_index = index
 	var requirement: Dictionary = _card_multi_target_requirement(card)
 	if int(requirement.get("count", 0)) > 0:
 		_special_target_mode = true
@@ -944,6 +1030,8 @@ func _on_special_hand_pressed() -> void:
 
 
 func _resolve_special_target(target: Dictionary) -> void:
+	if _try_begin_move_position(target):
+		return
 	var result: Dictionary = engine.special_resolve_play(player_side, target)
 	_set_status(str(result.get("message", "")), not bool(result.get("ok", false)))
 	_clear_pending()

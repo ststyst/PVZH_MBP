@@ -111,11 +111,14 @@ func _exec_primitive(statement: Dictionary) -> void:
 			var move_targets: Array = _resolve_argument_target(arguments[0])
 			if move_targets.size() != 1:
 				_error("move_entity 需要单个实体目标", line)
+			elif arguments.size() == 1:
+				if not context.move_entity_to_chosen_position(move_targets[0]):
+					_error("移动实体失败（未选择位置或位置无效）", line)
 			else:
 				var move_column: int = _as_int(_eval(arguments[1], {}))
 				var move_slot: int = _as_int(_eval(arguments[2], {}))
 				if not context.move_entity(move_targets[0], move_column, move_slot):
-					_error("移动实体失败（位置无效或该列已满）", line)
+					_error("移动实体失败（位置无效或目标格不可用）", line)
 		_:
 			_error("未知原语：%s" % primitive_name, line)
 

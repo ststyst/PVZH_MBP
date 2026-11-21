@@ -93,6 +93,12 @@ func move_entity(_target, _column: int, _slot: int) -> bool:
 	return false
 
 
+## 把实体移动到玩家在出牌时选择的列/位置；成功会触发 position_changed。
+func move_entity_to_chosen_position(_target) -> bool:
+	push_warning("EffectContext.move_entity_to_chosen_position 未实现：需要战斗层提供")
+	return false
+
+
 ## 多目标选择声明：从 selector 候选中校验最多 count 个已选目标。
 func choose_targets(_count: int, _selector: String) -> bool:
 	push_warning("EffectContext.choose_targets 未实现：需要战斗层提供")

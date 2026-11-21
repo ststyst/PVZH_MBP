@@ -33,7 +33,8 @@
 | `reduce_cost(amount)` | 数值 | 修改当前卡牌实例的费用（最低 0，用于手牌被动） |
 | `add_marker(name, amount)` | 标志物名、增减值 | 修改玩家特殊标志物数量（允许负数） |
 | `remove_marker(name, amount)` | 标志物名、数量 | 减少玩家特殊标志物（等价于负数 add_marker） |
-| `move_entity(target, column, slot)` | 实体、列(0-4)、位置(0普通/1组队) | 把实体移动到空位；成功触发 `position_changed` |
+| `move_entity(target)` | 实体 | 玩家在出牌时选择目标实体的移动位置；只能在该实体所属阵营半场，且排除当前位置 |
+| `move_entity(target, column, slot)` | 实体、列(0-4)、位置(0普通/1组队) | 直接移动到固定位置；成功触发 `position_changed` |
 
 多目标选择器（`all_enemies` / `all_allies` / `other_allies`）会被解释器**逐个**调用原语。
 
@@ -222,11 +223,29 @@ when enter:
         add_marker("special_marker_3", -1)
 ```
 
-移动实体并触发位置事件：
+移动实体并触发位置事件（固定位置）：
 
-```
+```text
 move_entity(event, 2, 0)
 ```
+
+把敌方实体移动到敌方半场的指定位置（玩家选择）：
+
+```text
+choose(1, "all_enemies")
+move_entity(chosen)
+```
+
+规则：
+
+- 单参数 `move_entity(target)` 会要求玩家选择位置；位置候选来自**被移动实体所属阵营**的半场
+- 候选位置排除该实体当前所在位置
+- 目标阵营的合法位置与打出实体牌一致：空格可放；已有同阵营实体时，移动实体必须具备 `team_up`
+- 移动实体带 `team_up` 移入已有友方实体格时，原实体会被挤到同列另一格；这属于放置挤压，**不触发** `position_changed`
+- 被移动的实体本身会触发一次 `position_changed`
+- 不能把实体移动到另一阵营半场
+
+固定位置形式也遵循上述阵营、当前位置、组队和挤压规则。
 
 赋予/叠加词缀数值（先攻 2）：
 
@@ -243,7 +262,7 @@ when position_changed:
     add_marker("moved", 1)
 ```
 
-注意：打出组队实体时把原实体挤到同列另一格，属于“放置规则”，**不会触发** `position_changed`；只有卡牌效果调用 `move_entity` 才会触发。
+注意：打出组队实体时把原实体挤到同列另一格，属于“放置规则”，**不会触发** `position_changed`；只有卡牌效果调用 `move_entity` 才会让**被移动的实体**触发。因移动造成的挤压同样不会触发被挤开实体的 `position_changed`。
 
 特殊标志物名字是任意英文字符串，不注册种类，数量允许负数。
 

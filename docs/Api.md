@@ -429,10 +429,12 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 | API | 说明 |
 |---|---|
 | `confirm_mulligan(side)` / `replace_mulligan_card(side, index)` | 起手调度（每张限换一次） |
-| `play_card(side, hand_index, target)` | target：实体 `{column,slot}`（组队实体可指向已有友方实体格，挤开原实体）；环境 `{column}`；需要目标 `{handle}` |
+| `play_card(side, hand_index, target)` | target：实体 `{column,slot}`（组队实体可指向已有友方实体格，挤开原实体）；环境 `{column}`；需要目标 `{handle}`；移动实体牌额外带 `{column,slot}` 作为目标位置 |
 | `end_phase(side)` / `advance_phase()` | 结束当前阶段 / 推进阶段 |
 | `valid_slots(side, card)` / `target_candidates(card, side)` | UI 高亮与 AI 选目标；`valid_slots` 的 `displace` 字段表示会挤开哪个实体 |
-| `move_entity(entity, column, slot)` | 卡牌效果移动实体到空位，触发 `position_changed` |
+| `move_entity(entity, column, slot)` | 卡牌效果移动实体；合法位置仅限该实体所属阵营，触发 `position_changed` |
+| `valid_move_slots(entity)` | 返回该实体可移动的列/位置；排除当前位置，目标格有友方实体时需 `team_up` |
+| `CardEffectScript.move_requires_position()` | 卡牌顶层是否存在单参数 `move_entity(target)`，供 UI 进入位置选择 |
 | `damage_handle / heal_handle / buff_handle / ...` | 效果原语入口 |
 | `changed` / `game_finished(winner)` 信号 | 状态变化 / 胜负 |
 | `hero_damaged(side, amount, source_keywords)` 信号 | 英雄实际受伤（已扣护盾/免疫后）；amount > 0 时发出 |
@@ -470,7 +472,8 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 - `first_strike` 伤害与普通英雄伤害共用 `damage_hero`，会经过免疫、护盾并触发 `hero_damaged`
 - 充能护盾在真实受击后结算；满充能触发免疫、耐久 -1，并给该英雄发放随机超能力进入特殊回合
 - 必中（`bullseye`）伤害不增加充能护盾充能
-- `CardEffectScript.target_requirement()` 返回入场 `choose(count, selector)` 的目标需求
+- `CardEffectScript.target_requirement()` 返回入场/锦囊 `choose(count, selector)` 的目标需求
+- `CardEffectScript.move_requires_position()` 判断是否需要玩家为 `move_entity(target)` 选择位置
 - 区域被动用 `when ally_die(zone == 'deck'|'hand')`，原语 `gain_attack` / `reduce_cost`
 - 多目标用 `choose(count, "other_allies")` + `buff_stats(chosen, ...)`
 - 标志物用 `add_marker("名字", 数量)` / `marker_count("名字")`

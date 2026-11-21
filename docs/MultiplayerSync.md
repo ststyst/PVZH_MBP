@@ -51,7 +51,7 @@ BattleClientSession ── ENet/UDP ── BattleServerSession
 - 服务器校验后执行，返回 ack + 公共/私有事件；客户端在确认前锁定输入
 - `handles` 用于多目标选择（最多 count 个）；锦囊多目标也使用同一字段
 - 组队实体打向已有友方实体格时，服务器把原实体挪到同列另一空格，再把新实体放在目标格；这属于放置规则，不发位置变动事件
-- `move_entity` 效果移动实体后发 `position_changed` 事件
+- `move_entity` 效果移动实体后发 `position_changed` 事件；移动牌的目标位置也用 `{column,slot}`，服务器需按被移动实体阵营和 `valid_move_slots` 校验
 - 特殊回合命令：`{"type":"special_play","target":{...}}` / `{"type":"special_hand"}`
 - 超能力牌池与当前 offer 只发给所属玩家；其他玩家只看到特殊回合状态
 - 引擎统一入口：`BattleEngine.execute_command(side, command)`

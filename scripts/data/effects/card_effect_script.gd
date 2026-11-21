@@ -71,6 +71,30 @@ func target_requirement() -> Dictionary:
 	return {}
 
 
+## 该卡是否要求玩家在打出时选择移动位置（顶层 move_entity(target) 单参数形式）。
+func move_requires_position() -> bool:
+	return _find_move_to_chosen_position(on_play)
+
+
+func _find_move_to_chosen_position(block: Variant) -> bool:
+	if not block is Array:
+		return false
+	for statement: Variant in block:
+		if not statement is Dictionary:
+			continue
+		var data: Dictionary = statement
+		if (
+			str(data.get("type", "")) == "call"
+			and str(data.get("name", "")) == "move_entity"
+			and (data.get("args", []) as Array).size() == 1
+		):
+			return true
+		for key: String in ["body", "else"]:
+			if _find_move_to_chosen_position(data.get(key, [])):
+				return true
+	return false
+
+
 func _find_choose(block: Variant) -> Dictionary:
 	if not block is Array:
 		return {}

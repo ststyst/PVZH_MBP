@@ -472,6 +472,62 @@ func test_team_up_placement_displaces_existing() -> void:
 	assert_false(bool(full_result.get("ok", true)), "满员列不允许再放置组队实体")
 
 
+func test_move_entity_team_up_displaces_without_displacement_event() -> void:
+	var engine: BattleEngine = _started_engine()
+	var occupant_card: CardData = _make_test_card(
+		"pvzh:test_move_occupant",
+		"when position_changed:\n    add_marker(\"moved\", 1)"
+	)
+	var mover_card: CardData = _make_test_card("pvzh:test_move_mover", "")
+	mover_card.keywords.append("team_up")
+	var occupant: BattleEntity = engine.summon_card("p", occupant_card, 0, 0)
+	var mover: BattleEntity = engine.summon_card("p", mover_card, 1, 0)
+	var state: BattlePlayerState = engine.players["p"]
+	assert_true(engine.move_entity(mover, 0, 0))
+	assert_eq(mover.column, 0)
+	assert_eq(mover.slot, 0)
+	assert_eq(occupant.slot, 1, "目标格原实体应被挤到同列另一格")
+	assert_eq(state.marker_count("moved"), 0, "被挤开的实体不应触发 position_changed")
+
+
+func test_move_entity_chosen_position_dsl() -> void:
+	var engine: BattleEngine = _started_engine()
+	var spell: CardData = _make_test_card(
+		"pvzh:test_move_spell",
+		"choose(1, \"all_enemies\")\nmove_entity(chosen)"
+	)
+	spell.kind = "spell"
+	spell.cost = 1
+	var target_card: CardData = _make_test_card(
+		"pvzh:test_move_target",
+		"when position_changed:\n    add_marker(\"moved\", 1)"
+	)
+	var target: BattleEntity = engine.summon_card("z", target_card, 0, 0)
+	var state: BattlePlayerState = engine.players["p"]
+	_set_hand(engine, "p", [spell.card_id])
+	state.energy = 10
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "p"
+	assert_true(spell.ability_script.move_requires_position())
+	var result: Dictionary = engine.play_card("p", 0, {
+		"handles": [target], "column": 1, "slot": BattleEngine.SLOT_TEAM_UP,
+	})
+	assert_true(bool(result.get("ok", false)), "单参数 move_entity 应使用选择的位置：%s" % [result.get("message", "")])
+	assert_eq(target.column, 1)
+	assert_eq(target.slot, BattleEngine.SLOT_TEAM_UP)
+	assert_eq(engine.players["z"].marker_count("moved"), 1, "移动的实体应触发 position_changed")
+
+
+func test_move_slots_only_own_side_and_exclude_current() -> void:
+	var engine: BattleEngine = _started_engine()
+	var entity: BattleEntity = engine.summon_card("p", cards.get_card("pvzh:gnoll"), 2, 0)
+	var slots: Array[Dictionary] = engine.valid_move_slots(entity)
+	assert_true(not slots.is_empty())
+	for slot_info: Dictionary in slots:
+		assert_eq(engine._entity_at(int(slot_info.column), "p", int(slot_info.slot)), null)
+		assert_true(not (int(slot_info.column) == 2 and int(slot_info.slot) == 0), "不能选择当前位置")
+
+
 func test_move_entity_triggers_position_event() -> void:
 	var engine: BattleEngine = _started_engine()
 	var mover_card: CardData = _make_test_card(
