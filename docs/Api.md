@@ -267,7 +267,7 @@ ConfirmService.show_message(LoginFlow.get_developer_message(), "开发者的话"
 
 字段：`card_id`、`card_namespace`、`english_name`、`chinese_name`、`description`、`kind`（entity/spell）、
 `cost`、`attack`、`health`、`shield`、`card_class`、`rarity`、`keywords`、`tribes`、`ability`（伪代码）、
-`art_path`（卡面贴图路径，空 = 纯色占位外观）、
+`art_path`（卡面贴图路径，空 = 纯色占位外观）、`animation`（动画伪代码）、
 `deck_includable`（是否可被牌组编入，默认 true），
 以及加载时解析的 `class_label` / `rarity_label` / `keyword_labels` / `tribe_labels`。
 
@@ -400,6 +400,15 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 | `valid_slots(side, card)` / `target_candidates(card, side)` | UI 高亮与 AI 选目标 |
 | `damage_handle / heal_handle / buff_handle / ...` | 效果原语入口 |
 | `changed` / `game_finished(winner)` 信号 | 状态变化 / 胜负 |
+| `animation_cue(trigger, actor, target)` 信号 | 攻击/能力触发/死亡时发出动画请求（UI 排队播放，不阻塞逻辑） |
+
+卡牌动画：`CardData.animation_script`（`CardAnimationScript`）解析 `animation` 列，
+支持 `when attack/ability/die`、`play_animation(self|target, name, mode)`、`wait(秒)`、`play_fx`；
+详见 `docs/AnimationDsl.md`。
+
+实体显示：`BattleEntityView`（`scenes/battle/BattleEntityView.tscn`）提供
+`play_animation(name, mode)`、`play_fx(name)` 与 `set_highlight()`；动画库在
+`assets/animations/whole.tres` / `background.tres` / `art.tres`。
 
 规则：5 列 × 双方各 2 位（位置不固定）；同一列最多 2 个实体，且该列已有 1 个实体时，
 再放入的实体必须与已有实体至少有一个带「组队」词缀，否则不能放入。

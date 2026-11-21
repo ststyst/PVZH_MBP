@@ -28,6 +28,7 @@
 - 卡牌美术：稀有度卡牌背景（`assets/cards/backgrounds/`）+ CSV `art_path` 外观图；缺图回退纯色外观。
 - 单机战斗：`scenes/battle/BattlePrep.tscn` 准备 + `Battle.tscn` 对战；战斗 UI 已全部节点化，可直接在编辑器部署素材；推荐卡组 CSV（`data/battle`）；简单 AI。
 - 战斗卡牌/实体：手牌与牌组编辑共用 `CardTile.tscn`，实体使用 `BattleEntityView.tscn`；背景、外观、费用/攻击/生命图标均为空 Sprite2D 挂点。
+- 实体动画：整体/背景/外观三种模式，卡牌 `animation` 列用伪代码编排攻击/能力/死亡动画。
 - 设置与调试：设置页（音量/显示预设/保存存档/开发者入口）+ 开发者调试面板（货币/卡牌/CSV 编译）。
 - 30 张示例卡数据（`data/cards/official/cards.csv`，CSV 数据驱动）+ 能力 DSL
   （`docs/EffectDsl.md`：变量、四则运算、条件目标、实体事件与过滤）。

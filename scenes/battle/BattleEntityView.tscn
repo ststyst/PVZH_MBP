@@ -1,6 +1,9 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/battle/battle_entity_view.gd" id="1_entity_view"]
+[ext_resource type="AnimationLibrary" path="res://assets/animations/whole.tres" id="2_whole_lib"]
+[ext_resource type="AnimationLibrary" path="res://assets/animations/background.tres" id="3_background_lib"]
+[ext_resource type="AnimationLibrary" path="res://assets/animations/art.tres" id="4_art_lib"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_border"]
 bg_color = Color(1, 1, 1, 0)
@@ -25,23 +28,56 @@ grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("1_entity_view")
 
-[node name="BackgroundSprite" type="Sprite2D" parent="."]
+[node name="WholeRoot" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+pivot_offset = Vector2(68, 42)
+
+[node name="BackgroundRoot" type="Control" parent="WholeRoot"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+pivot_offset = Vector2(68, 42)
+
+[node name="BackgroundSprite" type="Sprite2D" parent="WholeRoot/BackgroundRoot"]
 unique_name_in_owner = true
 position = Vector2(68, 42)
 
-[node name="ArtSprite" type="Sprite2D" parent="."]
+[node name="ArtRoot" type="Control" parent="WholeRoot"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+pivot_offset = Vector2(68, 42)
+
+[node name="ArtSprite" type="Sprite2D" parent="WholeRoot/ArtRoot"]
 unique_name_in_owner = true
 position = Vector2(68, 34)
 
-[node name="AttackIconSprite" type="Sprite2D" parent="."]
+[node name="AttackIconSprite" type="Sprite2D" parent="WholeRoot"]
 unique_name_in_owner = true
 position = Vector2(20, 68)
 
-[node name="HealthIconSprite" type="Sprite2D" parent="."]
+[node name="HealthIconSprite" type="Sprite2D" parent="WholeRoot"]
 unique_name_in_owner = true
 position = Vector2(116, 68)
 
-[node name="NameLabel" type="Label" parent="."]
+[node name="NameLabel" type="Label" parent="WholeRoot"]
 unique_name_in_owner = true
 layout_mode = 0
 offset_left = 2.0
@@ -56,7 +92,7 @@ theme_override_font_sizes/font_size = 9
 text = "实体"
 horizontal_alignment = 1
 
-[node name="AttackLabel" type="Label" parent="."]
+[node name="AttackLabel" type="Label" parent="WholeRoot"]
 unique_name_in_owner = true
 layout_mode = 0
 offset_left = 2.0
@@ -71,7 +107,7 @@ theme_override_font_sizes/font_size = 13
 text = "0"
 horizontal_alignment = 1
 
-[node name="HealthLabel" type="Label" parent="."]
+[node name="HealthLabel" type="Label" parent="WholeRoot"]
 unique_name_in_owner = true
 layout_mode = 0
 offset_left = 94.0
@@ -85,6 +121,27 @@ theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 13
 text = "0"
 horizontal_alignment = 1
+
+[node name="WholePlayer" type="AnimationPlayer" parent="."]
+unique_name_in_owner = true
+libraries = {
+"": ExtResource("2_whole_lib")
+}
+root_node = NodePath("../WholeRoot")
+
+[node name="BackgroundPlayer" type="AnimationPlayer" parent="."]
+unique_name_in_owner = true
+libraries = {
+"": ExtResource("3_background_lib")
+}
+root_node = NodePath("../WholeRoot/BackgroundRoot")
+
+[node name="ArtPlayer" type="AnimationPlayer" parent="."]
+unique_name_in_owner = true
+libraries = {
+"": ExtResource("4_art_lib")
+}
+root_node = NodePath("../WholeRoot/ArtRoot")
 
 [node name="Border" type="Panel" parent="."]
 unique_name_in_owner = true

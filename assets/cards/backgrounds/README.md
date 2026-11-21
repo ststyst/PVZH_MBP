@@ -29,11 +29,11 @@
 
 - `BackgroundSprite`：卡牌背景
 - `ArtSprite`：卡牌外观（`art_path`）
-- `CostIconSprite`：费用图标（手牌右上）
+- `CostIconSprite`：费用图标（手牌右上；费用数字由图标素材自带）
 - `AttackIconSprite`：攻击图标（左下）
 - `HealthIconSprite`：生命图标（右下）
 
-对应数值 Label：`CostLabel` / `AttackLabel` / `HealthLabel`。
+对应数值 Label：`AttackLabel` / `HealthLabel`（费用不再显示文字）。
 实体不显示费用与防御；手牌/卡牌也不显示防御。
 
 建议背景图：四周是稀有度边框装饰，中间留半透明/深色区域放卡图与文字；

@@ -47,8 +47,12 @@ var deck_includable: bool = true
 var ability: String = ""
 ## 卡面贴图路径（res:// 或 user://）；空 = 纯色占位外观
 var art_path: String = ""
+## 动画伪代码（攻击/能力触发/死亡时播放哪些具名动画）
+var animation: String = ""
 ## 编译后的能力脚本（CSV 载入时解析；语法错误见 CardDatabase.load_errors）
 var ability_script: CardEffectScript = null
+## 编译后的动画脚本
+var animation_script: CardAnimationScript = null
 
 ## 展示用中文名（加载时由全局配置解析）
 var class_label: String = ""
@@ -139,6 +143,11 @@ func to_pack_dict() -> Dictionary:
 	if ability_script != null:
 		program = ability_script.to_program()
 		ability_errors = ability_script.errors.duplicate()
+	var animation_program: Dictionary = {}
+	var animation_errors: Array = []
+	if animation_script != null:
+		animation_program = animation_script.to_program()
+		animation_errors = animation_script.errors.duplicate()
 	return {
 		"card_id": card_id,
 		"english_name": english_name,
@@ -155,12 +164,15 @@ func to_pack_dict() -> Dictionary:
 		"tribes": tribes.duplicate(),
 		"ability": ability,
 		"art_path": art_path,
+		"animation": animation,
 		"class_label": class_label,
 		"rarity_label": rarity_label,
 		"keyword_labels": keyword_labels.duplicate(),
 		"tribe_labels": tribe_labels.duplicate(),
 		"ability_program": program,
 		"ability_errors": ability_errors,
+		"animation_program": animation_program,
+		"animation_errors": animation_errors,
 		"deck_includable": deck_includable,
 	}
 
@@ -183,6 +195,14 @@ static func from_pack_dict(data: Dictionary, card_namespace: String = "") -> Car
 	card.deck_includable = bool(data.get("deck_includable", true))
 	card.ability = str(data.get("ability", ""))
 	card.art_path = str(data.get("art_path", ""))
+	card.animation = str(data.get("animation", ""))
+	var animation_program: Variant = data.get("animation_program", {})
+	if animation_program is Dictionary and not (animation_program as Dictionary).is_empty():
+		card.animation_script = CardAnimationScript.from_program(
+			animation_program, data.get("animation_errors", [])
+		)
+	elif not card.animation.is_empty():
+		card.animation_script = CardAnimationScript.parse(card.animation)
 	card.class_label = str(data.get("class_label", ""))
 	card.rarity_label = str(data.get("rarity_label", ""))
 	var raw_keywords: Variant = data.get("keywords", [])

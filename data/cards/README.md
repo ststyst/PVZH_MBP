@@ -56,6 +56,7 @@ english_name,chinese_name,kind,cost,attack,health,shield,class,rarity,keywords,t
 | `ability` | string | 特殊能力，伪代码（见下） |
 | `description` | string | 中文简介，卡牌详情页底部显示 |
 | `art_path` | string | 卡牌外观图路径（如 `res://assets/cards/art/fireball.png`）；留空只显示稀有度背景 |
+| `animation` | string | 动画伪代码（when attack/ability/die + play_animation/wait/play_fx），见 `docs/AnimationDsl.md` |
 | `deck_includable` | int | 是否可被牌组编入：`1` 可（默认），`0` 不可 |
 
 ### 卡面组成与素材尺寸

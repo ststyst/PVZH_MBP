@@ -261,6 +261,10 @@ func _load_row(
 	card.deck_includable = _parse_deck_includable(row, header, english_name, row_number)
 	card.ability = _cell(row, header, "ability").strip_edges()
 	card.art_path = _cell(row, header, "art_path").strip_edges()
+	card.animation = _cell(row, header, "animation").strip_edges()
+	card.animation_script = CardAnimationScript.parse(card.animation)
+	for problem: String in card.animation_script.errors:
+		load_errors.append("卡牌 %s 动画语法错误：%s" % [english_name, problem])
 	card.ability_script = CardEffectScript.parse(card.ability)
 	for problem: String in card.ability_script.errors:
 		load_errors.append("卡牌 %s 能力语法错误：%s" % [english_name, problem])

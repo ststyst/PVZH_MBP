@@ -253,6 +253,27 @@ func test_any_empty_slot_allowed() -> void:
 		assert_eq(engine.entities[0].slot, BattleEngine.SLOT_TEAM_UP)
 
 
+func test_animation_cues_on_attack_and_death() -> void:
+	var card: CardData = cards.get_card("pvzh:gnoll").duplicate()
+	card.card_id = "pvzh:anim_test_unit"
+	card.animation_script = CardAnimationScript.parse(
+		"when attack:\n    play_animation(self, \"slash\", \"whole\")\nwhen die:\n    play_animation(self, \"death\", \"art\")"
+	)
+	cards.cards[card.card_id] = card
+	var engine: BattleEngine = _started_engine()
+	var cues: Array[String] = []
+	engine.animation_cue.connect(func(trigger: String, _actor: BattleEntity, _target: Variant) -> void:
+		cues.append(trigger)
+	)
+	engine.summon_card("p", card, 0, BattleEngine.SLOT_NORMAL)
+	engine.summon_card("z", cards.get_card("pvzh:hound"), 0, BattleEngine.SLOT_NORMAL)
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "z"
+	engine.advance_phase()
+	assert_true(cues.has("attack"), "攻击应触发动画 cue：%s" % [cues])
+	assert_true(cues.has("die"), "死亡应触发动画 cue：%s" % [cues])
+
+
 func test_team_up_placement_rule() -> void:
 	var engine: BattleEngine = _started_engine()
 	var team_card: CardData = cards.get_card("pvzh:hound").duplicate()

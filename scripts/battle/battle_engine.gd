@@ -5,6 +5,8 @@ extends RefCounted
 
 signal changed()
 signal game_finished(winner_side: String)
+## 动画触发：trigger = attack / ability / die；target 为 BattleEntity 或 "hero:x"
+signal animation_cue(trigger: String, actor: BattleEntity, target: Variant)
 
 const SIDE_P: String = "p"
 const SIDE_Z: String = "z"
@@ -585,6 +587,16 @@ func _fire_event(event_name: String, event_entity: BattleEntity) -> void:
 		var errors: Array[String] = listener.card.ability_script.run_event(context, event_name, event_entity)
 		for message: String in errors:
 			_log("效果错误（%s）：%s" % [listener.display_name(), message])
+		if event_name != "die":
+			_emit_animation_cue("ability", listener, event_entity)
+
+
+func _emit_animation_cue(trigger: String, actor: BattleEntity, target: Variant = null) -> void:
+	if actor == null or actor.card == null or actor.card.animation_script == null:
+		return
+	if not actor.card.animation_script.has_trigger(trigger):
+		return
+	animation_cue.emit(trigger, actor, target)
 
 
 # ----- 战斗 -----
@@ -629,6 +641,8 @@ func _combat_column(column: int) -> void:
 			_fire_event("attack", attack["attacker"])
 		if attack["target"] is BattleEntity and attack["target"].alive:
 			_fire_event("attacked", attack["target"])
+	for attack: Dictionary in attacks:
+		_emit_animation_cue("attack", attack["attacker"] as BattleEntity, attack["target"])
 
 
 func _resolve_turn_start() -> void:
@@ -664,6 +678,7 @@ func _flush_deaths() -> void:
 		for entity: BattleEntity in dead:
 			entity.alive = false
 			_log("%s 死亡" % entity.display_name())
+			_emit_animation_cue("die", entity, null)
 			_fire_event("die", entity)
 			entities.erase(entity)
 	_check_game_over()
@@ -680,6 +695,7 @@ func _flush_column_deaths(column: int) -> void:
 		for entity: BattleEntity in dead:
 			entity.alive = false
 			_log("%s 死亡" % entity.display_name())
+			_emit_animation_cue("die", entity, null)
 			_fire_event("die", entity)
 			entities.erase(entity)
 	_check_game_over()

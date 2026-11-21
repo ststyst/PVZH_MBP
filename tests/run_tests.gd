@@ -20,6 +20,7 @@ const TEST_SCRIPTS: Array[String] = [
 	"res://tests/test_recommended_decks.gd",
 	"res://tests/test_effect_parser.gd",
 	"res://tests/test_effect_runner.gd",
+	"res://tests/test_card_animation.gd",
 	"res://tests/test_card_set_compiler.gd",
 	"res://tests/test_display_service.gd",
 ]

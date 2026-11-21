@@ -45,6 +45,9 @@ var _ai_accum: float = 0.0
 var _board_columns: Array[Dictionary] = []
 var _mulligan_used: Array[bool] = []
 var _entity_views: Dictionary = {}
+var _views_by_entity_id: Dictionary = {}
+var _animation_queue: Array[Dictionary] = []
+var _animation_busy: bool = false
 var _empty_slot_style: StyleBoxEmpty = null
 var _highlight_slot_style: StyleBoxFlat = null
 
@@ -74,6 +77,7 @@ func _ready() -> void:
 	engine = BattleEngine.new(CardDatabase)
 	engine.changed.connect(_on_engine_changed)
 	engine.game_finished.connect(_on_game_finished)
+	engine.animation_cue.connect(_on_animation_cue)
 	engine.setup(
 		player_side,
 		player_hero,
@@ -401,6 +405,7 @@ func _update_slot_button(
 	var view: BattleEntityView = _get_entity_view(button)
 	view.visible = true
 	view.setup(entity)
+	_views_by_entity_id[entity.entity_id] = view
 	view.set_highlight(
 		actionable and (
 			_pending_mode == "target"
@@ -540,6 +545,115 @@ func _process(delta: float) -> void:
 			if engine.phase == BattleEngine.PHASE_HAND or engine.phase == BattleEngine.PHASE_SPELL:
 				_ai_accum = 0.0
 				EasyBattleAI.take_action(engine, enemy_side)
+
+
+func _on_animation_cue(trigger: String, actor: BattleEntity, target: Variant) -> void:
+	if actor == null or actor.card == null or actor.card.animation_script == null:
+		return
+	if not actor.card.animation_script.has_trigger(trigger):
+		return
+	_animation_queue.append({"trigger": trigger, "actor": actor, "target": target})
+	if not _animation_busy:
+		_run_animation_queue()
+
+
+func _run_animation_queue() -> void:
+	_animation_busy = true
+	while not _animation_queue.is_empty():
+		var cue: Dictionary = _animation_queue.pop_front()
+		await _play_animation_cue(cue)
+	_animation_busy = false
+
+
+func _play_animation_cue(cue: Dictionary) -> void:
+	var actor: BattleEntity = cue.get("actor") as BattleEntity
+	if actor == null or actor.card == null or actor.card.animation_script == null:
+		return
+	var instructions: Array = actor.card.animation_script.instructions_for(str(cue.get("trigger", "")))
+	if instructions.is_empty():
+		return
+	var is_death: bool = str(cue.get("trigger", "")) == "die"
+	var ghosts: Array[BattleEntityView] = []
+	var longest_duration: float = 0.0
+	for raw_instruction: Variant in instructions:
+		if not raw_instruction is Dictionary:
+			continue
+		var instruction: Dictionary = raw_instruction
+		match str(instruction.get("type", "")):
+			"wait":
+				var seconds: float = maxf(float(instruction.get("seconds", 0.0)), 0.0)
+				if seconds > 0.0:
+					await get_tree().create_timer(seconds).timeout
+			"play_animation":
+				var view: BattleEntityView = _resolve_animation_view(
+					str(instruction.get("target", "self")), actor, cue.get("target"), ghosts, is_death
+				)
+				if view != null:
+					longest_duration = maxf(
+						longest_duration,
+						view.play_animation(
+							str(instruction.get("animation", "")),
+							str(instruction.get("mode", "whole")),
+						),
+					)
+			"play_fx":
+				var fx_view: BattleEntityView = _resolve_animation_view(
+					str(instruction.get("target", "self")), actor, cue.get("target"), ghosts, is_death
+				)
+				if fx_view != null:
+					fx_view.play_fx(str(instruction.get("fx", "")))
+	if longest_duration > 0.0:
+		await get_tree().create_timer(longest_duration).timeout
+	for ghost: BattleEntityView in ghosts:
+		if is_instance_valid(ghost):
+			ghost.queue_free()
+
+
+func _resolve_animation_view(
+	selector: String,
+	actor: BattleEntity,
+	target: Variant,
+	ghosts: Array[BattleEntityView],
+	force_ghost: bool = false,
+) -> BattleEntityView:
+	var entity: BattleEntity = null
+	if selector == "target":
+		if target is BattleEntity:
+			entity = target
+	else:
+		entity = actor
+	if entity == null:
+		return null
+	if not force_ghost and _views_by_entity_id.has(entity.entity_id):
+		var view: BattleEntityView = _views_by_entity_id[entity.entity_id] as BattleEntityView
+		if is_instance_valid(view) and view.is_visible_in_tree():
+			return view
+	var ghost: BattleEntityView = _create_ghost_view(entity)
+	if ghost != null:
+		ghosts.append(ghost)
+	return ghost
+
+
+func _create_ghost_view(entity: BattleEntity) -> BattleEntityView:
+	var button: Button = _slot_button_for_entity(entity)
+	if button == null:
+		return null
+	var ghost: BattleEntityView = ENTITY_VIEW_SCENE.instantiate() as BattleEntityView
+	button.add_child(ghost)
+	ghost.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	ghost.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ghost.z_index = 5
+	ghost.setup(entity)
+	return ghost
+
+
+func _slot_button_for_entity(entity: BattleEntity) -> Button:
+	if entity.column < 0 or entity.column >= _board_columns.size():
+		return null
+	var column: Dictionary = _board_columns[entity.column]
+	if entity.side == "z":
+		return column.get("z_team" if entity.slot == BattleEngine.SLOT_TEAM_UP else "z_normal") as Button
+	return column.get("p_team" if entity.slot == BattleEngine.SLOT_TEAM_UP else "p_normal") as Button
 
 
 func _on_game_finished(winner_side: String) -> void:

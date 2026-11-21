@@ -18,10 +18,8 @@ var card_id: String = ""
 
 @onready var background_sprite: Sprite2D = %BackgroundSprite
 @onready var art_sprite: Sprite2D = %ArtSprite
-@onready var cost_icon_sprite: Sprite2D = %CostIconSprite
 @onready var attack_icon_sprite: Sprite2D = %AttackIconSprite
 @onready var health_icon_sprite: Sprite2D = %HealthIconSprite
-@onready var cost_label: Label = %CostLabel
 @onready var attack_label: Label = %AttackLabel
 @onready var health_label: Label = %HealthLabel
 @onready var name_label: Label = %CardName
@@ -82,7 +80,6 @@ func _apply_art_sprite(card: CardData) -> void:
 
 
 func _apply_stats(card: CardData) -> void:
-	cost_label.text = str(card.cost)
 	var is_entity: bool = card.is_entity()
 	attack_label.visible = is_entity
 	health_label.visible = is_entity

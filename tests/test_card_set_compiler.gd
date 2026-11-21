@@ -161,6 +161,28 @@ func test_missing_cards_csv_reports_error() -> void:
 	assert_true(joined.find("cards.csv") != -1, "应报告缺少 cards.csv：%s" % joined)
 
 
+func test_animation_column_roundtrip() -> void:
+	var dir_path: String = TEST_ROOT.path_join("anim")
+	var header: String = HEADER.trim_suffix("\n") + ",animation\n"
+	_write_text(dir_path.path_join("config.csv"), CONFIG_TEXT)
+	_write_text(
+		dir_path.path_join("cards.csv"),
+		header + "anim_unit,动画单位,entity,1,1,1,0,neutral,normal,\"\",\"\",\"\",\"\",\"when attack: play_animation(self, 'slash', 'whole')\"\n"
+	)
+	var result: Dictionary = _compile("anim")
+	assert_true(bool(result.get("ok", false)), "动画列应能编译：%s" % [result.get("errors", [])])
+	var database: Node = CardDatabaseScript.new()
+	database.reload(false)
+	database.load_pack_file(str(result.get("pack_path", "")), "", true)
+	var card: CardData = database.get_card("testmod:anim_unit")
+	assert_true(card != null)
+	if card != null:
+		assert_true(card.animation_script != null)
+		assert_true(card.animation_script.has_trigger("attack"))
+	if is_instance_valid(database):
+		database.free()
+
+
 func test_environment_kind_compiles() -> void:
 	var dir_path: String = TEST_ROOT.path_join("env")
 	_write_text(dir_path.path_join("config.csv"), CONFIG_TEXT)
