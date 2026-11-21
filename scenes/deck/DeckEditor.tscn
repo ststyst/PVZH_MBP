@@ -71,6 +71,11 @@ layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.72, 0.32, 1)
 text = ""
 
+[node name="NewDeckButton" type="Button" parent="Margin/VBox/TopBar"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "新建牌组"
+
 [node name="SaveButton" type="Button" parent="Margin/VBox/TopBar"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -139,3 +144,94 @@ unique_name_in_owner = true
 
 [node name="CardInfoDialog" parent="." instance=ExtResource("2_card_info")]
 unique_name_in_owner = true
+
+[node name="CreateDeckBackdrop" type="ColorRect" parent="."]
+unique_name_in_owner = true
+visible = false
+z_index = 20
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.6)
+
+[node name="CreateDeckPopup" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+z_index = 21
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -300.0
+offset_top = -250.0
+offset_right = 300.0
+offset_bottom = 250.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="PopupMargin" type="MarginContainer" parent="CreateDeckPopup"]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
+
+[node name="PopupVBox" type="VBoxContainer" parent="CreateDeckPopup/PopupMargin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="PopupTitle" type="Label" parent="CreateDeckPopup/PopupMargin/PopupVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "新建牌组"
+
+[node name="NameCaption" type="Label" parent="CreateDeckPopup/PopupMargin/PopupVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.74902, 0.780392, 0.858824, 1)
+text = "牌组名称（留空将自动命名为：英雄名#三位数字）"
+
+[node name="DeckNameInput" type="LineEdit" parent="CreateDeckPopup/PopupMargin/PopupVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(0, 46)
+placeholder_text = "输入牌组名称"
+max_length = 24
+
+[node name="HeroCaption" type="Label" parent="CreateDeckPopup/PopupMargin/PopupVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.74902, 0.780392, 0.858824, 1)
+text = "选择英雄（英雄来自牌组数据的英雄部分）"
+
+[node name="HeroOption" type="OptionButton" parent="CreateDeckPopup/PopupMargin/PopupVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(0, 46)
+
+[node name="PopupStatusLabel" type="Label" parent="CreateDeckPopup/PopupMargin/PopupVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.941, 0.549, 0.549, 1)
+autowrap_mode = 2
+
+[node name="PopupButtons" type="HBoxContainer" parent="CreateDeckPopup/PopupMargin/PopupVBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="CreateCancelButton" type="Button" parent="CreateDeckPopup/PopupMargin/PopupVBox/PopupButtons"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 52)
+text = "取消"
+
+[node name="CreateConfirmButton" type="Button" parent="CreateDeckPopup/PopupMargin/PopupVBox/PopupButtons"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 52)
+text = "确认新建"
