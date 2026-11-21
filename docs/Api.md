@@ -404,6 +404,8 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 | `effective_hand_cost(side, index)` / `effective_hand_attack(side, index)` | 应用手牌实例修正后的有效费用/攻击 |
 | `hand_card_display(side, index)` | 给 UI 的手牌显示副本（已带有效费用/攻击） |
 | `play_card(..., target.handles)` | 多目标选择；`handles` 为实体数组 |
+| `execute_command(side, command)` | 服务器权威命令入口：play_card/end_phase/swap_team_up/起手 |
+| `swap_team_up_by_id(side, entity_id)` | 按实体 ID 校验并交换组队位置（联机命令用） |
 | `get_markers(side)` | 返回玩家特殊标志物 `{名字: 数量}` 副本 |
 
 卡牌动画：`CardData.animation_script`（`CardAnimationScript`）解析 `animation` 列，

@@ -184,6 +184,16 @@ func test_team_up_swap() -> void:
 	assert_true(engine.swap_team_up("p", team), "组队实体应能与同列另一实体交换")
 	assert_eq(team.slot, BattleEngine.SLOT_NORMAL)
 	assert_eq(normal.slot, BattleEngine.SLOT_TEAM_UP)
+	var enemy_swap: Dictionary = engine.execute_command("z", {
+		"type": "swap_team_up", "entity_id": team.entity_id,
+	})
+	assert_false(bool(enemy_swap.get("ok", true)), "服务器命令应拒绝敌方实体的换位")
+	var own_swap: Dictionary = engine.execute_command("p", {
+		"type": "swap_team_up", "entity_id": team.entity_id,
+	})
+	assert_true(bool(own_swap.get("ok", false)), "服务器命令应允许自己的组队换位")
+	assert_eq(team.slot, BattleEngine.SLOT_TEAM_UP)
+	assert_eq(normal.slot, BattleEngine.SLOT_NORMAL)
 
 
 func test_spell_damage() -> void:

@@ -553,6 +553,8 @@ func find_free_slot(side: String, card: CardData, preferred_column: int = -1) ->
 func swap_team_up(side: String, entity: BattleEntity) -> bool:
 	if entity == null or not entity.alive or not entity.team_up:
 		return false
+	if entity.side != side:
+		return false
 	var other_slot: int = SLOT_NORMAL if entity.slot == SLOT_TEAM_UP else SLOT_TEAM_UP
 	var other: BattleEntity = _entity_at(entity.column, side, other_slot)
 	if other == null:
@@ -563,6 +565,46 @@ func swap_team_up(side: String, entity: BattleEntity) -> bool:
 	_log("%s 与 %s 交换位置" % [entity.display_name(), other.display_name()])
 	changed.emit()
 	return true
+
+
+## 联机命令用：按 entity_id 校验并交换组队实体位置。
+func swap_team_up_by_id(side: String, entity_id: int) -> Dictionary:
+	for entity: BattleEntity in entities:
+		if entity.entity_id != entity_id:
+			continue
+		if entity.side != side:
+			return _fail("不能操作敌方实体。")
+		if not entity.team_up:
+			return _fail("该实体没有组队词缀。")
+		if not swap_team_up(side, entity):
+			return _fail("这一列没有可交换的另一实体。")
+		return {"ok": true, "message": "已交换位置。"}
+	return _fail("实体不存在。")
+
+
+## 服务器权威命令入口：所有客户端意图都应通过这里校验后执行。
+func execute_command(side: String, command: Dictionary) -> Dictionary:
+	var command_type: String = str(command.get("type", command.get("command", "")))
+	match command_type:
+		"play_card":
+			var target: Dictionary = command.get("target", {})
+			return play_card(side, int(command.get("hand_index", -1)), target)
+		"end_phase":
+			if active_side != side:
+				return _fail("当前不是你的阶段。")
+			end_phase(side)
+			return {"ok": true, "message": "阶段结束。"}
+		"swap_team_up":
+			return swap_team_up_by_id(side, int(command.get("entity_id", -1)))
+		"mulligan_replace":
+			if replace_mulligan_card(side, int(command.get("hand_index", -1))):
+				return {"ok": true, "message": "已换牌。"}
+			return _fail("换牌失败。")
+		"mulligan_confirm":
+			confirm_mulligan(side)
+			return {"ok": true, "message": "已确认起手。"}
+		_:
+			return _fail("未知命令：%s" % command_type)
 
 
 func _entity_at(column: int, side: String, slot: int) -> BattleEntity:

@@ -302,6 +302,10 @@ func _on_slot_pressed(side: String, column: int, slot: int) -> void:
 		else:
 			_set_status("该位置不是合法目标。", true)
 		return
+	# 任何目标选择/放置状态都优先于组队换位；选择目标点击实体绝不触发换位。
+	if not _pending_mode.is_empty():
+		_set_status("请先完成当前目标选择。", true)
+		return
 	var own_entity: BattleEntity = _entity_at(column, side, slot)
 	if side == player_side and own_entity != null and own_entity.team_up:
 		if engine.swap_team_up(player_side, own_entity):
