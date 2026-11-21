@@ -17,6 +17,7 @@ const DEFAULT_INITIAL_DRAW: int = 4
 const DEFAULT_HAND_LIMIT: int = 10
 const DEFAULT_ENERGY_CAP: int = 99
 const DEFAULT_PHASE_TIME_SECONDS: int = 40
+const DEFAULT_TURN_DRAW: int = 1
 
 var deck_max_size: int = DEFAULT_DECK_MAX_SIZE
 var enforce_full_deck: bool = DEFAULT_ENFORCE_FULL_DECK
@@ -35,6 +36,9 @@ var hand_limit: int = DEFAULT_HAND_LIMIT
 var energy_cap: int = DEFAULT_ENERGY_CAP
 ## 单个回合阶段的时间上限（秒）；到点强制结束
 var phase_time_limit_seconds: int = DEFAULT_PHASE_TIME_SECONDS
+## 从第二回合起，每回合开始时我方/敌方各抽几张（第一回合不触发）
+var player_draw_per_turn: int = DEFAULT_TURN_DRAW
+var enemy_draw_per_turn: int = DEFAULT_TURN_DRAW
 
 ## 来源文件路径（调试/服务器配置用）
 var source_path: String = ""
@@ -61,6 +65,8 @@ static func from_dict(data: Dictionary) -> GameModeConfig:
 	config.phase_time_limit_seconds = maxi(
 		_int_value(data, "phase_time_limit_seconds", DEFAULT_PHASE_TIME_SECONDS), 1
 	)
+	config.player_draw_per_turn = maxi(_int_value(data, "player_draw_per_turn", DEFAULT_TURN_DRAW), 0)
+	config.enemy_draw_per_turn = maxi(_int_value(data, "enemy_draw_per_turn", DEFAULT_TURN_DRAW), 0)
 	return config
 
 
@@ -102,6 +108,11 @@ func initial_draw_for_faction(faction: String) -> int:
 	return player_initial_draw if faction == "p" else enemy_initial_draw
 
 
+## 第二回合起每回合开始时的抽牌数（0 = 不抽）。
+func turn_draw_for_faction(faction: String) -> int:
+	return player_draw_per_turn if faction == "p" else enemy_draw_per_turn
+
+
 func to_dict() -> Dictionary:
 	return {
 		"deck_max_size": deck_max_size,
@@ -116,6 +127,8 @@ func to_dict() -> Dictionary:
 		"hand_limit": hand_limit,
 		"energy_cap": energy_cap,
 		"phase_time_limit_seconds": phase_time_limit_seconds,
+		"player_draw_per_turn": player_draw_per_turn,
+		"enemy_draw_per_turn": enemy_draw_per_turn,
 	}
 
 

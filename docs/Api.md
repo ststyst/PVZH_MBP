@@ -323,7 +323,9 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 `max_copies_by_rarity`([4,4,4,4,1,4,4,4]，按全局稀有度顺序，超出数组默认 1)、
 `player_hero_max_health`(20)、`enemy_hero_max_health`(20)、
 `player_initial_energy`(1)、`enemy_initial_energy`(1)、
-`player_initial_draw`(4)、`enemy_initial_draw`(4)。
+`player_initial_draw`(4)、`enemy_initial_draw`(4)、
+`hand_limit`(10)、`energy_cap`(99)、`phase_time_limit_seconds`(40)、
+`player_draw_per_turn`(1)、`enemy_draw_per_turn`(1)。
 
 | API | 说明 |
 |---|---|
@@ -333,6 +335,7 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 | `ModeManager.get_hero_max_health(faction)` / `get_initial_energy` / `get_initial_draw` | 按阵营取我方/敌方数值（p=我方，z=敌方） |
 | `GameModeConfig.from_file(path)` / `from_dict(data)` / `default_config()` | 构造与加载 |
 | `max_copies_for_rarity_index(index)` | 按稀有度序号取单卡上限 |
+| `turn_draw_for_faction(faction)` | 第二回合起每回合开始时的抽牌数（我方/敌方） |
 
 ### 牌组管理 `DeckManager`（autoload）
 
@@ -399,6 +402,8 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 规则：5 列 × 双方各 2 位（位置不固定）；同一列最多 2 个实体，且该列已有 1 个实体时，
 再放入的实体必须与已有实体至少有一个带「组队」词缀，否则不能放入。
 每回合 z 出牌 → p 出牌 → z 锦囊/环境 → 逐列战斗 → 回合结束；
+从第二回合起，每个回合在场上实体的回合开始效果结算完成后、进入 z 出牌阶段前，
+双方按 `player_draw_per_turn` / `enemy_draw_per_turn` 各抽牌（受手牌上限限制）；第一回合不触发。
 英雄生命来自玩法配置；同一列战斗先结算双方攻击再统一死亡判定；出牌阶段伤害立即死亡判定。
 **与电脑对战时不启用阶段时间限制**（UI 显示“不限时”）；`phase_time_limit_seconds` 预留给玩家对玩家。
 

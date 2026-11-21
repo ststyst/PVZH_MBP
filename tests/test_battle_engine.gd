@@ -206,6 +206,33 @@ func test_easy_ai_plays_highest_cost() -> void:
 	assert_true(state.hand.has("pvzh:gnoll"))
 
 
+func test_turn_draw_except_first_turn() -> void:
+	var engine: BattleEngine = _started_engine()
+	var p_state: BattlePlayerState = engine.players["p"]
+	var z_state: BattlePlayerState = engine.players["z"]
+	assert_eq(p_state.hand.size(), 4, "第一回合不应额外抽牌")
+	assert_eq(z_state.hand.size(), 4)
+	engine.end_phase("z")
+	engine.end_phase("p")
+	engine.end_phase("z")
+	assert_eq(engine.turn, 2)
+	assert_eq(p_state.hand.size(), 5, "第二回合开始双方各抽 1 张")
+	assert_eq(z_state.hand.size(), 5)
+	assert_eq(p_state.deck.size(), 7)
+	assert_eq(z_state.deck.size(), 7)
+
+
+func test_turn_draw_configurable() -> void:
+	var engine: BattleEngine = _started_engine()
+	engine.mode.player_draw_per_turn = 2
+	engine.mode.enemy_draw_per_turn = 0
+	engine.end_phase("z")
+	engine.end_phase("p")
+	engine.end_phase("z")
+	assert_eq(engine.players["p"].hand.size(), 6, "我方每回合抽 2")
+	assert_eq(engine.players["z"].hand.size(), 4, "敌方每回合抽 0")
+
+
 func test_any_empty_slot_allowed() -> void:
 	var engine: BattleEngine = _started_engine()
 	var state: BattlePlayerState = engine.players["p"]

@@ -208,6 +208,11 @@ func _start_next_turn() -> void:
 	_resolve_turn_start()
 	if winner != "":
 		return
+	# 第一回合不触发；从第二回合起，在回合开始效果全部结算后、z 出牌阶段前抽牌。
+	for side: String in [SIDE_P, SIDE_Z]:
+		var draw_count: int = mode.turn_draw_for_faction(side)
+		if draw_count > 0:
+			draw_cards(side, draw_count)
 	phase = PHASE_HAND
 	active_side = SIDE_Z
 	_log("第 %d 回合：z 阵营出牌阶段" % turn)
