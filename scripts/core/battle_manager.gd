@@ -55,6 +55,7 @@ func start_vs_ai(player_deck_id: String, difficulty: String = DIFFICULTY_EASY) -
 		"enemy_hero_id": str(enemy.get("hero_id", "")),
 		"enemy_deck_ids": enemy.get("card_ids", []).duplicate(),
 		"difficulty": difficulty,
+		"is_ai": true,
 	}
 	return {"ok": true, "message": "对局已准备：%s vs %s" % [deck.deck_name, enemy.get("deck_name", "")]}
 

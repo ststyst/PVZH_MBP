@@ -19,7 +19,7 @@
 | `enemy_initial_draw` | int | 4 | z 阵营初始抽牌数 |
 | `hand_limit` | int | 10 | 双方手牌上限；超过时取消抽牌 |
 | `energy_cap` | int | 99 | 双方费用上限 |
-| `phase_time_limit_seconds` | int | 40 | 单个回合阶段真实时间上限（秒），到点强制结束 |
+| `phase_time_limit_seconds` | int | 40 | 单个回合阶段真实时间上限（秒），到点强制结束；**与电脑对战时不生效（不限时）**，预留给玩家对玩家 |
 
 玩家对战时：p 阵营英雄使用 `player_*` 数据，z 阵营英雄使用 `enemy_*` 数据。
 

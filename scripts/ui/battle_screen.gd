@@ -16,6 +16,7 @@ var enemy_side: String = "z"
 var mode: GameModeConfig = null
 
 var _started: bool = false
+var _time_limit_enabled: bool = true
 var _pending_card_index: int = -1
 var _pending_mode: String = ""
 var _pending_candidates: Array = []
@@ -50,6 +51,8 @@ func _ready() -> void:
 		return
 	player_side = str(setup.get("player_side", "p"))
 	enemy_side = "z" if player_side == "p" else "p"
+	# 与电脑对战时取消回合阶段时间限制；玩家对玩家仍使用玩法配置。
+	_time_limit_enabled = not bool(setup.get("is_ai", false))
 	var player_hero: HeroData = HeroDatabase.get_hero(str(setup.get("player_hero_id", "")))
 	var enemy_hero: HeroData = HeroDatabase.get_hero(str(setup.get("enemy_hero_id", "")))
 	if player_hero == null or enemy_hero == null:
@@ -558,6 +561,9 @@ func _update_labels() -> void:
 
 
 func _update_timer_label() -> void:
+	if not _time_limit_enabled:
+		_timer_label.text = "不限时" if _can_player_act() else ""
+		return
 	if _can_player_act():
 		_timer_label.text = "阶段剩余 %d 秒" % maxi(ceili(_phase_remaining), 0)
 	else:
@@ -638,12 +644,13 @@ func _process(delta: float) -> void:
 	if engine.winner != "":
 		return
 	if _can_player_act():
-		_phase_remaining -= delta
-		_update_timer_label()
-		if _phase_remaining <= 0.0:
-			_set_status("阶段时间到，自动结束。")
-			_clear_pending()
-			engine.end_phase(player_side)
+		if _time_limit_enabled:
+			_phase_remaining -= delta
+			_update_timer_label()
+			if _phase_remaining <= 0.0:
+				_set_status("阶段时间到，自动结束。")
+				_clear_pending()
+				engine.end_phase(player_side)
 	else:
 		_ai_accum += delta
 		if _ai_accum >= AI_INTERVAL and engine.active_side == enemy_side:
