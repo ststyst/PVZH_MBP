@@ -96,3 +96,14 @@ func give_keyword(target, keyword: String, value: int = 0) -> void:
 
 func destroy(target) -> void:
 	calls.append({"op": "destroy", "target": target})
+
+
+func add_random_cards(zone: String, target, count: int, filter_text: String) -> int:
+	calls.append({
+		"op": "add_random_cards",
+		"zone": zone,
+		"target": target,
+		"count": count,
+		"filter": filter_text,
+	})
+	return count

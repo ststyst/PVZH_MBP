@@ -58,6 +58,8 @@ const PRIMITIVES: Dictionary = {
 	"add_marker": {"min": 2, "max": 2},
 	"remove_marker": {"min": 2, "max": 2},
 	"move_entity": {"min": 1, "max": 3},
+	"add_random_cards_to_deck": {"min": 3, "max": 3},
+	"add_random_cards_to_hand": {"min": 3, "max": 3},
 }
 
 ## 查询函数（可以出现在表达式里）

@@ -436,6 +436,8 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 | `summon(card_name, min_column, max_column)` | 在范围内随机尝试一个合法列，一条语句只召唤一个 |
 | `can_summon_in_column(side, card, column)` | 指定列是否可召唤（不挤压已有实体） |
 | `summon_card_in_column(side, card, column)` | 在合法列召唤一个实体 |
+| `add_random_cards(side, zone, count, filter_text)` | 从卡牌数据库筛选并随机插入牌库/手牌；返回插入数量 |
+| `CardFilter.parse(text)` / `matches(card)` | 支持 and/or/not 的卡牌筛选表达式 |
 | `move_entity(entity, column, slot)` | 卡牌效果移动实体；合法位置仅限该实体所属阵营，触发 `position_changed` |
 | `valid_move_slots(entity)` | 返回可移动的列/位置；排除当前位置；目标格有友方时该列至少一方需 `team_up` |
 | `CardEffectScript.move_requires_position()` | 卡牌顶层是否存在单参数 `move_entity(target)`，供 UI 进入位置选择 |
@@ -478,6 +480,8 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 - 必中（`bullseye`）伤害不增加充能护盾充能
 - `CardEffectScript.target_requirement()` 返回入场/锦囊 `choose(count, selector)` 的目标需求
 - `CardEffectScript.move_requires_position()` 判断是否需要玩家为 `move_entity(target)` 选择位置
+- `add_random_cards_to_deck(target, count, filter)` / `add_random_cards_to_hand(...)`；目标用 `hero` / `enemy_hero`；未写 `deck_includable` 时默认只取可组入牌组的卡牌
+- 对战牌库在建立时由具体牌组生成并洗牌；之后按数组顺序从牌库顶抽取（`take_top_deck` 为 `pop_back`），换牌会重新洗牌
 - 区域被动用 `when ally_die(zone == 'deck'|'hand')`，原语 `gain_attack` / `reduce_cost`
 - 多目标用 `choose(count, "other_allies")` + `buff_stats(chosen, ...)`
 - 标志物用 `add_marker("名字", 数量)` / `marker_count("名字")`

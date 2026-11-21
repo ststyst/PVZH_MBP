@@ -21,6 +21,8 @@
 | `summon(card_name)` | 英文名 | 在合法位置召唤一个实体；每次语句只召唤一个 |
 | `summon(card_name, column)` | 英文名、列 | 法术/环境：绝对列 1~5；实体异能：相对自身列 -4~4（0=本列） |
 | `summon(card_name, min_column, max_column)` | 英文名、范围 | 在范围内随机尝试一个合法列；坐标含义同上 |
+| `add_random_cards_to_deck(target, count, filter)` | 目标、数量、筛选条件 | 从卡牌数据库筛选随机牌，塞入目标阵营牌库随机位置 |
+| `add_random_cards_to_hand(target, count, filter)` | 目标、数量、筛选条件 | 从卡牌数据库筛选随机牌，塞入目标阵营手牌随机位置 |
 | `draw_cards(count)` | 数值 | 抽牌 |
 | `deal_damage(target, amount)` | 目标、数值 | 造成伤害 |
 | `heal(target, amount)` | 目标、数值 | 治疗 |
@@ -76,11 +78,11 @@
 
 ```
 when ally_die(zone == 'deck'):
-    gain_attack(1)
+	gain_attack(1)
 
 when ally_die(zone == 'hand'):
-    gain_attack(1)
-    reduce_cost(1)
+	gain_attack(1)
+	reduce_cost(1)
 ```
 
 `zone` 取值为 `'deck'` / `'hand'` / `'board'` / `'discard'`。手牌/牌库中的攻击与费用修正会跟随卡牌移动，
@@ -106,7 +108,7 @@ deal_damage(chosen, 2)
 
 ```
 when enter(side == 'enemy' and attack > 3):
-    deal_damage(event, 2)
+	deal_damage(event, 2)
 ```
 
 ### 连锁结算顺序
@@ -158,7 +160,7 @@ when enter: gain_energy(2)
 
 ```
 when enter(side == 'enemy' and attack > 3):
-    draw_cards(1)
+	draw_cards(1)
 ```
 
 实体（亡语治疗英雄）：
@@ -197,32 +199,32 @@ deal_damage(all_enemies, 2); heal(all_allies, 2)
 
 ```
 when enter:
-    choose(2, "other_allies")
-    buff_stats(chosen, 2, 0)
+	choose(2, "other_allies")
+	buff_stats(chosen, 2, 0)
 ```
 
 牌库内友方死亡时自身攻击 +1：
 
 ```
 when ally_die(zone == 'deck'):
-    gain_attack(1)
+	gain_attack(1)
 ```
 
 手牌内友方死亡时自身攻击 +1、费用 -1：
 
 ```
 when ally_die(zone == 'hand'):
-    gain_attack(1)
-    reduce_cost(1)
+	gain_attack(1)
+	reduce_cost(1)
 ```
 
 入场检查特殊标志物：
 
 ```
 when enter:
-    if marker_count("special_marker_1") > 1:
-        add_marker("special_marker_2", 3)
-        add_marker("special_marker_3", -1)
+	if marker_count("special_marker_1") > 1:
+		add_marker("special_marker_2", 3)
+		add_marker("special_marker_3", -1)
 ```
 
 移动实体并触发位置事件（固定位置）：
@@ -262,6 +264,32 @@ summon("gnoll", 2, 4)       # 在范围内随机尝试合法列
 - 召唤不会挤开已有实体；列满或不满足组队条件时该列召唤失败
 - 每一条 `summon(...)` 语句只召唤一个实体；需要多个实体就写多条语句
 
+### 随机塞牌与筛选条件
+
+```text
+add_random_cards_to_deck(hero, 2, "kind == 'spell' and rarity == 'rare'")
+add_random_cards_to_deck(enemy_hero, 1, "class == 'guardian'")
+add_random_cards_to_hand(hero, 2, "name == 'fireball' or name == 'frostbolt'")
+add_random_cards_to_hand(enemy_hero, 1, "keyword == 'team_up' and not tribe == 'pet'")
+```
+
+- `target` 使用 `hero`（施放者阵营）或 `enemy_hero`（对方阵营）
+- 只从 `CardDatabase` 读取卡牌，不会从当前牌局已有牌中取
+- 每张牌独立随机抽取，因此可能重复
+- 牌库插入位置随机；手牌插入位置随机，并遵守手牌上限
+- 筛选语法：`and` / `or` / `not`，支持括号
+- 可用字段：
+  - `name`：卡牌英文名（推荐）
+  - `kind`：卡牌种类（`entity`/`spell`/`environment`，也兼容直接写英文名）
+  - `rarity`：稀有度
+  - `class`：职业
+  - `keyword`：是否拥有某词缀
+  - `tribe`：是否拥有某流派
+  - `deck_includable`：是否可被组入牌组
+- 如果没有显式写出 `deck_includable` 条件，自动只匹配 `deck_includable == true` 的卡牌
+- 例：`"deck_includable == false"` 可以显式允许不可组入卡牌
+- 比较值建议用引号；布尔值写 `true` / `false`
+
 固定位置形式也遵循上述阵营、当前位置、组队和挤压规则。
 
 赋予/叠加词缀数值（先攻 2）：
@@ -276,7 +304,7 @@ give_keyword(self, "first_strike", 2)
 
 ```
 when position_changed:
-    add_marker("moved", 1)
+	add_marker("moved", 1)
 ```
 
 注意：打出组队实体时把原实体挤到同列另一格，属于“放置规则”，**不会触发** `position_changed`；只有卡牌效果调用 `move_entity` 才会让**被移动的实体**触发。因移动造成的挤压同样不会触发被挤开实体的 `position_changed`。
@@ -287,10 +315,10 @@ when position_changed:
 
 - 块可以用两种写法：
   - 多行缩进（推荐）：
-    ```
-    if attack(chosen) > 3:
-        destroy(chosen)
-    ```
+	```
+	if attack(chosen) > 3:
+		destroy(chosen)
+	```
   - 冒号后单个语句（CSV 一行很方便）：`repeat(3): deal_damage(random_enemy, 1)`
 - `#` 是注释；`;` 等价于换行分隔语句。
 - 缩进用空格（Tab 按 4 空格计），同一块内必须一致。

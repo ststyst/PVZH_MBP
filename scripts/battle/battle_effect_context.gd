@@ -177,6 +177,17 @@ func move_entity_to_chosen_position(target) -> bool:
 	return engine.move_entity_handle(target, chosen_column, chosen_slot)
 
 
+func add_random_cards(zone: String, target, count: int, filter_text: String) -> int:
+	var target_side: String = ""
+	if target is BattleEntity:
+		target_side = target.side
+	elif target is String and target.begins_with("hero:"):
+		target_side = target.substr(5)
+	if target_side.is_empty():
+		return 0
+	return engine.add_random_cards(target_side, zone, count, filter_text)
+
+
 func choose_targets(count: int, selector: String) -> bool:
 	if chosen_targets.size() > maxi(count, 0):
 		return false

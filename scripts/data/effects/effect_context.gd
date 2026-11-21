@@ -99,6 +99,12 @@ func move_entity_to_chosen_position(_target) -> bool:
 	return false
 
 
+## 从卡牌数据库按筛选条件随机塞入牌库/手牌；target 为英雄或实体句柄。
+func add_random_cards(_zone: String, _target, _count: int, _filter_text: String) -> int:
+	push_warning("EffectContext.add_random_cards 未实现：需要战斗层提供")
+	return 0
+
+
 ## 多目标选择声明：从 selector 候选中校验最多 count 个已选目标。
 func choose_targets(_count: int, _selector: String) -> bool:
 	push_warning("EffectContext.choose_targets 未实现：需要战斗层提供")

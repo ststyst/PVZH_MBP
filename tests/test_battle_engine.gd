@@ -441,6 +441,65 @@ func test_keyword_values_stack_and_respect_whitelist() -> void:
 		assert_eq(played_entity.keyword_value("first_strike"), 2, "手牌词缀应转为实体词缀")
 
 
+func test_card_filter_and_random_insert() -> void:
+	var engine: BattleEngine = _started_engine()
+	var filter := CardFilter.new()
+	assert_true(filter.parse("kind == 'spell' and rarity == 'rare'"))
+	assert_true(filter.matches(cards.get_card("pvzh:fireball")))
+	assert_false(filter.matches(cards.get_card("pvzh:gnoll")))
+	assert_true(filter.parse("name == 'fireball' or name == 'gnoll'"))
+	assert_true(filter.matches(cards.get_card("pvzh:gnoll")))
+	assert_true(filter.parse("not name == 'fireball'"))
+	assert_false(filter.matches(cards.get_card("pvzh:fireball")))
+
+	var non_includable: CardData = _make_test_card("pvzh:test_non_includable", "")
+	non_includable.english_name = "test_non_includable"
+	non_includable.deck_includable = false
+	assert_true(filter.parse("name == 'test_non_includable'"))
+	assert_false(filter.matches(non_includable), "未显式写 deck_includable 时应排除不可组入卡牌")
+	assert_true(filter.parse("name == 'test_non_includable' and deck_includable == false"))
+	assert_true(filter.matches(non_includable))
+
+	var spell: CardData = _make_test_card(
+		"pvzh:test_random_deck_spell",
+		"add_random_cards_to_deck(hero, 2, \"kind == 'spell' and rarity == 'normal'\")"
+	)
+	spell.kind = "spell"
+	spell.cost = 1
+	var state: BattlePlayerState = engine.players["p"]
+	var deck_before: int = state.deck.size()
+	_set_hand(engine, "p", [spell.card_id])
+	state.energy = 10
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "p"
+	var result: Dictionary = engine.play_card("p", 0, {})
+	assert_true(bool(result.get("ok", false)))
+	assert_eq(state.deck.size(), deck_before + 2, "应随机塞入两张牌库牌")
+
+	var hand_spell: CardData = _make_test_card(
+		"pvzh:test_random_hand_spell",
+		"add_random_cards_to_hand(enemy_hero, 1, \"name == 'gnoll'\")"
+	)
+	hand_spell.kind = "spell"
+	hand_spell.cost = 0
+	var enemy_state: BattlePlayerState = engine.players["z"]
+	var enemy_hand_before: int = enemy_state.hand.size()
+	_set_hand(engine, "p", [hand_spell.card_id])
+	state.energy = 10
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "p"
+	var hand_result: Dictionary = engine.play_card("p", 0, {})
+	assert_true(bool(hand_result.get("ok", false)))
+	assert_eq(enemy_state.hand.size(), enemy_hand_before + 1, "应随机塞入一张敌方手牌")
+	var found_gnoll: bool = false
+	for card_id: String in enemy_state.hand_ids():
+		var inserted: CardData = cards.get_card(card_id)
+		if inserted != null and inserted.english_name == "gnoll":
+			found_gnoll = true
+			break
+	assert_true(found_gnoll, "塞入的卡牌英文名应为 gnoll")
+
+
 func test_summon_absolute_column_and_range() -> void:
 	var engine: BattleEngine = _started_engine()
 	var spell: CardData = _make_test_card(

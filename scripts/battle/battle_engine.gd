@@ -164,6 +164,43 @@ func add_card_to_deck(side: String, card_id: String) -> BattleCardInstance:
 	return instance
 
 
+## 从卡牌数据库筛选卡牌，随机插入牌库或手牌的随机位置。
+func add_random_cards(side: String, zone: String, count: int, filter_text: String) -> int:
+	var state: BattlePlayerState = players.get(side, null)
+	if state == null or count <= 0 or card_database == null:
+		return 0
+	var filter := CardFilter.new()
+	if not filter.parse(filter_text):
+		_log("随机塞牌筛选条件错误：%s" % "；".join(filter.errors))
+		return 0
+	var pool: Array[String] = []
+	for card_id: String in card_database.all_card_ids():
+		var card: CardData = get_card(card_id)
+		if filter.matches(card):
+			pool.append(card_id)
+	if pool.is_empty():
+		_log("随机塞牌没有符合条件的卡牌。")
+		return 0
+	var added: int = 0
+	for _index: int in range(count):
+		if zone == "hand" and state.hand.size() >= mode.hand_limit:
+			_log("%s 手牌已满，停止塞入。" % side.to_upper())
+			break
+		var card_id: String = pool[rng.randi_range(0, pool.size() - 1)]
+		var instance: BattleCardInstance = _new_card_instance(card_id, side, zone)
+		if zone == "hand":
+			state.hand.insert(rng.randi_range(0, state.hand.size()), instance)
+		else:
+			state.deck.insert(rng.randi_range(0, state.deck.size()), instance)
+		added += 1
+	if added > 0:
+		_log("%s 随机塞入 %d 张卡牌到%s。" % [
+			side.to_upper(), added, "手牌" if zone == "hand" else "牌库",
+		])
+		changed.emit()
+	return added
+
+
 func _grant_initial_superpowers() -> void:
 	for side: String in [SIDE_P, SIDE_Z]:
 		_grant_superpower_card(side, false)

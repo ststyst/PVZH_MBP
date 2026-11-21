@@ -122,6 +122,15 @@ func _exec_primitive(statement: Dictionary) -> void:
 				var move_slot: int = _as_int(_eval(arguments[2], {}))
 				if not context.move_entity(move_targets[0], move_column, move_slot):
 					_error("移动实体失败（位置无效或目标格不可用）", line)
+		"add_random_cards_to_deck", "add_random_cards_to_hand":
+			var card_targets: Array = _resolve_argument_target(arguments[0])
+			if card_targets.size() != 1:
+				_error("%s 需要单个英雄/阵营目标" % primitive_name, line)
+			else:
+				var card_count: int = maxi(_as_int(_eval(arguments[1], {})), 0)
+				var filter_text: String = _as_string(_eval(arguments[2], {}))
+				var zone: String = "deck" if primitive_name == "add_random_cards_to_deck" else "hand"
+				context.add_random_cards(zone, card_targets[0], card_count, filter_text)
 		_:
 			_error("未知原语：%s" % primitive_name, line)
 
