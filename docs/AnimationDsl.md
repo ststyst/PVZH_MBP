@@ -76,6 +76,7 @@ when attack: play_animation(self, "swing", "whole"); wait(0.2); play_animation(t
 | art | `assets/animations/art.tres` | `ArtRoot` |
 
 - 动画名在各自库内唯一；找不到的动画会被跳过（不报错）
+- **只使用 AnimationPlayer**：不接入 AnimationTree；动画库直接挂在三个 AnimationPlayer 上
 - 动画轨道常用属性：`rotation`、`scale`、`position`、`modulate`、`pivot_offset`
 - “整体”模式可以像一张图片一样旋转/缩放/颤动；背景或外观也可以单独做同样的动作
 - 通用特效通过 `play_fx` 或动画的 method track 触发

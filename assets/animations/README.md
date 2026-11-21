@@ -10,6 +10,9 @@
 
 ## 制作方法
 
+只使用 AnimationPlayer，不接入 AnimationTree；三个模式的动画库分别挂在
+`WholePlayer` / `BackgroundPlayer` / `ArtPlayer` 上。
+
 1. 在 Godot 中打开 `scenes/battle/BattleEntityView.tscn`。
 2. 选中 `WholePlayer` / `BackgroundPlayer` / `ArtPlayer` 三个 AnimationPlayer。
 3. 它们的动画库已分别指向上面 3 个 `.tres`；在动画面板里新建动画并命名（名字唯一）。
