@@ -92,6 +92,20 @@ when enter(side == 'enemy' and attack > 3):
     deal_damage(event, 2)
 ```
 
+### 连锁结算顺序
+
+事件触发会**深度优先立即结算**。例如“全体友方 +1 攻击”：
+
+1. 目标实体攻击 +1，触发 `attack_changed`
+2. 监听攻击力变化的实体立即结算（例如自己治疗 +1）
+3. 治疗改变生命，触发 `health_changed`
+4. 手牌中的 `health_changed` 被动立即结算（例如费用 -1）
+5. 回到第 1 步继续处理下一个被增益的实体，直到本次法术所有目标处理完
+6. 本次出牌行为才算结束，期间当前玩家不能再次出牌
+
+每次出牌/战斗行为有连锁上限（`data/server/server_config.json` 的
+`match.effect_resolution_limit`，默认 100）；超过后强制结束后续连锁，防止同类能力无限循环卡死。
+
 过滤条件可用的字段：
 
 | 字段 | 说明 |

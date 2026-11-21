@@ -85,6 +85,7 @@ func _ready() -> void:
 		return
 	mode = ModeManager.get_mode()
 	engine = BattleEngine.new(CardDatabase)
+	engine.effect_resolution_limit = ServerConfig.effect_resolution_limit()
 	engine.changed.connect(_on_engine_changed)
 	engine.game_finished.connect(_on_game_finished)
 	engine.animation_cue.connect(_on_animation_cue)

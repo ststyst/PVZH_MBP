@@ -189,6 +189,67 @@ func test_first_strike_damages_hero_then_normal_attack() -> void:
 	assert_eq(striker.attack, 1)
 
 
+func test_effect_chain_resolves_before_play_ends() -> void:
+	var engine: BattleEngine = _started_engine()
+	var reactor_card: CardData = _make_test_card(
+		"pvzh:test_attack_reactor",
+		"when attack_changed(side != 'enemy'):\n    heal(self, 1)"
+	)
+	reactor_card.health = 5
+	var reactor: BattleEntity = engine.summon_card("p", reactor_card, 0, 0)
+	reactor.health = 3
+	var hand_card: CardData = _make_test_card(
+		"pvzh:test_health_hand",
+		"when health_changed(side == 'ally'):\n    reduce_cost(1)"
+	)
+	hand_card.cost = 5
+	var spell: CardData = _make_test_card(
+		"pvzh:test_buff_spell",
+		"buff_stats(all_allies, 1, 0)"
+	)
+	spell.kind = "spell"
+	spell.cost = 1
+	var state: BattlePlayerState = engine.players["p"]
+	_set_hand(engine, "p", [hand_card.card_id, spell.card_id])
+	state.energy = 10
+	engine.phase = BattleEngine.PHASE_HAND
+	engine.active_side = "p"
+	var result: Dictionary = engine.play_card("p", 1, {})
+	assert_true(bool(result.get("ok", false)))
+	assert_eq(reactor.attack, reactor_card.attack + 1)
+	assert_eq(reactor.health, 4, "攻击力变化应继续触发治疗")
+	assert_eq(state.hand[0].cost_delta, -1, "生命变化应触发手牌减费")
+	assert_eq(engine.effective_hand_cost("p", 0), 4)
+
+
+func test_effect_chain_guard_stops_infinite_loop() -> void:
+	var engine: BattleEngine = _started_engine()
+	engine.effect_resolution_limit = 20
+	var loop_card: CardData = _make_test_card(
+		"pvzh:test_attack_loop",
+		"when attack_changed(side != 'enemy'):\n    buff_stats(self, 1, 0)"
+	)
+	engine.summon_card("p", loop_card, 0, 0)
+	engine.summon_card("p", loop_card, 1, 0)
+	var spell: CardData = _make_test_card(
+		"pvzh:test_loop_spell",
+		"buff_stats(all_allies, 1, 0)"
+	)
+	spell.kind = "spell"
+	spell.cost = 1
+	var state: BattlePlayerState = engine.players["p"]
+	_set_hand(engine, "p", [spell.card_id])
+	state.energy = 10
+	engine.phase = BattleEngine.PHASE_HAND
+	engine.active_side = "p"
+	var result: Dictionary = engine.play_card("p", 0, {})
+	assert_true(bool(result.get("ok", false)))
+	assert_true(
+		str(engine.log_entries).find("连锁上限") != -1,
+		"无限连锁应被上限强制截断",
+	)
+
+
 func test_charge_shield_immunity_and_special_offer() -> void:
 	var engine: BattleEngine = _started_engine()
 	var p_state: BattlePlayerState = engine.players["p"]

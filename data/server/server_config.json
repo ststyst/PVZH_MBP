@@ -20,6 +20,7 @@
     "command_rate_limit_per_second": 10,
     "max_commands_per_turn": 100,
     "snapshot_interval_seconds": 1,
+    "effect_resolution_limit": 100,
     "reconnect_grace_seconds": 30,
     "surrender_timeout_seconds": 120
   },

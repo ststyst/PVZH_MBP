@@ -16,3 +16,16 @@ static func load_config(path: String = DEFAULT_PATH) -> Dictionary:
 	if error != OK or not json.data is Dictionary:
 		return {}
 	return json.data
+
+
+## 单次出牌/战斗行为允许连锁结算的最大事件数；超限后强制结束本次连锁。
+static func effect_resolution_limit(path: String = DEFAULT_PATH) -> int:
+	var data: Dictionary = load_config(path)
+	var match_config: Variant = data.get("match", {})
+	if match_config is Dictionary:
+		var raw: Variant = (match_config as Dictionary).get("effect_resolution_limit", 100)
+		if raw is int or raw is float:
+			return maxi(int(raw), 1)
+		if raw is String and raw.is_valid_int():
+			return maxi(int(raw), 1)
+	return 100

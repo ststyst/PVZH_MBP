@@ -19,6 +19,7 @@ func test_default_server_config() -> void:
 	assert_true(not data.is_empty(), "应能读取 data/server/server_config.json")
 	var match_config: Dictionary = data.get("match", {})
 	assert_true(match_config.has("command_rate_limit_per_second"))
+	assert_true(match_config.has("effect_resolution_limit"))
 	var protocol: Dictionary = data.get("protocol", {})
 	assert_false(bool(protocol.get("allow_mods", true)))
 	assert_true(data.has("network") and data.has("security") and data.has("logging"))

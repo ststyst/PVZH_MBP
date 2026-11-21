@@ -31,6 +31,8 @@ const DEFAULT_ENVIRONMENTS: Array = ["highground", "default", "default", "defaul
 const DEFAULT_ENVIRONMENT_LABELS: Array = ["高地", "默认", "默认", "默认", "水池"]
 
 var mode: GameModeConfig = null
+## 单次出牌/战斗行为允许的连锁事件上限（由服务器配置注入）
+var effect_resolution_limit: int = 100
 var players: Dictionary = {}
 var entities: Array[BattleEntity] = []
 var environments: Array[String] = []
@@ -54,6 +56,8 @@ var _special_resume_phase: String = ""
 var _special_resume_active_side: String = ""
 var _special_turn_end_resolved: bool = false
 var _special_resolving: bool = false
+var _effect_resolution_count: int = 0
+var _effect_limit_hit: bool = false
 
 
 func _init(database = null, battle_seed: int = 0) -> void:
@@ -586,6 +590,7 @@ func target_candidates(card: CardData, caster_side: String) -> Array:
 
 
 func play_card(side: String, hand_index: int, target: Dictionary = {}) -> Dictionary:
+	_begin_effect_resolution()
 	if winner != "":
 		return _fail("对局已结束。")
 	if active_side != side or (phase != PHASE_HAND and phase != PHASE_SPELL):
@@ -660,6 +665,7 @@ func play_card(side: String, hand_index: int, target: Dictionary = {}) -> Dictio
 	changed.emit()
 	if not _special_resolving and not _special_pending_sides.is_empty() and phase != PHASE_SPECIAL:
 		_maybe_begin_special_turn(phase)
+	_end_effect_resolution()
 	return {"ok": true, "message": "已打出：%s" % card.display_name()}
 
 
@@ -872,6 +878,8 @@ func damage_entity(entity: BattleEntity, amount: int, source_keywords: Array = [
 	if source_keywords.has("deadly"):
 		entity.health = 0
 	_log("%s 受到 %d 点伤害（生命 %d，护盾 %d）" % [entity.display_name(), amount, entity.health, entity.shield])
+	if damage > 0 or source_keywords.has("deadly"):
+		_fire_event("health_changed", entity)
 
 
 func damage_hero(side: String, amount: int, source_keywords: Array = []) -> void:
@@ -920,7 +928,10 @@ func heal_handle(handle: Variant, amount: int) -> void:
 		return
 	if handle is BattleEntity:
 		var entity: BattleEntity = handle
+		var before: int = entity.health
 		entity.health = mini(entity.health + amount, entity.max_health)
+		if entity.health != before:
+			_fire_event("health_changed", entity)
 	elif handle is String and handle.begins_with("hero:"):
 		var state: BattlePlayerState = players.get(handle.substr(5), null)
 		if state != null:
@@ -942,9 +953,17 @@ func buff_handle(handle: Variant, attack_delta: int, health_delta: int) -> void:
 	if not handle is BattleEntity:
 		return
 	var entity: BattleEntity = handle
+	var old_attack: int = entity.attack
+	var old_health: int = entity.health
 	entity.attack = maxi(entity.attack + attack_delta, 0)
 	entity.health += health_delta
 	entity.max_health += maxi(health_delta, 0)
+	var did_change_attack: bool = entity.attack != old_attack
+	var did_change_health: bool = entity.health != old_health
+	if did_change_attack:
+		_fire_event("attack_changed", entity)
+	if did_change_health:
+		_fire_event("health_changed", entity)
 
 
 func give_keyword_handle(handle: Variant, keyword: String, value: int = 0) -> bool:
@@ -990,7 +1009,24 @@ func gain_energy(side: String, amount: int) -> void:
 
 # ----- 事件 -----
 
+func _begin_effect_resolution() -> void:
+	_effect_resolution_count = 0
+	_effect_limit_hit = false
+
+
+func _end_effect_resolution() -> void:
+	_effect_resolution_count = 0
+	_effect_limit_hit = false
+
+
 func _fire_event(event_name: String, event_entity: BattleEntity, chosen_targets: Array = []) -> void:
+	if _effect_limit_hit:
+		return
+	_effect_resolution_count += 1
+	if _effect_resolution_count > effect_resolution_limit:
+		_effect_limit_hit = true
+		_log("本次结算达到连锁上限（%d），强制结束后续连锁。" % effect_resolution_limit)
+		return
 	for listener: BattleEntity in entities.duplicate():
 		if listener.card == null or listener.card.ability_script == null:
 			continue
@@ -1007,6 +1043,8 @@ func _fire_event(event_name: String, event_entity: BattleEntity, chosen_targets:
 			_log("效果错误（%s）：%s" % [listener.display_name(), message])
 		if event_name != "die":
 			_emit_animation_cue("ability", listener, event_entity)
+	if event_name != "die" and event_entity != null:
+		_trigger_zone_effects(event_name, event_entity)
 
 
 func _emit_animation_cue(trigger: String, actor: BattleEntity, target: Variant = null) -> void:
@@ -1020,10 +1058,13 @@ func _emit_animation_cue(trigger: String, actor: BattleEntity, target: Variant =
 # ----- 战斗 -----
 
 func _resolve_combat() -> void:
+	_begin_effect_resolution()
 	for column: int in range(COLUMN_COUNT):
 		if winner != "":
+			_end_effect_resolution()
 			return
 		_combat_column(column)
+	_end_effect_resolution()
 
 
 func _combat_column(column: int) -> void:
@@ -1156,6 +1197,27 @@ func surrender(side: String) -> void:
 		return
 	_set_winner(opposite_side(side))
 	changed.emit()
+
+
+func _trigger_zone_effects(event_name: String, event_entity: BattleEntity) -> void:
+	if event_entity == null:
+		return
+	var state: BattlePlayerState = players.get(event_entity.side, null)
+	if state == null:
+		return
+	for zone: String in ["hand", "deck"]:
+		var instances: Array[BattleCardInstance] = state.hand if zone == "hand" else state.deck
+		for instance: BattleCardInstance in instances:
+			var card: CardData = get_card(instance.card_id)
+			if card == null or card.ability_script == null:
+				continue
+			if not card.ability_script.has_event(event_name):
+				continue
+			var context := ZoneCardEffectContext.new(self, event_entity.side, zone, instance)
+			context.set_event_target(event_entity)
+			var errors: Array[String] = card.ability_script.run_event(context, event_name, event_entity)
+			for message: String in errors:
+				_log("区域效果错误（%s·%s）：%s" % [card.display_name(), zone, message])
 
 
 func _trigger_zone_ally_death(dead_entity: BattleEntity) -> void:

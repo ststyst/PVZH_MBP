@@ -37,7 +37,7 @@
 | `command_rate_limit_per_second` | `10` | 单个玩家每秒最多接受的命令数 |
 | `max_commands_per_turn` | `100` | 单个回合内单玩家命令上限 |
 | `snapshot_interval_seconds` | `1` | 全量快照最小间隔；期间用事件增量 |
-| `reconnect_grace_seconds` | `30` | 断线后保留座位的宽限时间（预留） |
+| `effect_resolution_limit` | `100` | 单次出牌/战斗行为允许的连锁事件上限；超限强制结束连锁 || `reconnect_grace_seconds` | `30` | 断线后保留座位的宽限时间（预留） |
 | `surrender_timeout_seconds` | `120` | 投降/超时判定的等待时间（预留） |
 
 ## security

@@ -370,6 +370,7 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 | API | 说明 |
 |---|---|
 | `ServerConfig.load_config(path)` | 读取原始配置字典（失败返回空） |
+| `ServerConfig.effect_resolution_limit(path)` | 读取单次出牌/战斗连锁上限（默认 100） |
 
 ### 牌组管理 `DeckManager`（autoload）
 
