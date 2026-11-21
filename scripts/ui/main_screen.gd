@@ -74,7 +74,7 @@ func _on_battle_pressed() -> void:
 
 
 func _on_deck_pressed() -> void:
-	GameState.go_to_deck_editor()
+	GameState.go_to_deck_list()
 
 
 func _on_collection_pressed() -> void:

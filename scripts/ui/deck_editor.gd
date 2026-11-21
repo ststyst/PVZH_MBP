@@ -16,14 +16,6 @@ const MENU_ACTION_INFO: int = 1
 @onready var count_label: Label = %CountLabel
 @onready var tag_label: Label = %TagLabel
 @onready var save_button: Button = %SaveButton
-@onready var new_deck_button: Button = %NewDeckButton
-@onready var create_deck_backdrop: ColorRect = %CreateDeckBackdrop
-@onready var create_deck_popup: PanelContainer = %CreateDeckPopup
-@onready var deck_name_input: LineEdit = %DeckNameInput
-@onready var hero_option: OptionButton = %HeroOption
-@onready var popup_status_label: Label = %PopupStatusLabel
-@onready var create_cancel_button: Button = %CreateCancelButton
-@onready var create_confirm_button: Button = %CreateConfirmButton
 @onready var tabs: TabContainer = %Tabs
 @onready var available_hint: Label = %AvailableHint
 @onready var available_grid: GridContainer = %AvailableGrid
@@ -40,86 +32,16 @@ var _menu_from_deck: bool = false
 func _ready() -> void:
 	back_button.pressed.connect(_on_back_pressed)
 	save_button.pressed.connect(_on_save_pressed)
-	new_deck_button.pressed.connect(_open_create_deck_popup)
-	create_cancel_button.pressed.connect(_close_create_deck_popup)
-	create_confirm_button.pressed.connect(_on_create_deck_confirmed)
-	create_deck_backdrop.gui_input.connect(_on_create_backdrop_input)
 	card_menu.id_pressed.connect(_on_menu_id_pressed)
 	tabs.set_tab_title(0, "可选卡牌")
 	tabs.set_tab_title(1, "当前牌组")
 	_load_deck()
 
 
-## 打开“新建牌组”弹窗：名称输入 + 英雄下拉（来自 heroes.csv）。
-func _open_create_deck_popup() -> void:
-	if GameState.profile == null:
-		_set_status("当前没有玩家存档，无法新建牌组。", true)
-		return
-	deck_name_input.text = ""
-	_populate_hero_options()
-	popup_status_label.text = ""
-	create_confirm_button.disabled = hero_option.item_count == 0
-	if hero_option.item_count == 0:
-		popup_status_label.text = "没有可用英雄（请检查 heroes.csv）。"
-	create_deck_popup.visible = true
-	create_deck_backdrop.visible = true
-	deck_name_input.grab_focus()
-
-
-func _populate_hero_options() -> void:
-	hero_option.clear()
-	for hero_id: String in HeroDatabase.all_hero_ids():
-		var hero: HeroData = HeroDatabase.get_hero(hero_id)
-		if hero == null:
-			continue
-		var faction: String = "P" if hero.faction == "p" else "Z"
-		var classes: String = "、".join(hero.class_labels)
-		if classes.is_empty():
-			classes = "未知职业"
-		hero_option.add_item("%s（%s · %s）" % [hero.display_name(), faction, classes])
-		hero_option.set_item_metadata(hero_option.item_count - 1, hero.hero_id)
-
-
-func _on_create_deck_confirmed() -> void:
-	if hero_option.item_count == 0:
-		popup_status_label.text = "没有可用英雄。"
-		return
-	var index: int = maxi(hero_option.selected, 0)
-	var hero_id: String = str(hero_option.get_item_metadata(index))
-	var requested_name: String = deck_name_input.text.strip_edges()
-	var result: Dictionary = DeckManager.create_deck(hero_id, requested_name)
-	if not bool(result.get("ok", false)):
-		popup_status_label.text = str(result.get("message", "新建牌组失败。"))
-		return
-	var new_deck: DeckData = DeckManager.begin_edit(str(result.get("deck_id", "")))
-	if new_deck == null:
-		popup_status_label.text = "牌组已创建，但无法进入编辑。"
-		return
-	_deck = new_deck
-	_close_create_deck_popup()
-	tabs.current_tab = 0
-	_refresh_all()
-	_set_status("已新建牌组：%s" % _deck.deck_name)
-
-
-func _close_create_deck_popup() -> void:
-	create_deck_popup.visible = false
-	create_deck_backdrop.visible = false
-
-
-func _on_create_backdrop_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.pressed:
-		_close_create_deck_popup()
-
-
 func _load_deck() -> void:
 	_deck = DeckManager.get_editing_deck()
 	if _deck == null:
-		var decks: Array[DeckData] = DeckManager.get_decks()
-		if not decks.is_empty():
-			_deck = DeckManager.begin_edit(decks[0].deck_id)
-	if _deck == null:
-		_set_status("没有可编辑的牌组，请先在牌组列表创建牌组。", true)
+		_set_status("请先在牌组列表选择一个牌组。", true)
 		_refresh_header()
 		return
 	_refresh_all()
@@ -245,7 +167,7 @@ func _on_save_pressed() -> void:
 
 
 func _on_back_pressed() -> void:
-	GameState.go_to_main()
+	GameState.go_to_deck_list()
 
 
 func _set_status(message: String, is_error: bool = false) -> void:

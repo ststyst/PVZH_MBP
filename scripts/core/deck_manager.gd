@@ -58,7 +58,7 @@ func get_deck_errors(deck_id: String) -> Array[String]:
 	var deck: DeckData = get_deck(deck_id)
 	if deck == null:
 		return ["牌组不存在。"]
-	return DeckRules.validate(deck, CardDatabase, HeroDatabase, ModeManager.get_mode())
+	return DeckRules.validate(deck, CardDatabase, HeroDatabase, ModeManager.get_mode(), _profile())
 
 
 ## 当前牌组可选择的卡牌列表（牌组编辑器用）：
@@ -98,7 +98,7 @@ func create_deck(hero_id: String, deck_name: String = "") -> Dictionary:
 	deck.allowed_classes = hero.classes.duplicate()
 	deck.updated_at_unix = int(Time.get_unix_time_from_system())
 	profile.decks.append(deck)
-	DeckRules.refresh_tags(deck, CardDatabase, HeroDatabase, ModeManager.get_mode())
+	DeckRules.refresh_tags(deck, CardDatabase, HeroDatabase, ModeManager.get_mode(), _profile())
 	_persist()
 	decks_changed.emit()
 	return {"ok": true, "message": "已创建牌组：%s" % deck.deck_name, "deck_id": deck.deck_id, "deck": deck}
@@ -146,7 +146,9 @@ func set_deck_hero(deck_id: String, hero_id: String) -> Dictionary:
 		return _fail("英雄不存在：%s" % hero_id)
 	deck.hero_id = hero.hero_id
 	deck.allowed_classes = hero.classes.duplicate()
-	var errors: Array[String] = DeckRules.refresh_tags(deck, CardDatabase, HeroDatabase, ModeManager.get_mode())
+	var errors: Array[String] = DeckRules.refresh_tags(
+		deck, CardDatabase, HeroDatabase, ModeManager.get_mode(), _profile()
+	)
 	_persist()
 	decks_changed.emit()
 	return {"ok": true, "message": "已切换英雄：%s" % hero.display_name(), "errors": errors, "tags": deck.tags.duplicate()}
@@ -172,6 +174,9 @@ func add_card(deck_id: String, card_id: String) -> Dictionary:
 	var mode: GameModeConfig = ModeManager.get_mode()
 	if deck.card_count() >= mode.deck_max_size:
 		return _fail("牌组已达上限（%d 张）。" % mode.deck_max_size)
+	var owned: int = profile.get_card_count(card_id)
+	if deck.count_of(card_id) >= owned:
+		return _fail("存档中只有 %d 张该卡牌，不能再加入。" % owned)
 	var max_copies: int = DeckRules.max_copies_for(card, CardDatabase, mode)
 	if deck.count_of(card_id) >= max_copies:
 		return _fail("该卡牌已达上限（%d 张）。" % max_copies)
@@ -179,7 +184,7 @@ func add_card(deck_id: String, card_id: String) -> Dictionary:
 		return _fail("该卡牌的职业不符合英雄要求。")
 	if not deck.add_card(card_id):
 		return _fail("加入卡牌失败。")
-	DeckRules.refresh_tags(deck, CardDatabase, HeroDatabase, mode)
+	DeckRules.refresh_tags(deck, CardDatabase, HeroDatabase, mode, profile)
 	_persist()
 	decks_changed.emit()
 	return {
@@ -196,7 +201,7 @@ func remove_card(deck_id: String, card_id: String) -> Dictionary:
 		return _fail("牌组不存在。")
 	if not deck.remove_card(card_id):
 		return _fail("牌组中没有该卡牌。")
-	DeckRules.refresh_tags(deck, CardDatabase, HeroDatabase, ModeManager.get_mode())
+	DeckRules.refresh_tags(deck, CardDatabase, HeroDatabase, ModeManager.get_mode(), _profile())
 	_persist()
 	decks_changed.emit()
 	return {"ok": true, "message": "已移除一张卡牌。", "deck_id": deck_id, "count": deck.count_of(card_id)}
@@ -208,7 +213,9 @@ func save_deck(deck_id: String) -> Dictionary:
 	var deck: DeckData = get_deck(deck_id)
 	if deck == null:
 		return _fail("牌组不存在。")
-	var errors: Array[String] = DeckRules.refresh_tags(deck, CardDatabase, HeroDatabase, ModeManager.get_mode())
+	var errors: Array[String] = DeckRules.refresh_tags(
+		deck, CardDatabase, HeroDatabase, ModeManager.get_mode(), _profile()
+	)
 	deck.updated_at_unix = int(Time.get_unix_time_from_system())
 	_persist()
 	decks_changed.emit()

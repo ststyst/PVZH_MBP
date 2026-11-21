@@ -120,7 +120,7 @@ func _build_ui() -> void:
 		var environment_label := _make_label("", 10)
 		environment_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		column.add_child(environment_label)
-		var z_team := _make_slot_button("组队位")
+		var z_team := _make_slot_button("空位")
 		z_team.pressed.connect(_on_slot_pressed.bind("z", column_index, BattleEngine.SLOT_TEAM_UP))
 		column.add_child(z_team)
 		var z_normal := _make_slot_button("空位")
@@ -130,7 +130,7 @@ func _build_ui() -> void:
 		var p_normal := _make_slot_button("空位")
 		p_normal.pressed.connect(_on_slot_pressed.bind("p", column_index, BattleEngine.SLOT_NORMAL))
 		column.add_child(p_normal)
-		var p_team := _make_slot_button("组队位")
+		var p_team := _make_slot_button("空位")
 		p_team.pressed.connect(_on_slot_pressed.bind("p", column_index, BattleEngine.SLOT_TEAM_UP))
 		column.add_child(p_team)
 		_board_columns.append({
@@ -503,7 +503,7 @@ func _update_slot_button(
 ) -> void:
 	var entity: BattleEntity = _entity_at(column, side, slot)
 	if entity == null:
-		button.text = "组队位" if slot == BattleEngine.SLOT_TEAM_UP else "空位"
+		button.text = "空位"
 	else:
 		button.text = "%s\n⚔%d ♥%d" % [entity.display_name(), entity.attack, entity.health]
 		if entity.shield > 0:

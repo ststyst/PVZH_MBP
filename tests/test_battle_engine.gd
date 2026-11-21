@@ -204,3 +204,22 @@ func test_easy_ai_plays_highest_cost() -> void:
 	assert_true(EasyBattleAI.take_action(engine, "z"))
 	assert_false(state.hand.has("pvzh:yeti"), "应优先打出费用最高的雪原雪怪")
 	assert_true(state.hand.has("pvzh:gnoll"))
+
+
+func test_team_up_placement_rule() -> void:
+	var engine: BattleEngine = _started_engine()
+	var team_card: CardData = cards.get_card("pvzh:hound").duplicate()
+	team_card.card_id = "pvzh:test_team_placement"
+	team_card.keywords.append("team_up")
+	cards.cards[team_card.card_id] = team_card
+	var state: BattlePlayerState = engine.players["p"]
+	state.hand = ["pvzh:gnoll", "pvzh:gnoll", team_card.card_id]
+	state.energy = 10
+	engine.phase = BattleEngine.PHASE_HAND
+	engine.active_side = "p"
+	var first: Dictionary = engine.play_card("p", 0, {"column": 0, "slot": 0})
+	assert_true(bool(first.get("ok", false)), "第一张普通实体应可放入空列")
+	var second_normal: Dictionary = engine.play_card("p", 0, {"column": 0, "slot": 1})
+	assert_false(bool(second_normal.get("ok", true)), "两个普通实体不能同列")
+	var second_team: Dictionary = engine.play_card("p", 1, {"column": 0, "slot": 1})
+	assert_true(bool(second_team.get("ok", false)), "组队实体可与普通实体同列")

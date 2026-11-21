@@ -200,7 +200,7 @@ func test_selectable_cards_filtered_by_hero() -> void:
 		assert_eq(int(entry.get("owned", 0)), 3, "拥有数量应包含重复")
 		assert_eq(int(entry.get("in_deck", 0)), 0)
 		assert_eq(int(entry.get("max_copies", 0)), 4)
-		assert_eq(int(entry.get("remaining", 0)), 4)
+		assert_eq(int(entry.get("remaining", -1)), 3, "拥有 3 张时应只剩 3 个可编入名额")
 		assert_true(bool(entry.get("can_add", false)))
 		assert_false(bool(entry.get("is_hero_special", true)))
 
@@ -235,4 +235,23 @@ func test_selectable_cards_can_add_false_at_limit() -> void:
 			continue
 		assert_false(bool(entry.get("can_add", true)), "达到张数上限时 can_add 应为 false")
 		assert_eq(int(entry.get("in_deck", 0)), 4)
+		assert_eq(int(entry.get("remaining", -1)), 0)
+
+
+func test_owned_copies_limit() -> void:
+	var profile: PlayerProfile = PlayerProfile.create_default("持有上限")
+	profile.add_card("pvzh:gnoll", 2)
+	var deck: DeckData = _empty_deck("green_knight")
+	var gnoll: CardData = cards.get_card("pvzh:gnoll")
+	assert_true(DeckRules.can_add_card(deck, gnoll, cards, heroes, mode, profile), "存档有 2 张时可加入")
+	deck.add_card("pvzh:gnoll")
+	deck.add_card("pvzh:gnoll")
+	assert_false(DeckRules.can_add_card(deck, gnoll, cards, heroes, mode, profile), "牌组数量不能超过存档持有数")
+	deck.add_card("pvzh:gnoll")
+	var errors: Array[String] = DeckRules.validate(deck, cards, heroes, mode, profile)
+	assert_true(_has_error(errors, "只有 2 张"), "校验应报告超过存档数量：%s" % [errors])
+	for entry: Dictionary in DeckRules.selectable_cards(profile, deck, cards, heroes, mode):
+		if str(entry.get("card_id", "")) != "pvzh:gnoll":
+			continue
+		assert_false(bool(entry.get("can_add", true)), "可选列表也应受存档数量限制")
 		assert_eq(int(entry.get("remaining", -1)), 0)

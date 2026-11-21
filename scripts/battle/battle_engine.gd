@@ -248,10 +248,24 @@ func valid_slots(side: String, card: CardData) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	if card == null:
 		return result
-	var slot: int = SLOT_TEAM_UP if card.has_keyword("team_up") else SLOT_NORMAL
+	var comes_with_team_up: bool = card.has_keyword("team_up")
 	for column: int in range(COLUMN_COUNT):
-		if _entity_at(column, side, slot) == null:
-			result.append({"column": column, "slot": slot})
+		var existing: Array[BattleEntity] = []
+		for entity: BattleEntity in entities:
+			if entity.alive and entity.column == column and entity.side == side:
+				existing.append(entity)
+		if existing.size() >= 2:
+			continue
+		# 位置不固定：该列已有实体 + 新实体至少有一个带“组队”才能放入第二张
+		if existing.size() == 1 and not existing[0].team_up and not comes_with_team_up:
+			continue
+		var free_slot: int = -1
+		for candidate_slot: int in [SLOT_NORMAL, SLOT_TEAM_UP]:
+			if _entity_at(column, side, candidate_slot) == null:
+				free_slot = candidate_slot
+				break
+		if free_slot >= 0:
+			result.append({"column": column, "slot": free_slot})
 	return result
 
 
@@ -416,16 +430,11 @@ func summon_card_by_name(side: String, card_name: String, count: int = 1) -> Arr
 
 
 func find_free_slot(side: String, card: CardData, preferred_column: int = -1) -> Dictionary:
-	var target_slot: int = SLOT_TEAM_UP if card.has_keyword("team_up") else SLOT_NORMAL
-	var columns: Array[int] = []
-	if preferred_column >= 0 and preferred_column < COLUMN_COUNT:
-		columns.append(preferred_column)
-	else:
-		for column: int in range(COLUMN_COUNT):
-			columns.append(column)
-	for column: int in columns:
-		if _entity_at(column, side, target_slot) == null:
-			return {"column": column, "slot": target_slot}
+	var slots: Array[Dictionary] = valid_slots(side, card)
+	for slot_info: Dictionary in slots:
+		var column: int = int(slot_info.get("column", -1))
+		if preferred_column < 0 or column == preferred_column:
+			return slot_info
 	return {}
 
 

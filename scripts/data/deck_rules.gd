@@ -9,7 +9,13 @@ const TAG_DEFAULT: String = "default"
 
 
 ## 返回错误列表；空数组表示牌组完全符合当前玩法要求。
-static func validate(deck: DeckData, card_database, hero_database, mode: GameModeConfig = null) -> Array[String]:
+static func validate(
+	deck: DeckData,
+	card_database,
+	hero_database,
+	mode: GameModeConfig = null,
+	profile: PlayerProfile = null,
+) -> Array[String]:
 	var errors: Array[String] = []
 	if deck == null:
 		return ["牌组不存在。"]
@@ -38,6 +44,14 @@ static func validate(deck: DeckData, card_database, hero_database, mode: GameMod
 		if not card.deck_includable:
 			errors.append("卡牌 %s 不可被编入牌组。" % card_id)
 			continue
+		if profile != null:
+			var owned: int = profile.get_card_count(card_id)
+			if int(counts[card_id]) > owned:
+				errors.append(
+					"卡牌 %s 在存档中只有 %d 张，牌组中却有 %d 张。" % [
+						card_id, owned, int(counts[card_id])
+					]
+				)
 		if hero != null and not class_allowed(card, hero, neutral_classes):
 			errors.append("卡牌 %s 的职业 %s 不在英雄允许范围内。" % [card_id, card.card_class])
 		var max_copies: int = max_copies_for(card, card_database, active_mode)
@@ -53,6 +67,7 @@ static func can_add_card(
 	card_database,
 	hero_database,
 	mode: GameModeConfig = null,
+	profile: PlayerProfile = null,
 ) -> bool:
 	if deck == null or card == null or card_database == null or hero_database == null:
 		return false
@@ -60,6 +75,8 @@ static func can_add_card(
 	if not card.deck_includable:
 		return false
 	if deck.card_count() >= active_mode.deck_max_size:
+		return false
+	if profile != null and deck.count_of(card.card_id) >= profile.get_card_count(card.card_id):
 		return false
 	var hero: HeroData = hero_database.get_hero(deck.hero_id)
 	if hero == null:
@@ -91,8 +108,14 @@ static func max_copies_for(card: CardData, card_database, mode: GameModeConfig) 
 
 
 ## 校验并刷新 default 标签；返回错误列表。
-static func refresh_tags(deck: DeckData, card_database, hero_database, mode: GameModeConfig = null) -> Array[String]:
-	var errors: Array[String] = validate(deck, card_database, hero_database, mode)
+static func refresh_tags(
+	deck: DeckData,
+	card_database,
+	hero_database,
+	mode: GameModeConfig = null,
+	profile: PlayerProfile = null,
+) -> Array[String]:
+	var errors: Array[String] = validate(deck, card_database, hero_database, mode, profile)
 	if deck != null:
 		if errors.is_empty():
 			deck.add_tag(TAG_DEFAULT)
@@ -132,6 +155,7 @@ static func selectable_cards(
 			continue
 		var in_deck: int = deck.count_of(card.card_id)
 		var max_copies: int = max_copies_for(card, card_database, active_mode)
+		var effective_limit: int = mini(max_copies, owned_count)
 		result.append({
 			"card": card,
 			"card_id": card.card_id,
@@ -140,8 +164,8 @@ static func selectable_cards(
 			"owned": owned_count,
 			"in_deck": in_deck,
 			"max_copies": max_copies,
-			"remaining": maxi(max_copies - in_deck, 0),
-			"can_add": (not deck_full) and in_deck < max_copies,
+			"remaining": maxi(effective_limit - in_deck, 0),
+			"can_add": (not deck_full) and in_deck < effective_limit,
 			"is_hero_special": hero != null and hero.is_special_card(card.card_id),
 		})
 	result.sort_custom(func(first: Dictionary, second: Dictionary) -> bool:

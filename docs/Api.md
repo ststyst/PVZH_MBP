@@ -349,7 +349,7 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 | `get_available_cards(deck_id)` | `Array[Dictionary]` | 可选卡牌列表：只含背包中拥有、可编入、且符合英雄职业/中立/专属的卡；每项含 `card`、`owned`、`in_deck`、`max_copies`、`remaining`、`can_add`、`is_hero_special` |
 | `get_available_card_ids(deck_id)` | `Array[String]` | 可选卡牌 ID 的便捷版 |
 
-> 对应界面：`res://scenes/deck/DeckEditor.tscn`（可选卡牌列表、选中/移除/信息下拉菜单、卡牌信息弹窗、新建牌组弹窗：名称输入 + 英雄下拉）。
+> 对应界面：`res://scenes/deck/DeckList.tscn`（牌组数量 / 列表 / 新建牌组）→ `DeckEditor.tscn`（选择后进入编辑；返回按钮回到列表）。
 | `save_deck(deck_id)` | `{ok, message, errors, tags}` | 保存必定成功；仅按规则刷新 `default` 标签（不符合时移除标签，`errors` 供 UI 提示） |
 
 `DeckData` 字段：`deck_id`、`deck_name`、`hero_id`、`allowed_classes`、`card_ids`、`tags`、`updated_at_unix`；
@@ -365,7 +365,7 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 | `refresh_tags(...)` | `Array[String]` | 合法则打 `default` 标签，否则移除 |
 
 规则：张数 ≤ `deck_max_size`（`enforce_full_deck` 时必须正好等于）；单卡张数按稀有度数组；
-职业必须属于英雄两个职业（中立职业无视限制、英雄专属卡无视限制）；`deck_includable=0` 的卡不可编入。
+牌组中某张卡的数量不能超过存档持有数量；职业必须属于英雄两个职业（中立职业无视限制、英雄专属卡无视限制）；`deck_includable=0` 的卡不可编入。
 ### 战斗 `BattleManager` / `BattleEngine` / `EasyBattleAI`
 
 场景：`res://scenes/battle/BattlePrep.tscn`（准备）、`res://scenes/battle/Battle.tscn`（对战）。
@@ -395,7 +395,9 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 | `damage_handle / heal_handle / buff_handle / ...` | 效果原语入口 |
 | `changed` / `game_finished(winner)` 信号 | 状态变化 / 胜负 |
 
-规则：5 列 × 双方各 2 位（普通位 + 组队位）；每回合 z 出牌 → p 出牌 → z 锦囊/环境 → 逐列战斗 → 回合结束；
+规则：5 列 × 双方各 2 位（位置不固定）；同一列最多 2 个实体，且该列已有 1 个实体时，
+再放入的实体必须与已有实体至少有一个带「组队」词缀，否则不能放入。
+每回合 z 出牌 → p 出牌 → z 锦囊/环境 → 逐列战斗 → 回合结束；
 英雄生命来自玩法配置；同一列战斗先结算双方攻击再统一死亡判定；出牌阶段伤害立即死亡判定。
 
 #### `EasyBattleAI`

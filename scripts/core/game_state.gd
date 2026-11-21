@@ -17,6 +17,7 @@ const SCENE_MAIN: String = "res://scenes/main/MainScreen.tscn"
 const SCENE_BATTLE_PREP: String = "res://scenes/battle/BattlePrep.tscn"
 const SCENE_BATTLE: String = "res://scenes/battle/Battle.tscn"
 const SCENE_COLLECTION: String = "res://scenes/collection/CollectionScreen.tscn"
+const SCENE_DECK_LIST: String = "res://scenes/deck/DeckList.tscn"
 const SCENE_DECK_EDITOR: String = "res://scenes/deck/DeckEditor.tscn"
 const SCENE_SETTINGS: String = "res://scenes/settings/SettingsScreen.tscn"
 const SCENE_DEVELOPER_PANEL: String = "res://scenes/settings/DeveloperPanel.tscn"
@@ -291,6 +292,10 @@ func go_to_battle() -> void:
 
 func go_to_collection() -> void:
 	_change_scene(SCENE_COLLECTION, SCREEN.COLLECTION)
+
+
+func go_to_deck_list() -> void:
+	_change_scene(SCENE_DECK_LIST, SCREEN.DECK_BUILDER)
 
 
 func go_to_deck_editor() -> void:
