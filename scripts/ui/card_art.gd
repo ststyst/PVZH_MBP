@@ -6,12 +6,15 @@ extends RefCounted
 ## 空路径/加载失败返回 null（回退纯色外观）。
 
 const CARD_BACKGROUND_DIR: String = "res://assets/cards/backgrounds/"
+const ENTITY_BACKGROUND_DIR: String = "res://assets/battle/entities/"
+const ENTITY_BACKGROUND_UNIVERSAL: String = "res://assets/battle/entities/background.png"
 ## 背景图 9 宫格边距（建议素材按 512×640、边框 32px 制作）
 const CARD_BACKGROUND_SLICE: int = 32
 
 static var _cache: Dictionary = {}
 static var _background_cache: Dictionary = {}
 static var _background_style_cache: Dictionary = {}
+static var _entity_background_cache: Dictionary = {}
 
 
 static func get_texture(art_path: String) -> Texture2D:
@@ -64,7 +67,25 @@ static func get_card_background_style(rarity: String) -> StyleBoxTexture:
 	return style
 
 
+## 场上实体背景：优先 <稀有度>.png，其次通用 background.png，最后回退卡牌稀有度背景。
+static func get_entity_background(rarity: String) -> Texture2D:
+	var slug: String = rarity_slug(rarity)
+	if _entity_background_cache.has(slug):
+		return _entity_background_cache[slug] as Texture2D
+	var texture: Texture2D = null
+	var specific_path: String = ENTITY_BACKGROUND_DIR + slug + ".png"
+	if ResourceLoader.exists(specific_path):
+		texture = load(specific_path) as Texture2D
+	elif ResourceLoader.exists(ENTITY_BACKGROUND_UNIVERSAL):
+		texture = load(ENTITY_BACKGROUND_UNIVERSAL) as Texture2D
+	else:
+		texture = get_card_background(rarity)
+	_entity_background_cache[slug] = texture
+	return texture
+
+
 static func clear_cache() -> void:
 	_cache.clear()
 	_background_cache.clear()
 	_background_style_cache.clear()
+	_entity_background_cache.clear()

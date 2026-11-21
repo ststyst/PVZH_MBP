@@ -66,7 +66,8 @@ english_name,chinese_name,kind,cost,attack,health,shield,class,rarity,keywords,t
   缺图时回退默认纯色卡牌。背景按 9 宫格拉伸，边距 32 px。
 - 参考尺寸：背景 **512×640 px（4:5）**，可出 1024×1280；
   外观图建议 **768×512 px（3:2）**（或 512×512），主体居中并留 8% 安全边。
-- 列表格子显示 160×200，详情弹窗卡面约 320×480；外观图按 cover 裁切。
+- 列表格子显示 160×200，详情弹窗卡面约 320×480；外观图按 contain/cover 裁切。
+- 牌组编辑与战斗手牌共用 `CardTile.tscn`；场上实体使用 `BattleEntityView.tscn`，背景/外观/图标均为空 Sprite2D 节点，详见 `assets/battle/entities/README.md`。
 - 详见 `assets/cards/backgrounds/README.md`。
 
 ### 词缀（由代码决定）

@@ -6,6 +6,7 @@ extends Control
 ## - 简单 AI：优先打出费用最高的可打出手牌，目标随机
 
 const CARD_TILE_SCENE: PackedScene = preload("res://scenes/cards/CardTile.tscn")
+const ENTITY_VIEW_SCENE: PackedScene = preload("res://scenes/battle/BattleEntityView.tscn")
 const AI_INTERVAL: float = 0.7
 
 var engine: BattleEngine = null
@@ -43,6 +44,7 @@ var _ai_accum: float = 0.0
 
 var _board_columns: Array[Dictionary] = []
 var _mulligan_used: Array[bool] = []
+var _entity_views: Dictionary = {}
 var _empty_slot_style: StyleBoxEmpty = null
 var _highlight_slot_style: StyleBoxFlat = null
 
@@ -141,10 +143,17 @@ func _apply_highlight_slot_style(button: Button) -> void:
 		button.add_theme_stylebox_override(state, _highlight_slot_style)
 
 
-func _clear_slot_style(button: Button) -> void:
-	button.flat = false
-	for state: String in ["normal", "hover", "pressed", "focus", "disabled"]:
-		button.remove_theme_stylebox_override(state)
+func _get_entity_view(button: Button) -> BattleEntityView:
+	if _entity_views.has(button):
+		var existing: BattleEntityView = _entity_views[button] as BattleEntityView
+		if is_instance_valid(existing):
+			return existing
+	var view: BattleEntityView = ENTITY_VIEW_SCENE.instantiate() as BattleEntityView
+	button.add_child(view)
+	view.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	view.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_entity_views[button] = view
+	return view
 # ----- 起手 -----
 
 func _show_mulligan() -> void:
@@ -218,7 +227,7 @@ func _on_hand_pressed(index: int) -> void:
 		_pending_card_index = index
 		_pending_mode = "place"
 		_pending_candidates.clear()
-		_set_status("请选择放置位置（组队牌只能放组队位）。")
+		_set_status("请选择放置位置。")
 		_refresh_all()
 	elif card.is_environment():
 		_pending_card_index = index
@@ -230,7 +239,7 @@ func _on_hand_pressed(index: int) -> void:
 		_pending_card_index = index
 		_pending_mode = "target"
 		_pending_candidates = engine.target_candidates(card, player_side)
-		_set_status("请选择目标（★标记）。")
+		_set_status("请选择目标。")
 		_refresh_all()
 	else:
 		_play_pending({})
@@ -377,6 +386,10 @@ func _update_slot_button(
 	else:
 		actionable = entity != null and entity.side == player_side and entity.team_up
 	if entity == null:
+		if _entity_views.has(button):
+			var hidden_view: BattleEntityView = _entity_views[button] as BattleEntityView
+			if is_instance_valid(hidden_view):
+				hidden_view.visible = false
 		button.text = ""
 		if actionable and (_pending_mode == "place" or _pending_mode == "column"):
 			_apply_highlight_slot_style(button)
@@ -385,15 +398,18 @@ func _update_slot_button(
 			_apply_empty_slot_style(button)
 			button.disabled = true
 		return
-	button.text = "%s\n⚔%d ♥%d" % [entity.display_name(), entity.attack, entity.health]
-	if entity.shield > 0:
-		button.text += " 🛡%d" % entity.shield
-	if _pending_mode == "target" and actionable:
-		button.text = "★" + button.text
-	if actionable and _pending_mode == "column":
-		_apply_highlight_slot_style(button)
-	else:
-		_clear_slot_style(button)
+	var view: BattleEntityView = _get_entity_view(button)
+	view.visible = true
+	view.setup(entity)
+	view.set_highlight(
+		actionable and (
+			_pending_mode == "target"
+			or _pending_mode == "column"
+			or (_pending_mode.is_empty() and entity.team_up)
+		)
+	)
+	button.text = ""
+	_apply_empty_slot_style(button)
 	button.disabled = not actionable
 
 

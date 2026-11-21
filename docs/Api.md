@@ -373,6 +373,7 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 
 场景：`res://scenes/battle/BattlePrep.tscn`（准备）、`res://scenes/battle/Battle.tscn`（对战）。
 战斗界面全部由场景节点搭建（`Battle.tscn`），布局、英雄栏、5 列槽位、手牌区、起手/结算遮罩均可在编辑器中直接调整与替换素材；脚本只负责状态刷新与信号绑定。
+手牌与牌组编辑共用 `CardTile.tscn`；场上实体使用 `BattleEntityView.tscn`。两者的背景/外观/费用/攻击/生命图标都是空 `Sprite2D` 节点，分别从稀有度背景与 `art_path` 加载；数值显示为图标上方的 Label。
 空位槽位默认使用透明样式隐藏；选中实体牌进入放置状态时，合法空位显示白色描边（`StyleBoxFlat`），点击即可放置。
 
 #### `BattleManager`（autoload）

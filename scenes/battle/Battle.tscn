@@ -74,7 +74,7 @@ horizontal_alignment = 1
 
 [node name="ZTeamButton" type="Button" parent="Margin/Root/Board/Column1"]
 layout_mode = 2
-custom_minimum_size = Vector2(0, 44)
+custom_minimum_size = Vector2(0, 84)
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 10
 text = ""
@@ -82,7 +82,7 @@ clip_text = true
 
 [node name="ZNormalButton" type="Button" parent="Margin/Root/Board/Column1"]
 layout_mode = 2
-custom_minimum_size = Vector2(0, 44)
+custom_minimum_size = Vector2(0, 84)
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 10
 text = ""
@@ -93,7 +93,7 @@ layout_mode = 2
 
 [node name="PNormalButton" type="Button" parent="Margin/Root/Board/Column1"]
 layout_mode = 2
-custom_minimum_size = Vector2(0, 44)
+custom_minimum_size = Vector2(0, 84)
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 10
 text = ""
@@ -101,7 +101,7 @@ clip_text = true
 
 [node name="PTeamButton" type="Button" parent="Margin/Root/Board/Column1"]
 layout_mode = 2
-custom_minimum_size = Vector2(0, 44)
+custom_minimum_size = Vector2(0, 84)
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 10
 text = ""
@@ -120,7 +120,7 @@ horizontal_alignment = 1
 
 [node name="ZTeamButton" type="Button" parent="Margin/Root/Board/Column2"]
 layout_mode = 2
-custom_minimum_size = Vector2(0, 44)
+custom_minimum_size = Vector2(0, 84)
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 10
 text = ""
@@ -128,7 +128,7 @@ clip_text = true
 
 [node name="ZNormalButton" type="Button" parent="Margin/Root/Board/Column2"]
 layout_mode = 2
-custom_minimum_size = Vector2(0, 44)
+custom_minimum_size = Vector2(0, 84)
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 10
 text = ""
@@ -139,7 +139,7 @@ layout_mode = 2
 
 [node name="PNormalButton" type="Button" parent="Margin/Root/Board/Column2"]
 layout_mode = 2
-custom_minimum_size = Vector2(0, 44)
+custom_minimum_size = Vector2(0, 84)
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 10
 text = ""
@@ -147,7 +147,7 @@ clip_text = true
 
 [node name="PTeamButton" type="Button" parent="Margin/Root/Board/Column2"]
 layout_mode = 2
-custom_minimum_size = Vector2(0, 44)
+custom_minimum_size = Vector2(0, 84)
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 10
 text = ""
@@ -166,7 +166,7 @@ horizontal_alignment = 1
 
 [node name="ZTeamButton" type="Button" parent="Margin/Root/Board/Column3"]
 layout_mode = 2
-custom_minimum_size = Vector2(0, 44)
+custom_minimum_size = Vector2(0, 84)
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 10
 text = ""
@@ -174,7 +174,7 @@ clip_text = true
 
 [node name="ZNormalButton" type="Button" parent="Margin/Root/Board/Column3"]
 layout_mode = 2
-custom_minimum_size = Vector2(0, 44)
+custom_minimum_size = Vector2(0, 84)
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 10
 text = ""
@@ -185,7 +185,7 @@ layout_mode = 2
 
 [node name="PNormalButton" type="Button" parent="Margin/Root/Board/Column3"]
 layout_mode = 2
-custom_minimum_size = Vector2(0, 44)
+custom_minimum_size = Vector2(0, 84)
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 10
 text = ""
@@ -193,7 +193,7 @@ clip_text = true
 
 [node name="PTeamButton" type="Button" parent="Margin/Root/Board/Column3"]
 layout_mode = 2
-custom_minimum_size = Vector2(0, 44)
+custom_minimum_size = Vector2(0, 84)
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 10
 text = ""
@@ -212,7 +212,7 @@ horizontal_alignment = 1
 
 [node name="ZTeamButton" type="Button" parent="Margin/Root/Board/Column4"]
 layout_mode = 2
-custom_minimum_size = Vector2(0, 44)
+custom_minimum_size = Vector2(0, 84)
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 10
 text = ""
@@ -220,7 +220,7 @@ clip_text = true
 
 [node name="ZNormalButton" type="Button" parent="Margin/Root/Board/Column4"]
 layout_mode = 2
-custom_minimum_size = Vector2(0, 44)
+custom_minimum_size = Vector2(0, 84)
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 10
 text = ""
@@ -231,7 +231,7 @@ layout_mode = 2
 
 [node name="PNormalButton" type="Button" parent="Margin/Root/Board/Column4"]
 layout_mode = 2
-custom_minimum_size = Vector2(0, 44)
+custom_minimum_size = Vector2(0, 84)
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 10
 text = ""
@@ -239,7 +239,7 @@ clip_text = true
 
 [node name="PTeamButton" type="Button" parent="Margin/Root/Board/Column4"]
 layout_mode = 2
-custom_minimum_size = Vector2(0, 44)
+custom_minimum_size = Vector2(0, 84)
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 10
 text = ""
@@ -258,7 +258,7 @@ horizontal_alignment = 1
 
 [node name="ZTeamButton" type="Button" parent="Margin/Root/Board/Column5"]
 layout_mode = 2
-custom_minimum_size = Vector2(0, 44)
+custom_minimum_size = Vector2(0, 84)
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 10
 text = ""
@@ -266,7 +266,7 @@ clip_text = true
 
 [node name="ZNormalButton" type="Button" parent="Margin/Root/Board/Column5"]
 layout_mode = 2
-custom_minimum_size = Vector2(0, 44)
+custom_minimum_size = Vector2(0, 84)
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 10
 text = ""
@@ -277,7 +277,7 @@ layout_mode = 2
 
 [node name="PNormalButton" type="Button" parent="Margin/Root/Board/Column5"]
 layout_mode = 2
-custom_minimum_size = Vector2(0, 44)
+custom_minimum_size = Vector2(0, 84)
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 10
 text = ""
@@ -285,7 +285,7 @@ clip_text = true
 
 [node name="PTeamButton" type="Button" parent="Margin/Root/Board/Column5"]
 layout_mode = 2
-custom_minimum_size = Vector2(0, 44)
+custom_minimum_size = Vector2(0, 84)
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 10
 text = ""

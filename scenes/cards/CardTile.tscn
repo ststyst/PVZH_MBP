@@ -6,6 +6,26 @@
 custom_minimum_size = Vector2(160, 200)
 script = ExtResource("1_card_tile")
 
+[node name="BackgroundSprite" type="Sprite2D" parent="."]
+unique_name_in_owner = true
+position = Vector2(80, 100)
+
+[node name="ArtSprite" type="Sprite2D" parent="."]
+unique_name_in_owner = true
+position = Vector2(80, 50)
+
+[node name="CostIconSprite" type="Sprite2D" parent="."]
+unique_name_in_owner = true
+position = Vector2(138, 26)
+
+[node name="AttackIconSprite" type="Sprite2D" parent="."]
+unique_name_in_owner = true
+position = Vector2(20, 182)
+
+[node name="HealthIconSprite" type="Sprite2D" parent="."]
+unique_name_in_owner = true
+position = Vector2(140, 182)
+
 [node name="Content" type="MarginContainer" parent="."]
 layout_mode = 1
 anchors_preset = 15
@@ -17,21 +37,17 @@ mouse_filter = 2
 theme_override_constants/margin_left = 8
 theme_override_constants/margin_top = 8
 theme_override_constants/margin_right = 8
-theme_override_constants/margin_bottom = 8
+theme_override_constants/margin_bottom = 26
 
 [node name="VBox" type="VBoxContainer" parent="Content"]
 layout_mode = 2
 mouse_filter = 2
 theme_override_constants/separation = 4
 
-[node name="CardArt" type="TextureRect" parent="Content/VBox"]
-unique_name_in_owner = true
-visible = false
+[node name="ArtSpacer" type="Control" parent="Content/VBox"]
 layout_mode = 2
 custom_minimum_size = Vector2(0, 84)
 mouse_filter = 2
-expand_mode = 1
-stretch_mode = 6
 
 [node name="CardName" type="Label" parent="Content/VBox"]
 unique_name_in_owner = true
@@ -47,7 +63,7 @@ layout_mode = 2
 mouse_filter = 2
 theme_override_colors/font_color = Color(0.65098, 0.678431, 0.760784, 1)
 theme_override_font_sizes/font_size = 11
-text = "普通 · 中立 · 费用 1"
+text = "普通 · 中立"
 autowrap_mode = 2
 
 [node name="CardDesc" type="Label" parent="Content/VBox"]
@@ -65,5 +81,64 @@ unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
 theme_override_colors/font_color = Color(0.54902, 0.568627, 0.631373, 1)
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 10
 text = "未拥有"
+horizontal_alignment = 1
+
+[node name="CostLabel" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -48.0
+offset_top = 2.0
+offset_right = -4.0
+offset_bottom = 24.0
+grow_horizontal = 0
+mouse_filter = 2
+theme_override_colors/font_color = Color(1, 0.92, 0.72, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 16
+text = "0"
+horizontal_alignment = 2
+
+[node name="AttackLabel" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 2.0
+offset_top = -44.0
+offset_right = 42.0
+offset_bottom = -24.0
+grow_vertical = 0
+mouse_filter = 2
+theme_override_colors/font_color = Color(1, 0.92, 0.72, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 15
+text = "0"
+horizontal_alignment = 1
+
+[node name="HealthLabel" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -42.0
+offset_top = -44.0
+offset_right = -2.0
+offset_bottom = -24.0
+grow_horizontal = 0
+grow_vertical = 0
+mouse_filter = 2
+theme_override_colors/font_color = Color(1, 0.92, 0.72, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 15
+text = "0"
+horizontal_alignment = 1
