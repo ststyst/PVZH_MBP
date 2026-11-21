@@ -259,13 +259,10 @@ func valid_slots(side: String, card: CardData) -> Array[Dictionary]:
 		# 位置不固定：该列已有实体 + 新实体至少有一个带“组队”才能放入第二张
 		if existing.size() == 1 and not existing[0].team_up and not comes_with_team_up:
 			continue
-		var free_slot: int = -1
+		# 空列的两个空位都允许打出；已有 1 个实体时只剩余一个空位
 		for candidate_slot: int in [SLOT_NORMAL, SLOT_TEAM_UP]:
 			if _entity_at(column, side, candidate_slot) == null:
-				free_slot = candidate_slot
-				break
-		if free_slot >= 0:
-			result.append({"column": column, "slot": free_slot})
+				result.append({"column": column, "slot": candidate_slot})
 	return result
 
 

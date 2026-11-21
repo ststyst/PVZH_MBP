@@ -206,6 +206,26 @@ func test_easy_ai_plays_highest_cost() -> void:
 	assert_true(state.hand.has("pvzh:gnoll"))
 
 
+func test_any_empty_slot_allowed() -> void:
+	var engine: BattleEngine = _started_engine()
+	var state: BattlePlayerState = engine.players["p"]
+	state.hand = ["pvzh:gnoll", "pvzh:gnoll"]
+	state.energy = 10
+	engine.phase = BattleEngine.PHASE_HAND
+	engine.active_side = "p"
+	var slots: Array[Dictionary] = engine.valid_slots("p", engine.hand_card("p", 0))
+	var column_zero_slots: int = 0
+	for slot_info: Dictionary in slots:
+		if int(slot_info.get("column", -1)) == 0:
+			column_zero_slots += 1
+	assert_eq(column_zero_slots, 2, "空列的两个位置都应允许打出实体")
+	var result: Dictionary = engine.play_card("p", 0, {"column": 0, "slot": BattleEngine.SLOT_TEAM_UP})
+	assert_true(bool(result.get("ok", false)), "普通实体也应能打出到空列的外侧位置")
+	assert_eq(engine.entities.size(), 1)
+	if not engine.entities.is_empty():
+		assert_eq(engine.entities[0].slot, BattleEngine.SLOT_TEAM_UP)
+
+
 func test_team_up_placement_rule() -> void:
 	var engine: BattleEngine = _started_engine()
 	var team_card: CardData = cards.get_card("pvzh:hound").duplicate()
