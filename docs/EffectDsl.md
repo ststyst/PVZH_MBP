@@ -413,6 +413,57 @@ when tombstone_enter:
 - 揭示后恢复正常入场结算
 - `buried_in_column` 选择器可选当前列全部墓碑实体；`all_buried` 可选全部墓碑实体
 
+### 示例卡牌与结算顺序
+
+终极地雷：
+
+```text
+double_death_effects()
+when die:
+    deal_damage(random_enemy_in_column_or_hero, 5)
+```
+
+结算顺序：
+
+1. 友方实体生命值降至 1 以下
+2. 终极地雷（若仍存活）将使该友方实体的亡语触发次数变为 2
+3. 连续触发两次 `die` 事件（以及两次区域 `ally_die`）
+4. 移除该实体
+
+终极地雷自身死亡时，若没有另一张存活的终极地雷，则它自己的亡语只触发一次。
+
+扁豆教授：
+
+```text
+when enter(side != 'enemy'):
+    buff_stats(self, 1, 0)
+when enter:
+    summon('novice')
+    summon('novice')
+```
+
+- 光环类 `when enter` 与入场效果按事件块顺序依次结算
+- 先执行光环触发，再执行召唤；随后每次真实召唤都会再次触发光环
+
+招聘专员：
+
+```text
+when enter:
+    add_random_cards_to_hand(hero, 2, 'kind == spell', -1)
+```
+
+目标示例：
+
+```text
+choose(1, 'enemy_hero_or_entities'); deal_damage(chosen, 2)
+deal_damage_each(random_targets(3, 'enemy_hero_or_entities'), 1, 2, 4)
+deal_damage(enemy_hero, 3)
+choose(1, 'enemy_entities'); destroy(chosen)
+destroy(random_targets(2, 'frozen_enemies'))
+heal(random_targets(2, 'injured_allies'), 6)
+heal(all_allies_and_hero, 5)
+```
+
 ### 目标选择与随机目标
 
 ```text

@@ -79,6 +79,17 @@ func resolve_selector(selector: String) -> Array:
 			return _entities_of(engine.opposite_side(caster_side))
 		"random_enemy":
 			return _random_one(_entities_of(engine.opposite_side(caster_side)))
+		"random_enemy_in_column_or_hero":
+			var column_enemies: Array = []
+			var column_ref: int = base_column
+			if column_ref < 0 and _self_handle is BattleEntity:
+				column_ref = _self_handle.column
+			for entity: BattleEntity in _entities_of(engine.opposite_side(caster_side)):
+				if entity.column == column_ref:
+					column_enemies.append(entity)
+			if column_enemies.is_empty():
+				return [engine.hero_handle(engine.opposite_side(caster_side))]
+			return _random_one(column_enemies)
 		"all_allies":
 			return _entities_of(caster_side)
 		"all_allies_and_hero":

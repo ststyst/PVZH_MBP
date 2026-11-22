@@ -500,6 +500,22 @@ func test_card_filter_and_random_insert() -> void:
 	assert_true(found_gnoll, "塞入的卡牌英文名应为 gnoll")
 
 
+func test_double_death_effects() -> void:
+	var engine: BattleEngine = _started_engine()
+	var mine_card: CardData = _make_test_card("pvzh:test_double_death_mine", "double_death_effects()")
+	mine_card.health = 5
+	engine.summon_card("p", mine_card, 0, 0)
+	var ally_card: CardData = _make_test_card(
+		"pvzh:test_double_death_ally",
+		"when die:\n    add_marker(\"death_effect\", 1)"
+	)
+	ally_card.health = 2
+	var ally: BattleEntity = engine.summon_card("p", ally_card, 1, 0)
+	engine.damage_entity(ally, 99, [])
+	engine._flush_deaths()
+	assert_eq(engine.players["p"].marker_count("death_effect"), 2, "终极地雷应让友方亡语触发两次")
+
+
 func test_tombstone_burial_reveal_and_hidden_energy() -> void:
 	var engine: BattleEngine = _started_engine()
 	var tomb_card: CardData = _make_test_card(

@@ -17,6 +17,7 @@ var is_base_ability: bool = false
 var aura_buffs: Array[Dictionary] = []
 var aura_hand_costs: Array[Dictionary] = []
 var aura_spell_costs: Array[Dictionary] = []
+var doubles_death_effects: bool = false
 
 
 static func parse(source: String) -> CardEffectScript:
@@ -186,12 +187,12 @@ func validate_for_kind(kind: String) -> Array[String]:
 				continue
 			var data: Dictionary = statement
 			var call_name: String = str(data.get("name", ""))
-			if str(data.get("type", "")) != "call" or call_name not in ["evolve", "base", "aura_buff", "aura_hand_cost", "aura_spell_cost"]:
-				problems.append("实体牌顶层只允许 evolve/base/aura 声明；其他能力必须写在 when 事件块中。")
+			if str(data.get("type", "")) != "call" or call_name not in ["evolve", "base", "aura_buff", "aura_hand_cost", "aura_spell_cost", "double_death_effects"]:
+				problems.append("实体牌顶层只允许 evolve/base/aura/double_death_effects 声明；其他能力必须写在 when 事件块中。")
 				break
 	elif kind == "spell" or kind == "environment":
-		if is_base_ability or is_evolve_ability or not aura_buffs.is_empty() or not aura_hand_costs.is_empty() or not aura_spell_costs.is_empty():
-			problems.append("evolve / base / aura 只能用于实体牌，不能用于锦囊或环境牌。")
+		if is_base_ability or is_evolve_ability or not aura_buffs.is_empty() or not aura_hand_costs.is_empty() or not aura_spell_costs.is_empty() or doubles_death_effects:
+			problems.append("evolve / base / aura / 双亡语只能用于实体牌，不能用于锦囊或环境牌。")
 		if kind == "spell" and not events.is_empty():
 			problems.append("锦囊牌不能使用 when 事件块；锦囊能力在打出时直接执行。")
 		if kind == "environment" and not events.is_empty():
@@ -206,6 +207,7 @@ func _extract_declarations() -> void:
 	aura_buffs.clear()
 	aura_hand_costs.clear()
 	aura_spell_costs.clear()
+	doubles_death_effects = false
 	for statement: Variant in on_play:
 		if not statement is Dictionary:
 			continue
@@ -216,6 +218,8 @@ func _extract_declarations() -> void:
 		var args: Array = data.get("args", [])
 		if call_name == "base":
 			is_base_ability = true
+		elif call_name == "double_death_effects":
+			doubles_death_effects = true
 		elif call_name == "aura_buff" and args.size() >= 5:
 			aura_buffs.append({
 				"selector": str(_arg_value(args[0])),

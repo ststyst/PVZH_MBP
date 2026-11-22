@@ -158,7 +158,7 @@ func _exec_primitive(statement: Dictionary) -> void:
 				_error("remove_entity 需要单个实体目标", line)
 			else:
 				context.remove_entity(remove_targets[0])
-		"evolve", "base", "aura_buff", "aura_hand_cost", "aura_spell_cost":
+		"evolve", "base", "aura_buff", "aura_hand_cost", "aura_spell_cost", "double_death_effects":
 			pass
 		"gain_max_health":
 			var max_health_targets: Array = _resolve_argument_target(arguments[0])

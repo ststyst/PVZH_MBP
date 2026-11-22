@@ -40,3 +40,16 @@ soldier_captain,士兵队长,entity,3,3,4,0,hearty,rare,"","","aura_hand_cost('s
 tombstone_guard,墓碑守卫,entity,2,2,3,0,guardian,normal,"tombstone","","when enter: buff_stats(all_allies, 1, 0)","入场时埋入墓碑，揭示时为友方加攻。",1,"",""
 grave_sweep,掘墓清扫,spell,3,0,0,0,neutral,rare,"","","choose_column(); destroy(buried_in_column)","选择一列，消灭该列所有埋入墓碑的实体。",1,"",""
 grave_execute,墓碑处决,spell,2,0,0,0,neutral,rare,"","","choose(1, 'all_buried'); destroy(chosen)","选择一个埋入墓碑的实体并消灭。",1,"",""
+ultimate_mine,终极地雷,entity,4,2,3,0,crazy,legend,"","","double_death_effects(); when die: deal_damage(random_enemy_in_column_or_hero, 5)","亡语：对同列随机敌方实体造成5点伤害，否则对敌方英雄造成5点。我方亡语触发两次。",1,"",""
+professor_lentil,扁豆教授,entity,5,3,5,0,solar,legend,"","","when enter(side != 'enemy'): buff_stats(self, 1, 0)
+when enter:
+    summon('novice')
+    summon('novice')","友方实体入场时获得+1攻击；入场时召唤两个光能实体。",1,"",""
+recruiter,招聘专员,entity,3,2,3,0,neutral,rare,"","","when enter: add_random_cards_to_hand(hero, 2, 'kind == spell', -1)","入场时随机将两张锦囊加入手牌，费用-1。",1,"",""
+twin_bolt,双重闪电,spell,2,0,0,0,smarty,normal,"","","choose(1, 'enemy_hero_or_entities'); deal_damage(chosen, 2)","选择敌方英雄或任意敌方实体造成2点伤害。",1,"",""
+tri_bolt,三连闪电,spell,5,0,0,0,smarty,rare,"","","deal_damage_each(random_targets(3, 'enemy_hero_or_entities'), 1, 2, 4)","随机对三个敌方目标分配1/2/4点伤害。",1,"",""
+hero_bolt,英雄闪电,spell,2,0,0,0,smarty,normal,"","","deal_damage(enemy_hero, 3)","对敌方英雄造成3点伤害。",1,"",""
+execute_strong,处决,spell,4,0,0,0,neutral,rare,"","","choose(1, 'enemy_entities'); destroy(chosen)","选择一个敌方实体消灭。",1,"",""
+frost_purge,寒冰净化,spell,4,0,0,0,smarty,rare,"","","destroy(random_targets(2, 'frozen_enemies'))","随机消灭两个冰冻敌方实体。",1,"",""
+heal_injured,治疗伤员,spell,3,0,0,0,solar,normal,"","","heal(random_targets(2, 'injured_allies'), 6)","随机治疗两个受伤友方实体6点。",1,"",""
+mass_heal,群体治疗,spell,4,0,0,0,solar,rare,"","","heal(all_allies_and_hero, 5)","为友方英雄和全部友方实体治疗5点。",1,"",""

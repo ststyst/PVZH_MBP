@@ -1890,12 +1890,23 @@ func _flush_deaths() -> void:
 			entity.alive = false
 			_log("%s 死亡" % entity.display_name())
 			_emit_animation_cue("die", entity, null)
-			_fire_event("die", entity)
-			_trigger_zone_ally_death(entity)
+			var repeat_count: int = _death_effect_repeat_count(entity)
+			for _repeat: int in range(repeat_count):
+				_fire_event("die", entity)
+				_trigger_zone_ally_death(entity)
 			entities.erase(entity)
 	_refresh_all_counter_bonuses()
 	_refresh_auras()
 	_check_game_over()
+
+
+func _death_effect_repeat_count(dead: BattleEntity) -> int:
+	for source: BattleEntity in entities:
+		if source == dead or not source.alive or source.side != dead.side:
+			continue
+		if source.card != null and source.card.ability_script != null and source.card.ability_script.doubles_death_effects:
+			return 2
+	return 1
 
 
 func _flush_column_deaths(column: int) -> void:
@@ -1910,8 +1921,10 @@ func _flush_column_deaths(column: int) -> void:
 			entity.alive = false
 			_log("%s 死亡" % entity.display_name())
 			_emit_animation_cue("die", entity, null)
-			_fire_event("die", entity)
-			_trigger_zone_ally_death(entity)
+			var repeat_count: int = _death_effect_repeat_count(entity)
+			for _repeat: int in range(repeat_count):
+				_fire_event("die", entity)
+				_trigger_zone_ally_death(entity)
 			entities.erase(entity)
 	_refresh_all_counter_bonuses()
 	_refresh_auras()
