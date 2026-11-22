@@ -69,6 +69,8 @@ var _special_turn_end_resolved: bool = false
 var _special_resolving: bool = false
 var _effect_resolution_count: int = 0
 var _effect_limit_hit: bool = false
+## 本次战斗轮中已经触发过先攻的实体 id，保证整轮只触发一次
+var _first_strike_used_this_round: Dictionary = {}
 
 
 func _init(database = null, battle_seed: int = 0) -> void:
@@ -1887,6 +1889,7 @@ func _emit_animation_cue(trigger: String, actor: BattleEntity, target: Variant =
 
 func _resolve_combat() -> void:
 	_begin_effect_resolution()
+	_first_strike_used_this_round.clear()
 	for column: int in range(COLUMN_COUNT):
 		if winner != "":
 			_end_effect_resolution()
@@ -1938,7 +1941,8 @@ func _execute_attack_action(attacker: BattleEntity, extra_attack: bool) -> void:
 	if attacker == null or not attacker.alive or attacker.is_frozen() or attacker.attack < 1:
 		return
 	var first_strike: int = attacker.keyword_value("first_strike")
-	if first_strike > 0:
+	if first_strike > 0 and not _first_strike_used_this_round.has(attacker.entity_id):
+		_first_strike_used_this_round[attacker.entity_id] = true
 		damage_hero(opposite_side(attacker.side), first_strike, attacker.keywords)
 		if winner != "":
 			return

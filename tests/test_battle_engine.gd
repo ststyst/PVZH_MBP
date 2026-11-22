@@ -500,6 +500,25 @@ func test_card_filter_and_random_insert() -> void:
 	assert_true(found_gnoll, "塞入的卡牌英文名应为 gnoll")
 
 
+func test_first_strike_once_per_round() -> void:
+	var engine: BattleEngine = _started_engine()
+	var z_state: BattlePlayerState = engine.players["z"]
+	z_state.charge_shield_durability = 0
+	z_state.hero_shield = 0
+	var hero_before: int = z_state.hero_health
+	var attacker_card: CardData = _make_test_card("pvzh:test_round_first_strike", "")
+	attacker_card.attack = 1
+	attacker_card.health = 10
+	attacker_card.keywords.append("first_strike")
+	attacker_card.keyword_values["first_strike"] = 1
+	attacker_card.keywords.append("double_strike")
+	attacker_card.keywords.append("triple_strike")
+	var attacker: BattleEntity = engine.summon_card("p", attacker_card, 2, 0)
+	engine._combat_column(2)
+	# 1 次先攻 + 双重打击两轮三连打各打英雄一次 = 7
+	assert_eq(z_state.hero_health, hero_before - 7, "先攻整轮只应触发一次")
+
+
 func test_game_over_stops_remaining_effects() -> void:
 	var engine: BattleEngine = _started_engine()
 	var z_state: BattlePlayerState = engine.players["z"]
