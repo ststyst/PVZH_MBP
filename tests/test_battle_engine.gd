@@ -500,6 +500,63 @@ func test_card_filter_and_random_insert() -> void:
 	assert_true(found_gnoll, "塞入的卡牌英文名应为 gnoll")
 
 
+func test_game_over_stops_remaining_effects() -> void:
+	var engine: BattleEngine = _started_engine()
+	var z_state: BattlePlayerState = engine.players["z"]
+	z_state.hero_health = 1
+	z_state.charge_shield_durability = 0
+	var attacker_card: CardData = _make_test_card(
+		"pvzh:test_lethal_first_strike",
+		"when attack:\n    add_marker(\"attack_after_win\", 1)"
+	)
+	attacker_card.attack = 1
+	attacker_card.health = 5
+	attacker_card.keywords.append("first_strike")
+	attacker_card.keyword_values["first_strike"] = 5
+	var attacker: BattleEntity = engine.summon_card("p", attacker_card, 0, 0)
+	engine._execute_attack_action(attacker, false)
+	assert_eq(engine.winner, "p", "英雄死亡应立即判定胜负")
+	assert_eq(engine.players["p"].marker_count("attack_after_win"), 0, "胜负后不应继续触发攻击事件")
+	assert_true(z_state.hero_health <= 0)
+
+
+func test_attack_modifier_fixes() -> void:
+	var engine: BattleEngine = _started_engine()
+	var attacker_card: CardData = _make_test_card(
+		"pvzh:test_modifier_attacker",
+		""
+	)
+	attacker_card.attack = 1
+	attacker_card.health = 10
+	attacker_card.keywords.append("strikethrough")
+	attacker_card.keywords.append("first_strike")
+	attacker_card.keywords.append("triple_strike")
+	attacker_card.keyword_values["first_strike"] = 2
+	attacker_card.keywords.append("overshoot")
+	attacker_card.keyword_values["overshoot"] = 2
+	engine.summon_card("p", attacker_card, 2, 0)
+	var z_state: BattlePlayerState = engine.players["z"]
+	z_state.charge_shield_durability = 0
+	z_state.hero_shield = 0
+	var z_health: int = z_state.hero_health
+	for column: int in [1, 2, 3]:
+		var enemy_card: CardData = _make_test_card(
+			"pvzh:test_struck_%d" % column,
+			"when attacked:\n    add_marker(\"attacked\", 1)"
+		)
+		enemy_card.attack = 0
+		enemy_card.health = 5
+		engine.summon_card("z", enemy_card, column, 0)
+	var ally_card: CardData = _make_test_card("pvzh:test_splash_ally", "")
+	ally_card.attack = 0
+	ally_card.health = 5
+	var ally: BattleEntity = engine.summon_card("p", ally_card, 1, 0)
+	engine._execute_attack_action(engine._entity_at(2, "p", 0), false)
+	assert_eq(z_state.hero_health, z_health - 2 - 3, "先攻只触发一次，但穿透三列各命中英雄一次")
+	assert_eq(z_state.marker_count("attacked"), 3, "穿透命中每个敌人应触发 attacked")
+	assert_eq(ally.health, 5, "溅射不应伤害友方实体")
+
+
 func test_triple_strike_and_aloe_captain() -> void:
 	var engine: BattleEngine = _started_engine()
 	var attacker_card: CardData = _make_test_card("pvzh:test_triple", "")

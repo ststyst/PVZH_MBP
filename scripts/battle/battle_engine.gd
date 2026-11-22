@@ -530,6 +530,8 @@ func end_phase(side: String) -> void:
 
 
 func advance_phase() -> void:
+	if _battle_over():
+		return
 	if winner != "":
 		return
 	match phase:
@@ -1027,6 +1029,8 @@ func _spend_and_remove(
 
 
 func _run_script(card: CardData, side: String, chosen: Variant, position: Dictionary = {}) -> void:
+	if _battle_over():
+		return
 	if card.ability_script == null or not card.ability_script.has_effect():
 		return
 	var context := BattleEffectContext.new(self, side)
@@ -1319,7 +1323,13 @@ func change_max_health_handle(handle: Variant, delta: int) -> void:
 	changed.emit()
 
 
+func _battle_over() -> bool:
+	return winner != ""
+
+
 func damage_handle(handle: Variant, amount: int, source_keywords: Array = [], from_spell: bool = false) -> void:
+	if _battle_over():
+		return
 	if amount <= 0:
 		return
 	if handle is BattleEntity:
@@ -1329,6 +1339,8 @@ func damage_handle(handle: Variant, amount: int, source_keywords: Array = [], fr
 
 
 func damage_entity(entity: BattleEntity, amount: int, source_keywords: Array = [], from_spell: bool = false, source_entity: BattleEntity = null) -> void:
+	if _battle_over():
+		return
 	if entity == null or not entity.alive:
 		return
 	if entity.has_buff("buried"):
@@ -1637,6 +1649,8 @@ func _refresh_counter_bonus(entity: BattleEntity) -> void:
 
 
 func damage_hero(side: String, amount: int, source_keywords: Array = []) -> void:
+	if _battle_over():
+		return
 	var state: BattlePlayerState = players.get(side, null)
 	if state == null or amount <= 0:
 		return
@@ -1670,6 +1684,7 @@ func damage_hero(side: String, amount: int, source_keywords: Array = []) -> void
 			_trigger_superpower_offer(side)
 			return
 	state.hero_health -= damage
+	_check_game_over()
 	hero_damaged.emit(side, damage, source_keywords.duplicate())
 	_log("%s 英雄受到 %d 点伤害（生命 %d，护盾 %d）" % [
 		side.to_upper(), damage, state.hero_health, state.hero_shield,
@@ -1798,6 +1813,8 @@ func _end_effect_resolution() -> void:
 
 
 func _fire_event(event_name: String, event_entity: BattleEntity, chosen_targets: Array = []) -> void:
+	if _battle_over():
+		return
 	if _effect_limit_hit:
 		return
 	_effect_resolution_count += 1
@@ -1916,28 +1933,44 @@ func _choose_attack_target_in_column(attacker: BattleEntity, column: int) -> Var
 
 
 func _execute_attack_action(attacker: BattleEntity, extra_attack: bool) -> void:
+	if _battle_over():
+		return
 	if attacker == null or not attacker.alive or attacker.is_frozen() or attacker.attack < 1:
 		return
+	var first_strike: int = attacker.keyword_value("first_strike")
+	if first_strike > 0:
+		damage_hero(opposite_side(attacker.side), first_strike, attacker.keywords)
+		if winner != "":
+			return
 	if attacker.has_keyword("triple_strike"):
 		var columns: Array[int] = [attacker.column - 1, attacker.column, attacker.column + 1]
 		for index: int in range(columns.size()):
 			var attack_column: int = columns[index]
 			if attack_column < 0 or attack_column >= COLUMN_COUNT:
 				continue
-			if not attacker.alive or attacker.attack < 1:
+			if not attacker.alive or attacker.attack < 1 or winner != "":
 				break
 			_execute_entity_attack(
 				attacker,
 				_choose_attack_target_in_column(attacker, attack_column),
 				0,
 				extra_attack and index == 0,
+				false,
+				attack_column,
 			)
 		return
-	_execute_entity_attack(attacker, _choose_attack_target(attacker), 0, extra_attack)
+	_execute_entity_attack(
+		attacker,
+		_choose_attack_target(attacker),
+		0,
+		extra_attack,
+		false,
+		attacker.column,
+	)
 
 
 func force_entity_attack(attacker: BattleEntity) -> bool:
-	if attacker == null or not attacker.alive or attacker.is_frozen() or attacker.attack < 1:
+	if _battle_over() or attacker == null or not attacker.alive or attacker.is_frozen() or attacker.attack < 1:
 		return false
 	_execute_attack_action(attacker, true)
 	_flush_column_deaths(attacker.column)
@@ -1945,24 +1978,37 @@ func force_entity_attack(attacker: BattleEntity) -> bool:
 	return true
 
 
-func _execute_entity_attack(attacker: BattleEntity, target: Variant, frenzy_depth: int, extra_attack: bool = false) -> void:
-	if attacker == null or not attacker.alive or attacker.is_frozen() or attacker.attack < 1:
+func _execute_entity_attack(
+	attacker: BattleEntity,
+	target: Variant,
+	frenzy_depth: int,
+	extra_attack: bool = false,
+	first_strike_enabled: bool = true,
+	attack_column: int = -1,
+) -> void:
+	if _battle_over() or attacker == null or not attacker.alive or attacker.is_frozen() or attacker.attack < 1:
 		return
+	if attack_column < 0:
+		attack_column = attacker.column
 	if extra_attack:
 		_fire_event("extra_attack", attacker)
 	var first_strike: int = attacker.keyword_value("first_strike")
-	if first_strike > 0:
+	if first_strike_enabled and first_strike > 0:
 		damage_hero(opposite_side(attacker.side), first_strike, attacker.keywords)
 		if winner != "":
 			return
 	var killed_enemy: bool = false
 	if attacker.has_keyword("strikethrough"):
 		for entity: BattleEntity in entities.duplicate():
-			if entity.alive and entity.side != attacker.side and entity.column == attacker.column:
+			if entity.alive and entity.side != attacker.side and entity.column == attack_column:
 				damage_entity(entity, attacker.attack, attacker.keywords, false, attacker)
+				if entity.alive:
+					_fire_event("attacked", entity)
 				if not entity.alive or entity.health <= 0:
 					killed_enemy = true
 		damage_hero(opposite_side(attacker.side), attacker.attack, attacker.keywords)
+		if _battle_over():
+			return
 	else:
 		if target is BattleEntity:
 			var target_entity: BattleEntity = target
@@ -1973,6 +2019,8 @@ func _execute_entity_attack(attacker: BattleEntity, target: Variant, frenzy_dept
 				_try_thorns(attacker, target_entity)
 		elif target is String and target.begins_with("hero:"):
 			damage_hero(target.substr(5), attacker.attack, attacker.keywords)
+			if _battle_over():
+				return
 	var splash: int = attacker.keyword_value("overshoot")
 	if splash > 0:
 		for column_offset: int in [-1, 1]:
@@ -1980,15 +2028,17 @@ func _execute_entity_attack(attacker: BattleEntity, target: Variant, frenzy_dept
 			if splash_column < 0 or splash_column >= COLUMN_COUNT:
 				continue
 			for entity: BattleEntity in entities.duplicate():
-				if entity.alive and entity != attacker and entity.column == splash_column:
+				if entity.alive and entity != attacker and entity.side != attacker.side and entity.column == splash_column:
 					damage_entity(entity, splash, attacker.keywords, false, attacker)
 	_fire_event("attack", attacker)
-	if target is BattleEntity and target.alive:
+	if _battle_over():
+		return
+	if not attacker.has_keyword("strikethrough") and target is BattleEntity and target.alive:
 		_fire_event("attacked", target)
 	_emit_animation_cue("attack", attacker, target)
 	if killed_enemy and attacker.alive and attacker.has_keyword("frenzy") and frenzy_depth < 8:
 		_flush_column_deaths(attacker.column)
-		if attacker.alive:
+		if attacker.alive and not _battle_over():
 			_execute_attack_action(attacker, true)
 		_flush_column_deaths(attacker.column)
 
@@ -2033,6 +2083,8 @@ func _resolve_turn_end() -> void:
 
 
 func _flush_deaths() -> void:
+	if _battle_over():
+		return
 	for _guard: int in range(10):
 		var dead: Array[BattleEntity] = []
 		for entity: BattleEntity in entities:
@@ -2064,6 +2116,8 @@ func _death_effect_repeat_count(dead: BattleEntity) -> int:
 
 
 func _flush_column_deaths(column: int) -> void:
+	if _battle_over():
+		return
 	for _guard: int in range(10):
 		var dead: Array[BattleEntity] = []
 		for entity: BattleEntity in entities:
