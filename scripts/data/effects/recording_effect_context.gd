@@ -60,8 +60,8 @@ func summon(card_name: String, column: Variant = null, max_column: Variant = nul
 	return []
 
 
-func draw_cards(count: int) -> int:
-	calls.append({"op": "draw_cards", "count": count})
+func draw_cards(count: int, cost_delta: int = 0) -> int:
+	calls.append({"op": "draw_cards", "count": count, "cost_delta": cost_delta})
 	return count
 
 
@@ -98,12 +98,13 @@ func destroy(target) -> void:
 	calls.append({"op": "destroy", "target": target})
 
 
-func add_random_cards(zone: String, target, count: int, filter_text: String) -> int:
+func add_random_cards(zone: String, target, count: int, filter_text: String, cost_delta: int = 0) -> int:
 	calls.append({
 		"op": "add_random_cards",
 		"zone": zone,
 		"target": target,
 		"count": count,
 		"filter": filter_text,
+		"cost_delta": cost_delta,
 	})
 	return count

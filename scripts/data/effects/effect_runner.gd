@@ -82,7 +82,11 @@ func _exec_primitive(statement: Dictionary) -> void:
 				summon_max_column = _eval(arguments[2], {})
 			context.summon(card_name, summon_column, summon_max_column)
 		"draw_cards":
-			context.draw_cards(_as_int(_eval(arguments[0], {})))
+			var draw_count: int = _as_int(_eval(arguments[0], {}))
+			var draw_cost_delta: int = 0
+			if arguments.size() > 1:
+				draw_cost_delta = _as_int(_eval(arguments[1], {}))
+			context.draw_cards(draw_count, draw_cost_delta)
 		"gain_energy":
 			context.gain_energy(_as_int(_eval(arguments[0], {})))
 		"deal_damage", "heal", "gain_shield", "buff_stats", "give_keyword", "destroy":
@@ -154,8 +158,23 @@ func _exec_primitive(statement: Dictionary) -> void:
 				_error("remove_entity 需要单个实体目标", line)
 			else:
 				context.remove_entity(remove_targets[0])
-		"evolve", "base":
+		"evolve", "base", "aura_buff", "aura_hand_cost", "aura_spell_cost":
 			pass
+		"gain_max_health":
+			var max_health_targets: Array = _resolve_argument_target(arguments[0])
+			var max_health_delta: int = _as_int(_eval(arguments[1], {}))
+			for target: Variant in max_health_targets:
+				context.gain_max_health(target, max_health_delta)
+		"deal_damage_each":
+			var spread_targets: Array = _resolve_argument_target(arguments[0])
+			var spread_amounts: Array = []
+			for amount_index: int in range(1, arguments.size()):
+				spread_amounts.append(_as_int(_eval(arguments[amount_index], {})))
+			for target_index: int in range(spread_targets.size()):
+				if spread_amounts.is_empty():
+					break
+				var amount_value: int = int(spread_amounts[mini(target_index, spread_amounts.size() - 1)])
+				context.deal_damage(spread_targets[target_index], amount_value)
 		"add_random_cards_to_deck", "add_random_cards_to_hand":
 			var card_targets: Array = _resolve_argument_target(arguments[0])
 			if card_targets.size() != 1:
@@ -163,8 +182,11 @@ func _exec_primitive(statement: Dictionary) -> void:
 			else:
 				var card_count: int = maxi(_as_int(_eval(arguments[1], {})), 0)
 				var filter_text: String = _as_string(_eval(arguments[2], {}))
+				var cost_delta: int = 0
+				if arguments.size() > 3:
+					cost_delta = _as_int(_eval(arguments[3], {}))
 				var zone: String = "deck" if primitive_name == "add_random_cards_to_deck" else "hand"
-				context.add_random_cards(zone, card_targets[0], card_count, filter_text)
+				context.add_random_cards(zone, card_targets[0], card_count, filter_text, cost_delta)
 		_:
 			_error("未知原语：%s" % primitive_name, line)
 
@@ -205,7 +227,9 @@ func _matches_trigger(trigger: Dictionary, event_handle) -> bool:
 	var predicate: Variant = trigger.get("predicate")
 	if predicate == null:
 		# 无过滤条件：普通实体默认只响应自己；环境/底座监听其所在列/挂载。
-		return _is_self(event_handle) or context.get_zone() in ["environment", "base"]
+		return _is_self(event_handle) or (context != null and context.get_zone() in ["environment", "base"])
+	if context == null:
+		return false
 	var facts: Dictionary = context.describe_entity(event_handle)
 	facts["zone"] = context.get_zone()
 	return _truthy(_eval(predicate, facts))
@@ -282,6 +306,16 @@ func _eval_call(expression: Dictionary, facts: Dictionary) -> Variant:
 			if arguments.size() > 3:
 				min_attack = _as_int(_eval(arguments[3], facts))
 			return context.entities_in_column(first_offset, last_offset, side_filter, min_attack)
+		"random_targets":
+			var random_count: int = _as_int(_eval(arguments[0], facts))
+			var random_selector: String = _as_string(_eval(arguments[1], facts))
+			return context.random_targets(random_count, random_selector)
+		"count_buff_in_columns":
+			var count_side: String = _as_string(_eval(arguments[0], facts))
+			var count_min: int = _as_int(_eval(arguments[1], facts))
+			var count_max: int = _as_int(_eval(arguments[2], facts))
+			var count_buff: String = _as_string(_eval(arguments[3], facts))
+			return context.count_buff_in_columns(count_side, count_min, count_max, count_buff)
 		_:
 			_error("原语只能作为语句调用：%s" % function_name, _line_of(expression))
 			return null

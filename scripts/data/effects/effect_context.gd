@@ -54,7 +54,7 @@ func summon(_card_name: String, _column: Variant = null, _max_column: Variant = 
 	return []
 
 
-func draw_cards(_count: int) -> int:
+func draw_cards(_count: int, _cost_delta: int = 0) -> int:
 	push_warning("EffectContext.draw_cards 未实现：需要战斗层提供")
 	return 0
 
@@ -100,7 +100,7 @@ func move_entity_to_chosen_position(_target) -> bool:
 
 
 ## 从卡牌数据库按筛选条件随机塞入牌库/手牌；target 为英雄或实体句柄。
-func add_random_cards(_zone: String, _target, _count: int, _filter_text: String) -> int:
+func add_random_cards(_zone: String, _target, _count: int, _filter_text: String, _cost_delta: int = 0) -> int:
 	push_warning("EffectContext.add_random_cards 未实现：需要战斗层提供")
 	return 0
 
@@ -135,6 +135,10 @@ func force_attack(_target) -> bool:
 func remove_entity(_target) -> bool:
 	push_warning("EffectContext.remove_entity 未实现：需要战斗层提供")
 	return false
+
+
+func gain_max_health(_target, _delta: int) -> void:
+	push_warning("EffectContext.gain_max_health 未实现：需要战斗层提供")
 
 
 ## 当前效果来源是否可以作用于该目标；锦囊来源会过滤锦囊免疫。

@@ -14,6 +14,9 @@ var errors: Array[String] = []
 var evolve_filter_text: String = ""
 var is_evolve_ability: bool = false
 var is_base_ability: bool = false
+var aura_buffs: Array[Dictionary] = []
+var aura_hand_costs: Array[Dictionary] = []
+var aura_spell_costs: Array[Dictionary] = []
 
 
 static func parse(source: String) -> CardEffectScript:
@@ -51,6 +54,40 @@ func has_errors() -> bool:
 
 func has_effect() -> bool:
 	return not on_play.is_empty() or not events.is_empty()
+
+
+func _arg_value(arg: Variant) -> Variant:
+	if not arg is Dictionary:
+		return null
+	var data: Dictionary = arg
+	var arg_type: String = str(data.get("type", ""))
+	if arg_type == "str" or arg_type == "num" or arg_type == "bool":
+		return data.get("value", null)
+	if arg_type == "var":
+		return str(data.get("name", ""))
+	return null
+
+
+func _int_arg(arg: Variant) -> int:
+	var value: Variant = _arg_value(arg)
+	if value is int or value is float:
+		return int(value)
+	if value is bool:
+		return 1 if value else 0
+	if value is String and value.is_valid_int():
+		return int(value)
+	return 0
+
+
+func _bool_arg(arg: Variant) -> bool:
+	var value: Variant = _arg_value(arg)
+	if value is bool:
+		return value
+	if value is int or value is float:
+		return int(value) != 0
+	if value is String:
+		return value.to_lower() == "true" or value == "1"
+	return false
 
 
 func has_event(event_name: String) -> bool:
@@ -149,12 +186,12 @@ func validate_for_kind(kind: String) -> Array[String]:
 				continue
 			var data: Dictionary = statement
 			var call_name: String = str(data.get("name", ""))
-			if str(data.get("type", "")) != "call" or (call_name != "evolve" and call_name != "base"):
-				problems.append("实体牌顶层只允许 evolve(...) 或 base() 声明；其他能力必须写在 when 事件块中。")
+			if str(data.get("type", "")) != "call" or call_name not in ["evolve", "base", "aura_buff", "aura_hand_cost", "aura_spell_cost"]:
+				problems.append("实体牌顶层只允许 evolve/base/aura 声明；其他能力必须写在 when 事件块中。")
 				break
 	elif kind == "spell" or kind == "environment":
-		if is_base_ability or is_evolve_ability:
-			problems.append("evolve / base 只能用于实体牌，不能用于锦囊或环境牌。")
+		if is_base_ability or is_evolve_ability or not aura_buffs.is_empty() or not aura_hand_costs.is_empty() or not aura_spell_costs.is_empty():
+			problems.append("evolve / base / aura 只能用于实体牌，不能用于锦囊或环境牌。")
 		if kind == "spell" and not events.is_empty():
 			problems.append("锦囊牌不能使用 when 事件块；锦囊能力在打出时直接执行。")
 		if kind == "environment" and not events.is_empty():
@@ -166,6 +203,9 @@ func _extract_declarations() -> void:
 	evolve_filter_text = ""
 	is_evolve_ability = false
 	is_base_ability = false
+	aura_buffs.clear()
+	aura_hand_costs.clear()
+	aura_spell_costs.clear()
 	for statement: Variant in on_play:
 		if not statement is Dictionary:
 			continue
@@ -176,6 +216,25 @@ func _extract_declarations() -> void:
 		var args: Array = data.get("args", [])
 		if call_name == "base":
 			is_base_ability = true
+		elif call_name == "aura_buff" and args.size() >= 5:
+			aura_buffs.append({
+				"selector": str(_arg_value(args[0])),
+				"buff": str(_arg_value(args[1])),
+				"min_column": _int_arg(args[2]),
+				"max_column": _int_arg(args[3]),
+				"exclude_self": _bool_arg(args[4]),
+			})
+		elif call_name == "aura_hand_cost" and args.size() >= 3:
+			aura_hand_costs.append({
+				"side": str(_arg_value(args[0])),
+				"filter": str(_arg_value(args[1])),
+				"delta": _int_arg(args[2]),
+			})
+		elif call_name == "aura_spell_cost" and args.size() >= 2:
+			aura_spell_costs.append({
+				"side": str(_arg_value(args[0])),
+				"delta": _int_arg(args[1]),
+			})
 		elif call_name == "evolve" and args.size() >= 1:
 			is_evolve_ability = true
 			var filter_node: Variant = args[0]

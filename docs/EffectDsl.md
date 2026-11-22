@@ -354,11 +354,11 @@ when buff_removed:
 ```text
 evolve("name == 'gnoll'")
 when evolved:
-    apply_buff(self, "invincible")
+	apply_buff(self, "invincible")
 
 base()
 when mounted:
-    apply_buff(mounted, "frozen")
+	apply_buff(mounted, "frozen")
 ```
 
 - `evolve(filter)` 只允许实体牌；可放置在已有友方实体位置，原实体被移除但不触发死亡
@@ -394,6 +394,55 @@ add_random_cards_to_hand(enemy_hero, 1, "keyword == 'team_up' and not tribe == '
 - 如果没有显式写出 `deck_includable` 条件，自动只匹配 `deck_includable == true` 的卡牌
 - 例：`"deck_includable == false"` 可以显式允许不可组入卡牌
 - 比较值建议用引号；布尔值写 `true` / `false`
+
+### 目标选择与随机目标
+
+```text
+choose(1, "enemy_hero_or_entities")
+deal_damage(chosen, 2)
+
+deal_damage_each(random_targets(3, "enemy_hero_or_entities"), 1, 2, 4)
+destroy(random_targets(2, "frozen_enemies"))
+heal(random_targets(2, "injured_allies"), 6)
+heal(all_allies_and_hero, 5)
+```
+
+可用选择器：
+
+- `enemy_hero_or_entities`
+- `enemy_entities`
+- `frozen_enemies`
+- `injured_allies`
+- `all_allies_and_hero`
+- `all_entities`
+- `all_heroes_and_entities`
+
+`random_targets(count, selector)` 会从候选中随机取最多 count 个目标；`deal_damage_each(targets, 1, 2, 4)` 按顺序分配不同伤害。
+
+### 生命值与防御
+
+- 实体 `shield` 是固定减伤，不会像英雄护盾一样被消耗；必中伤害无视该减伤
+- `buff_stats(target, attack, health)` 的生命值变化会同时改变当前生命与生命上限
+- 生命值增益会触发 `healed`
+- `heal` 不能超过生命上限
+- `gain_max_health(target, delta)` 修改实体/英雄生命上限
+- 攻击力小于 1 的实体不能发起战斗攻击、额外攻击或狂热追击
+
+### 光环与费用
+
+实体顶层可声明：
+
+```text
+aura_buff("ally", "spell_immune", -1, 1, true)
+aura_buff("ally", "hatred", -4, 4, false)
+aura_hand_cost("self", "kind == 'spell'", -1)
+aura_spell_cost("enemy", 6)
+```
+
+- 光环 Buff 按来源实体追踪；来源离场后只移除该来源提供的 Buff
+- `aura_hand_cost` 按筛选器修改手牌费用
+- `aura_spell_cost` 修改锦囊费用
+- `draw_cards(count, cost_delta)` 和随机塞牌可追加费用修饰符
 
 固定位置形式也遵循上述阵营、当前位置、组队和挤压规则。
 

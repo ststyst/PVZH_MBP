@@ -23,6 +23,7 @@ const EVENTS: Array[String] = [
 	"healed",
 	"attack_changed",
 	"health_changed",
+	"damaged",
 	"turn_start",
 	"turn_end",
 	"ally_die",
@@ -45,12 +46,19 @@ const SELECTORS: Array[String] = [
 	"other_allies",
 	"random_ally",
 	"mounted",
+	"all_allies_and_hero",
+	"all_entities",
+	"all_heroes_and_entities",
+	"enemy_entities",
+	"enemy_hero_or_entities",
+	"frozen_enemies",
+	"injured_allies",
 ]
 
 ## 原语（只能作为语句调用）
 const PRIMITIVES: Dictionary = {
 	"summon": {"min": 1, "max": 3},
-	"draw_cards": {"min": 1, "max": 1},
+	"draw_cards": {"min": 1, "max": 2},
 	"deal_damage": {"min": 2, "max": 2},
 	"heal": {"min": 2, "max": 2},
 	"gain_shield": {"min": 2, "max": 2},
@@ -64,8 +72,8 @@ const PRIMITIVES: Dictionary = {
 	"add_marker": {"min": 2, "max": 2},
 	"remove_marker": {"min": 2, "max": 2},
 	"move_entity": {"min": 1, "max": 3},
-	"add_random_cards_to_deck": {"min": 3, "max": 3},
-	"add_random_cards_to_hand": {"min": 3, "max": 3},
+	"add_random_cards_to_deck": {"min": 3, "max": 4},
+	"add_random_cards_to_hand": {"min": 3, "max": 4},
 	"choose_column": {"min": 0, "max": 0},
 	"place_environment": {"min": 2, "max": 2},
 	"apply_buff": {"min": 2, "max": 3},
@@ -74,6 +82,11 @@ const PRIMITIVES: Dictionary = {
 	"remove_entity": {"min": 1, "max": 1},
 	"evolve": {"min": 1, "max": 1},
 	"base": {"min": 0, "max": 0},
+	"gain_max_health": {"min": 2, "max": 2},
+	"deal_damage_each": {"min": 2, "max": 8},
+	"aura_buff": {"min": 5, "max": 5},
+	"aura_hand_cost": {"min": 3, "max": 3},
+	"aura_spell_cost": {"min": 2, "max": 2},
 }
 
 ## 查询函数（可以出现在表达式里）
@@ -86,6 +99,8 @@ const QUERIES: Dictionary = {
 	"max": {"min": 2, "max": 2},
 	"marker_count": {"min": 1, "max": 1},
 	"entities_in_column": {"min": 3, "max": 4},
+	"random_targets": {"min": 2, "max": 2},
+	"count_buff_in_columns": {"min": 4, "max": 4},
 }
 
 var tokens: Array[Dictionary] = []

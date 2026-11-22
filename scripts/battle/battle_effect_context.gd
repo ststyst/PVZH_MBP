@@ -81,6 +81,42 @@ func resolve_selector(selector: String) -> Array:
 			return _random_one(_entities_of(engine.opposite_side(caster_side)))
 		"all_allies":
 			return _entities_of(caster_side)
+		"all_allies_and_hero":
+			var allies_and_hero: Array = [engine.hero_handle(caster_side)]
+			allies_and_hero.append_array(_entities_of(caster_side))
+			return allies_and_hero
+		"all_entities":
+			var all_entities: Array = []
+			for entity: BattleEntity in engine.entities:
+				if entity.alive:
+					all_entities.append(entity)
+			return all_entities
+		"all_heroes_and_entities":
+			var everyone: Array = [
+				engine.hero_handle(engine.SIDE_P), engine.hero_handle(engine.SIDE_Z),
+			]
+			for entity: BattleEntity in engine.entities:
+				if entity.alive:
+					everyone.append(entity)
+			return everyone
+		"enemy_entities":
+			return _entities_of(engine.opposite_side(caster_side))
+		"enemy_hero_or_entities":
+			var enemy_targets: Array = [engine.hero_handle(engine.opposite_side(caster_side))]
+			enemy_targets.append_array(_entities_of(engine.opposite_side(caster_side)))
+			return enemy_targets
+		"frozen_enemies":
+			var frozen: Array = []
+			for entity: BattleEntity in _entities_of(engine.opposite_side(caster_side)):
+				if entity.is_frozen():
+					frozen.append(entity)
+			return frozen
+		"injured_allies":
+			var injured: Array = []
+			for entity: BattleEntity in _entities_of(caster_side):
+				if entity.health < entity.max_health:
+					injured.append(entity)
+			return injured
 		"other_allies":
 			return _other_allies()
 		"random_ally":
@@ -160,8 +196,8 @@ func summon(card_name: String, column: Variant = null, max_column: Variant = nul
 	return []
 
 
-func draw_cards(count: int) -> int:
-	return engine.draw_cards(caster_side, count)
+func draw_cards(count: int, cost_delta: int = 0) -> int:
+	return engine.draw_cards(caster_side, count, cost_delta)
 
 
 func deal_damage(target, amount: int) -> void:
@@ -208,7 +244,7 @@ func move_entity_to_chosen_position(target) -> bool:
 	return engine.move_entity_handle(target, chosen_column, chosen_slot)
 
 
-func add_random_cards(zone: String, target, count: int, filter_text: String) -> int:
+func add_random_cards(zone: String, target, count: int, filter_text: String, cost_delta: int = 0) -> int:
 	var target_side: String = ""
 	if target is BattleEntity:
 		target_side = target.side
@@ -216,7 +252,7 @@ func add_random_cards(zone: String, target, count: int, filter_text: String) -> 
 		target_side = target.substr(5)
 	if target_side.is_empty():
 		return 0
-	return engine.add_random_cards(target_side, zone, count, filter_text)
+	return engine.add_random_cards(target_side, zone, count, filter_text, cost_delta)
 
 
 func entities_in_column(min_offset: int, max_offset: int, side_filter: String, min_attack: int = 0) -> Array:
@@ -243,6 +279,38 @@ func entities_in_column(min_offset: int, max_offset: int, side_filter: String, m
 			continue
 		result.append(entity)
 	return result
+
+
+func random_targets(count: int, selector: String) -> Array:
+	var candidates: Array = resolve_selector(selector)
+	for index: int in range(candidates.size() - 1, 0, -1):
+		var swap_index: int = engine.rng.randi_range(0, index)
+		var temp: Variant = candidates[index]
+		candidates[index] = candidates[swap_index]
+		candidates[swap_index] = temp
+	return candidates.slice(0, mini(maxi(count, 0), candidates.size()))
+
+
+func count_buff_in_columns(side_filter: String, min_offset: int, max_offset: int, buff_id: String) -> int:
+	var reference_column: int = base_column
+	if reference_column < 0 and _self_handle is BattleEntity:
+		reference_column = _self_handle.column
+	if reference_column < 0:
+		return 0
+	var count: int = 0
+	for entity: BattleEntity in engine.entities:
+		if not entity.alive or not entity.has_buff(buff_id):
+			continue
+		if entity.column < reference_column + mini(min_offset, max_offset):
+			continue
+		if entity.column > reference_column + maxi(min_offset, max_offset):
+			continue
+		if side_filter == "ally" and entity.side != caster_side:
+			continue
+		if side_filter == "enemy" and entity.side == caster_side:
+			continue
+		count += 1
+	return count
 
 
 func place_environment(column_offset: int, card_name: String) -> bool:
@@ -284,6 +352,10 @@ func remove_entity(target) -> bool:
 	if is_spell_source and target.is_spell_immune():
 		return false
 	return engine.remove_entity_handle(target)
+
+
+func gain_max_health(target, delta: int) -> void:
+	engine.change_max_health_handle(target, delta)
 
 
 func choose_targets(count: int, selector: String) -> bool:

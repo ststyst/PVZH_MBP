@@ -1162,6 +1162,10 @@ func test_any_empty_slot_allowed() -> void:
 func test_animation_cues_on_attack_and_death() -> void:
 	var card: CardData = cards.get_card("pvzh:gnoll").duplicate()
 	card.card_id = "pvzh:anim_test_unit"
+	card.english_name = "anim_test_unit"
+	card.chinese_name = "动画测试"
+	card.attack = 1
+	card.health = 5
 	card.animation_script = CardAnimationScript.parse(
 		"when attack:\n    play_animation(self, \"slash\", \"whole\")\nwhen die:\n    play_animation(self, \"death\", \"art\")"
 	)
@@ -1171,8 +1175,16 @@ func test_animation_cues_on_attack_and_death() -> void:
 	engine.animation_cue.connect(func(trigger: String, _actor: BattleEntity, _target: Variant) -> void:
 		cues.append(trigger)
 	)
+	var z_card: CardData = card.duplicate()
+	z_card.card_id = "pvzh:anim_test_target"
+	z_card.english_name = "anim_test_target"
+	z_card.chinese_name = "动画目标"
+	z_card.attack = 0
+	z_card.health = 1
+	z_card.animation_script = CardAnimationScript.parse("when die:\n    play_animation(self, \"death\", \"art\")")
+	cards.cards[z_card.card_id] = z_card
 	engine.summon_card("p", card, 0, BattleEngine.SLOT_NORMAL)
-	engine.summon_card("z", cards.get_card("pvzh:hound"), 0, BattleEngine.SLOT_NORMAL)
+	engine.summon_card("z", z_card, 0, BattleEngine.SLOT_NORMAL)
 	engine.phase = BattleEngine.PHASE_SPELL
 	engine.active_side = "z"
 	engine.advance_phase()

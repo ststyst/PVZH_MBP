@@ -176,7 +176,7 @@ func add_card_to_deck(side: String, card_id: String) -> BattleCardInstance:
 
 
 ## 从卡牌数据库筛选卡牌，随机插入牌库或手牌的随机位置。
-func add_random_cards(side: String, zone: String, count: int, filter_text: String) -> int:
+func add_random_cards(side: String, zone: String, count: int, filter_text: String, cost_delta: int = 0) -> int:
 	var state: BattlePlayerState = players.get(side, null)
 	if state == null or count <= 0 or card_database == null:
 		return 0
@@ -199,6 +199,7 @@ func add_random_cards(side: String, zone: String, count: int, filter_text: Strin
 			break
 		var card_id: String = pool[rng.randi_range(0, pool.size() - 1)]
 		var instance: BattleCardInstance = _new_card_instance(card_id, side, zone)
+		instance.cost_delta += cost_delta
 		if zone == "hand":
 			state.hand.insert(rng.randi_range(0, state.hand.size()), instance)
 		else:
@@ -377,7 +378,8 @@ func effective_hand_cost(side: String, hand_index: int) -> int:
 	var special_discount: int = 1 if (
 		phase == PHASE_SPECIAL and state.special_offer_id == instance.instance_id
 	) else 0
-	return maxi(card.cost + instance.cost_delta - special_discount, 0)
+	var spell_aura: int = _aura_spell_cost_delta(side, card) if card.is_spell() else 0
+	return maxi(card.cost + instance.cost_delta + spell_aura + _aura_hand_cost_delta(side, instance) - special_discount, 0)
 
 
 func effective_hand_attack(side: String, hand_index: int) -> int:
@@ -534,7 +536,7 @@ func _grant_energy(side: String) -> void:
 # ----- 抽牌 -----
 
 ## 返回实际抽到的张数；达到手牌上限或牌库为空时停止。
-func draw_cards(side: String, count: int) -> int:
+func draw_cards(side: String, count: int, cost_delta: int = 0) -> int:
 	var state: BattlePlayerState = players.get(side, null)
 	if state == null or count <= 0:
 		return 0
@@ -546,7 +548,10 @@ func draw_cards(side: String, count: int) -> int:
 		if state.deck.is_empty():
 			_log("%s 牌库已空，无法抽牌" % side.to_upper())
 			break
+		var instance: BattleCardInstance = state.deck.back()
 		_move_top_deck_to_hand(state)
+		if instance != null:
+			instance.cost_delta += cost_delta
 		drawn += 1
 	return drawn
 
@@ -668,18 +673,43 @@ func target_candidates(card: CardData, caster_side: String) -> Array:
 ## 多目标锦囊 choose(count, selector) 的候选实体。
 func choose_candidates(selector: String, caster_side: String, exclude_spell_immune: bool = false) -> Array:
 	var wanted_side: String = caster_side
+	var include_hero: bool = false
 	match selector:
 		"all_enemies", "random_enemy":
 			wanted_side = opposite_side(caster_side)
 		"all_allies", "other_allies", "random_ally":
 			wanted_side = caster_side
+		"enemy_hero_or_entities":
+			wanted_side = opposite_side(caster_side)
+			include_hero = true
+		"all_allies_and_hero":
+			wanted_side = caster_side
+			include_hero = true
+		"enemy_entities":
+			wanted_side = opposite_side(caster_side)
+		"frozen_enemies":
+			wanted_side = opposite_side(caster_side)
+		"injured_allies":
+			wanted_side = caster_side
+		"all_heroes_and_entities":
+			var everyone: Array = [hero_handle(SIDE_P), hero_handle(SIDE_Z)]
+			for entity: BattleEntity in entities:
+				if entity.is_alive():
+					everyone.append(entity)
+			return everyone
 		_:
 			return []
 	var handles: Array = []
+	if include_hero:
+		handles.append(hero_handle(wanted_side))
 	for entity: BattleEntity in entities:
 		if not entity.is_alive() or entity.side != wanted_side:
 			continue
 		if exclude_spell_immune and entity.is_spell_immune():
+			continue
+		if selector == "frozen_enemies" and not entity.is_frozen():
+			continue
+		if selector == "injured_allies" and entity.health >= entity.max_health:
 			continue
 		handles.append(entity)
 	return handles
@@ -698,7 +728,7 @@ func play_card(side: String, hand_index: int, target: Dictionary = {}) -> Dictio
 	var card: CardData = get_card(instance.card_id)
 	if card == null:
 		return _fail("卡牌不存在。")
-	var effective_cost: int = maxi(card.cost + instance.cost_delta, 0)
+	var effective_cost: int = effective_hand_cost(side, hand_index)
 	if effective_cost > state.energy:
 		return _fail("费用不足（需要 %d，当前 %d）。" % [effective_cost, state.energy])
 	if phase == PHASE_SPELL and not (card.is_spell() or card.is_environment()):
@@ -949,6 +979,7 @@ func summon_card(side: String, card: CardData, column: int, slot: int, attack_bo
 	])
 	_apply_enter_keywords(entity)
 	_refresh_all_counter_bonuses()
+	_refresh_auras()
 	return entity
 
 
@@ -1093,6 +1124,7 @@ func move_entity(entity: BattleEntity, column: int, slot: int, fire_event: bool 
 	if fire_event:
 		_fire_event("position_changed", entity)
 	_refresh_all_counter_bonuses()
+	_refresh_auras()
 	changed.emit()
 	return true
 
@@ -1170,11 +1202,36 @@ func remove_entity_handle(handle: Variant) -> bool:
 		return false
 	entity.alive = false
 	entity.buffs.clear()
+	entity.buff_sources.clear()
 	entities.erase(entity)
 	_refresh_all_counter_bonuses()
+	_refresh_auras()
 	_log("%s 被移除（不触发死亡）" % entity.display_name())
 	changed.emit()
 	return true
+
+
+func change_max_health_handle(handle: Variant, delta: int) -> void:
+	if delta == 0:
+		return
+	if handle is BattleEntity:
+		var entity: BattleEntity = handle
+		if not entity.alive:
+			return
+		entity.max_health = maxi(entity.max_health + delta, 0)
+		entity.health = mini(entity.health, entity.max_health)
+		if entity.max_health < 1:
+			if entity.has_buff("invincible"):
+				entity.remove_buff("invincible")
+			else:
+				entity.health = 0
+	elif handle is String and handle.begins_with("hero:"):
+		var state: BattlePlayerState = players.get(handle.substr(5), null)
+		if state == null:
+			return
+		state.hero_max_health = maxi(state.hero_max_health + delta, 1)
+		state.hero_health = mini(state.hero_health, state.hero_max_health)
+	changed.emit()
 
 
 func damage_handle(handle: Variant, amount: int, source_keywords: Array = [], from_spell: bool = false) -> void:
@@ -1193,16 +1250,17 @@ func damage_entity(entity: BattleEntity, amount: int, source_keywords: Array = [
 		_log("%s 免疫本次伤害" % entity.display_name())
 		return
 	var damage: int = amount
-	if entity.has_keyword("armored"):
-		damage = maxi(damage - 1, 0)
-	var absorbed: int = mini(entity.shield, damage)
-	entity.shield -= absorbed
-	damage -= absorbed
+	if not source_keywords.has("bullseye"):
+		damage = maxi(damage - entity.shield, 0)
 	if damage > 0:
 		entity.health -= damage
 	if source_keywords.has("deadly") and damage > 0:
 		entity.health = 0
 	_log("%s 受到 %d 点伤害（生命 %d，护盾 %d）" % [entity.display_name(), amount, entity.health, entity.shield])
+	if damage > 0 or source_keywords.has("deadly"):
+		_fire_event("damaged", entity)
+	if entity.has_buff("hatred") and source_entity != null and source_entity.alive and source_entity.side != entity.side:
+		destroy_handle(source_entity)
 	if damage > 0 or source_keywords.has("deadly"):
 		_fire_event("health_changed", entity)
 	if source_keywords.has("frost") and damage > 0:
@@ -1264,6 +1322,108 @@ func _trigger_hunt(entered: BattleEntity) -> void:
 func _refresh_all_counter_bonuses() -> void:
 	for entity: BattleEntity in entities:
 		_refresh_counter_bonus(entity)
+
+
+func _refresh_auras() -> void:
+	var desired: Dictionary = {}
+	for source: BattleEntity in entities:
+		if not source.alive or source.card == null or source.card.ability_script == null:
+			continue
+		for aura: Dictionary in source.card.ability_script.aura_buffs:
+			var buff_id: String = str(aura.get("buff", ""))
+			var min_column: int = source.column + int(aura.get("min_column", 0))
+			var max_column: int = source.column + int(aura.get("max_column", 0))
+			for target: BattleEntity in entities:
+				if not target.alive:
+					continue
+				if target == source and bool(aura.get("exclude_self", false)):
+					continue
+				if target.column < min_column or target.column > max_column:
+					continue
+				if not _aura_target_matches(str(aura.get("selector", "ally")), source.side, target.side):
+					continue
+				var key: String = "%d:%s" % [target.entity_id, buff_id]
+				var sources: Array = desired.get(key, [])
+				sources.append(source.entity_id)
+				desired[key] = sources
+	for target: BattleEntity in entities:
+		for buff_id: Variant in target.buff_sources.keys():
+			var active_sources: Array = desired.get("%d:%s" % [target.entity_id, str(buff_id)], [])
+			for source_id: Variant in (target.buff_sources[buff_id] as Array).duplicate():
+				if not active_sources.has(int(source_id)):
+					target.remove_buff_from_source(str(buff_id), int(source_id))
+	for key: Variant in desired.keys():
+		var parts: PackedStringArray = str(key).split(":")
+		if parts.size() != 2:
+			continue
+		var target_id: int = int(parts[0])
+		var buff_id: String = parts[1]
+		var target: BattleEntity = _entity_by_id(target_id)
+		if target == null:
+			continue
+		for source_id: Variant in desired[key]:
+			target.add_buff_from_source(buff_id, int(source_id))
+
+
+func _aura_target_matches(selector: String, source_side: String, target_side: String) -> bool:
+	match selector:
+		"enemy":
+			return target_side != source_side
+		"all":
+			return true
+		"self":
+			return target_side == source_side
+		_:
+			return target_side == source_side
+
+
+func _entity_by_id(entity_id: int) -> BattleEntity:
+	for entity: BattleEntity in entities:
+		if entity.entity_id == entity_id:
+			return entity
+	return null
+
+
+func _aura_spell_cost_delta(player_side: String, card: CardData) -> int:
+	if card == null:
+		return 0
+	var delta_total: int = 0
+	for source: BattleEntity in entities:
+		if not source.alive or source.card == null or source.card.ability_script == null:
+			continue
+		for aura: Dictionary in source.card.ability_script.aura_spell_costs:
+			var target_side: String = str(aura.get("side", "enemy"))
+			var applies: bool = (
+				(target_side == "enemy" and player_side != source.side)
+				or (target_side == "self" and player_side == source.side)
+				or target_side == "all"
+			)
+			if applies:
+				delta_total += int(aura.get("delta", 0))
+	return delta_total
+
+
+func _aura_hand_cost_delta(player_side: String, instance: BattleCardInstance) -> int:
+	var card: CardData = get_card(instance.card_id)
+	if card == null:
+		return 0
+	var delta_total: int = 0
+	for source: BattleEntity in entities:
+		if not source.alive or source.card == null or source.card.ability_script == null:
+			continue
+		for aura: Dictionary in source.card.ability_script.aura_hand_costs:
+			var target_side: String = str(aura.get("side", "self"))
+			var applies: bool = (
+				(target_side == "enemy" and player_side != source.side)
+				or (target_side == "self" and player_side == source.side)
+				or target_side == "all"
+			)
+			if not applies:
+				continue
+			var filter := CardFilter.new()
+			if filter.parse(str(aura.get("filter", ""))) and filter.matches(card):
+				delta_total += int(aura.get("delta", 0))
+	return delta_total
 
 
 func _refresh_counter_bonus(entity: BattleEntity) -> void:
@@ -1332,6 +1492,7 @@ func heal_handle(handle: Variant, amount: int) -> void:
 		entity.health = mini(entity.health + amount, entity.max_health)
 		if entity.health != before:
 			_fire_event("health_changed", entity)
+			_fire_event("healed", entity)
 	elif handle is String and handle.begins_with("hero:"):
 		var state: BattlePlayerState = players.get(handle.substr(5), null)
 		if state != null:
@@ -1356,14 +1517,22 @@ func buff_handle(handle: Variant, attack_delta: int, health_delta: int) -> void:
 	var old_attack: int = entity.attack
 	var old_health: int = entity.health
 	entity.attack = maxi(entity.attack + attack_delta, 0)
-	entity.health += health_delta
-	entity.max_health += maxi(health_delta, 0)
+	if health_delta != 0:
+		entity.max_health += health_delta
+		entity.health = maxi(entity.health + health_delta, 0)
 	var did_change_attack: bool = entity.attack != old_attack
 	var did_change_health: bool = entity.health != old_health
 	if did_change_attack:
 		_fire_event("attack_changed", entity)
 	if did_change_health:
 		_fire_event("health_changed", entity)
+		if health_delta > 0:
+			_fire_event("healed", entity)
+	if entity.max_health < 1:
+		if entity.has_buff("invincible"):
+			entity.remove_buff("invincible")
+		else:
+			entity.health = 0
 
 
 func give_keyword_handle(handle: Variant, keyword: String, value: int = 0) -> bool:
@@ -1510,7 +1679,7 @@ func _combat_column(column: int) -> void:
 	for attacker: BattleEntity in attackers:
 		if winner != "":
 			return
-		if not attacker.alive or attacker.is_frozen():
+		if not attacker.alive or attacker.is_frozen() or attacker.attack < 1:
 			continue
 		_execute_entity_attack(attacker, _choose_attack_target(attacker), 0)
 	_flush_column_deaths(column)
@@ -1520,7 +1689,7 @@ func _combat_column(column: int) -> void:
 	for attacker: BattleEntity in attackers:
 		if winner != "":
 			return
-		if attacker.alive and attacker.has_keyword("double_strike") and not attacker.is_frozen():
+		if attacker.alive and attacker.has_keyword("double_strike") and not attacker.is_frozen() and attacker.attack >= 1:
 			_execute_entity_attack(attacker, _choose_attack_target(attacker), 0)
 	_flush_column_deaths(column)
 	if winner != "":
@@ -1536,7 +1705,7 @@ func _choose_attack_target(attacker: BattleEntity) -> Variant:
 
 
 func force_entity_attack(attacker: BattleEntity) -> bool:
-	if attacker == null or not attacker.alive or attacker.is_frozen():
+	if attacker == null or not attacker.alive or attacker.is_frozen() or attacker.attack < 1:
 		return false
 	_execute_entity_attack(attacker, _choose_attack_target(attacker), 0, true)
 	_flush_column_deaths(attacker.column)
@@ -1545,7 +1714,7 @@ func force_entity_attack(attacker: BattleEntity) -> bool:
 
 
 func _execute_entity_attack(attacker: BattleEntity, target: Variant, frenzy_depth: int, extra_attack: bool = false) -> void:
-	if attacker == null or not attacker.alive or attacker.is_frozen():
+	if attacker == null or not attacker.alive or attacker.is_frozen() or attacker.attack < 1:
 		return
 	if extra_attack:
 		_fire_event("extra_attack", attacker)
@@ -1643,6 +1812,7 @@ func _flush_deaths() -> void:
 			_trigger_zone_ally_death(entity)
 			entities.erase(entity)
 	_refresh_all_counter_bonuses()
+	_refresh_auras()
 	_check_game_over()
 
 
@@ -1662,6 +1832,7 @@ func _flush_column_deaths(column: int) -> void:
 			_trigger_zone_ally_death(entity)
 			entities.erase(entity)
 	_refresh_all_counter_bonuses()
+	_refresh_auras()
 	_check_game_over()
 
 

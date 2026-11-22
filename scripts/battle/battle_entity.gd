@@ -16,6 +16,8 @@ var keywords: Array[String] = []
 var keyword_values: Dictionary = {}
 ## 内置 Buff/Debuff：buff_id -> 层数（默认 1）
 var buffs: Dictionary = {}
+## buff_id -> 提供该 Buff 的来源实体 id 数组（用于光环来源追踪）
+var buff_sources: Dictionary = {}
 var team_up: bool = false
 var alive: bool = true
 ## 克制英雄词缀提供的临时攻击力
@@ -93,6 +95,37 @@ func remove_buff(buff_id: String) -> bool:
 	if not buffs.has(normalized):
 		return false
 	buffs.erase(normalized)
+	buff_sources.erase(normalized)
+	return true
+
+
+func add_buff_from_source(buff_id: String, source_id: int) -> bool:
+	var normalized: String = buff_id.strip_edges().to_lower()
+	if not CardBuffs.has(normalized):
+		return false
+	if has_keyword("debuff_immune") and CardBuffs.kind(normalized) == "debuff":
+		return false
+	var sources: Array = buff_sources.get(normalized, [])
+	if sources.has(source_id):
+		return false
+	sources.append(source_id)
+	buff_sources[normalized] = sources
+	buffs[normalized] = int(buffs.get(normalized, 0)) + 1
+	return true
+
+
+func remove_buff_from_source(buff_id: String, source_id: int) -> bool:
+	var normalized: String = buff_id.strip_edges().to_lower()
+	var sources: Array = buff_sources.get(normalized, [])
+	if not sources.has(source_id):
+		return false
+	sources.erase(source_id)
+	if sources.is_empty():
+		buff_sources.erase(normalized)
+		buffs.erase(normalized)
+	else:
+		buff_sources[normalized] = sources
+		buffs[normalized] = maxi(int(buffs.get(normalized, 1)) - 1, 1)
 	return true
 
 

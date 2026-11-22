@@ -21,6 +21,12 @@ const DEFINITIONS: Dictionary = {
 		"description": "不会成为锦囊目标，锦囊效果和伤害无法影响它。",
 		"clear_after_combat": false,
 	},
+	"hatred": {
+		"label": "仇恨",
+		"kind": "buff",
+		"description": "受到实体伤害时，消灭伤害来源。",
+		"clear_after_combat": false,
+	},
 }
 
 

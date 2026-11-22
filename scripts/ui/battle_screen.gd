@@ -466,6 +466,19 @@ func _on_player_hero_pressed() -> void:
 
 
 func _on_hero_target(side: String) -> void:
+	if _pending_mode == "choose_spell" and _pending_candidates.has(engine.hero_handle(side)):
+		var hero_handle: String = engine.hero_handle(side)
+		if _pending_handles.has(hero_handle):
+			_pending_handles.erase(hero_handle)
+		else:
+			var limit: int = int(_card_multi_target_requirement(
+				engine.hand_card(player_side, _pending_card_index)
+			).get("count", 0))
+			if _pending_handles.size() < limit:
+				_pending_handles.append(hero_handle)
+		_set_status("已选择 %d 个目标；点击“确认目标”结算。" % _pending_handles.size())
+		_refresh_all()
+		return
 	if _pending_mode == "target" and _pending_candidates.has(engine.hero_handle(side)):
 		if _special_target_mode:
 			_resolve_special_target({"handle": engine.hero_handle(side)})
