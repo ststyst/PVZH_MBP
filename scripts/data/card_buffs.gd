@@ -39,6 +39,12 @@ const DEFINITIONS: Dictionary = {
 		"description": "先进行死亡判定；存活则移回手牌，手牌满时放到牌库顶。",
 		"clear_after_combat": false,
 	},
+	"frozen_tombstone": {
+		"label": "冻结墓碑",
+		"kind": "debuff",
+		"description": "墓碑揭示时先获得冻结，再移除该 Debuff。",
+		"clear_after_combat": false,
+	},
 }
 
 

@@ -151,6 +151,11 @@ func put_hand_card_on_deck_top(_target, _filter_text: String) -> bool:
 	return false
 
 
+func shuffle_buried_positions(_target) -> bool:
+	push_warning("EffectContext.shuffle_buried_positions 未实现：需要战斗层提供")
+	return false
+
+
 ## 当前效果来源是否可以作用于该目标；锦囊来源会过滤锦囊免疫。
 func can_target(_target) -> bool:
 	return true

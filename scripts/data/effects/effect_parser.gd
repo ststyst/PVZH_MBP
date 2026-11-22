@@ -96,6 +96,7 @@ const PRIMITIVES: Dictionary = {
 	"double_death_effects": {"min": 0, "max": 0},
 	"put_card_on_deck_top": {"min": 2, "max": 2},
 	"put_hand_card_on_deck_top": {"min": 2, "max": 2},
+	"shuffle_buried_positions": {"min": 1, "max": 1},
 }
 
 ## 查询函数（可以出现在表达式里）
@@ -110,6 +111,7 @@ const QUERIES: Dictionary = {
 	"entities_in_column": {"min": 3, "max": 4},
 	"random_targets": {"min": 2, "max": 2},
 	"count_buff_in_columns": {"min": 4, "max": 4},
+	"buried_in_columns": {"min": 3, "max": 3},
 }
 
 var tokens: Array[Dictionary] = []

@@ -75,11 +75,24 @@
 
 ## 五、事件
 
-目前支持：
+目前支持：`enter`（入场）、`die`（死亡）、`attack`（攻击）、`attacked`（受击）、`damaged`（实际受到伤害）、
+`healed`（被治疗）、`attack_changed`（攻击力变化）、`health_changed`（生命值变化）、`turn_start`（回合开始）、
+`turn_end`（回合结束）、`ally_die`（友方实体死亡，可触发牌库/手牌被动）、`position_changed`（被卡牌移动）、
+`buff_applied` / `buff_removed`（Buff 添加/移除）、`extra_attack`（额外攻击）、`evolved`（进化成功）、
+`mounted`（底座被放置实体）、`tombstone_enter`（埋入墓碑）、`tombstone_reveal`（墓碑揭示）。
 
-`enter`（入场）、`die`（死亡）、`attack`（攻击）、`attacked`（受击）、`healed`（被治疗）、
-`attack_changed`（攻击力变化）、`health_changed`（生命值变化）、`turn_start`（回合开始）、`turn_end`（回合结束）、
-`ally_die`（友方实体死亡，可触发牌库/手牌中的卡牌被动）、`position_changed`（实体被卡牌效果移动位置）。
+### 事件触发判定
+
+- `attack`：每次实际发起攻击都触发；双重打击的第二次也触发
+- `extra_attack`：`force_attack` 或狂热追加攻击触发；双重打击第二次不触发
+- `damaged`：只有在隐形、实体防御、无敌、锦囊免疫等全部结算后，**最终伤害 > 0** 才触发；
+  致命也要求最终伤害 > 0
+- `healed`：实际回复生命或生命值增益成功时触发
+- `die`：生命值降至 1 以下后触发；被 `remove_entity` 移除不触发
+- `tombstone_enter`：实体埋入墓碑时触发，不触发 `enter`
+- `tombstone_reveal`：Z 方锦囊阶段结束揭示时触发，随后触发 `enter`
+- Buff 光环来源离场时只移除该来源提供的 Buff，不重复移除其他来源
+- 事件默认只响应自己；环境/底座监听其所在列/挂载；需要监听其他实体时使用过滤条件
 
 ### 区域被动
 
@@ -395,6 +408,17 @@ add_random_cards_to_hand(enemy_hero, 1, "keyword == 'team_up' and not tribe == '
 - 例：`"deck_includable == false"` 可以显式允许不可组入卡牌
 - 比较值建议用引号；布尔值写 `true` / `false`
 
+### 生命值减益
+
+- 生命值减益同时降低当前生命和生命上限
+- 无视护盾、隐形、无敌等伤害减免
+- 不触发 `damaged`
+- 当前生命小于 1 时，即使有无敌 Buff 也会死亡
+- 对手牌中的实体牌进行数值变化时：
+  - 攻击力不会低于 0
+  - 防御力不会低于 0
+  - 生命值不会低于 1
+
 ### 墓碑
 
 ```text
@@ -408,6 +432,15 @@ when tombstone_enter:
 ```
 
 - 埋入墓碑期间，敌方看不到实体信息；低层快照用 `public_entity_snapshot(viewer_side)` 过滤
+- 埋入墓碑的实体不会受到任何伤害，也不会成为普通实体锦囊目标；但仍可被 `destroy` 消灭
+- 墓碑专用选择器/查询：`all_buried`、`buried_entities`、`buried_in_column`、`buried_in_columns(side, -2, 2)`
+- 弹回墓碑：`apply_buff(target, 'bounce')`，效果与普通实体相同；离开时只广播费用变化，不广播实体信息
+- 冻结墓碑：`apply_buff(target, 'frozen_tombstone')`；揭示时先施加 `frozen`，再移除 `frozen_tombstone`，最后结算入场
+- 移动墓碑：使用 `move_entity`；不广播实体信息
+- 打乱墓碑位置预留 `shuffle_buried_positions` 引擎接口，伪代码示例：
+  ```text
+  shuffle_buried_positions(hero)
+  ```
 - 墓碑费用通过 `visible_energy_for(side, viewer_side)` 对敌方隐藏
 - 对场上实体施加 `tombstone` 词缀会立刻埋入并触发 `tombstone_enter`
 - 揭示后恢复正常入场结算

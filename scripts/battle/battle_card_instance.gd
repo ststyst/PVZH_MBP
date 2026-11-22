@@ -8,6 +8,8 @@ var card_id: String = ""
 var owner_side: String = ""
 var zone: String = "deck"
 var attack_bonus: int = 0
+var health_bonus: int = 0
+var shield_bonus: int = 0
 var cost_delta: int = 0
 ## 这张牌实例被额外赋予的词缀数值（同名卡的其他副本不受影响）。
 var keyword_values: Dictionary = {}
@@ -34,6 +36,8 @@ func to_dict() -> Dictionary:
 		"owner_side": owner_side,
 		"zone": zone,
 		"attack_bonus": attack_bonus,
+		"health_bonus": health_bonus,
+		"shield_bonus": shield_bonus,
 		"cost_delta": cost_delta,
 		"keyword_values": keyword_values.duplicate(true),
 	}
@@ -46,6 +50,8 @@ static func from_dict(data: Dictionary) -> BattleCardInstance:
 	instance.owner_side = str(data.get("owner_side", ""))
 	instance.zone = str(data.get("zone", "deck"))
 	instance.attack_bonus = int(data.get("attack_bonus", 0))
+	instance.health_bonus = int(data.get("health_bonus", 0))
+	instance.shield_bonus = int(data.get("shield_bonus", 0))
 	instance.cost_delta = int(data.get("cost_delta", 0))
 	var raw_keywords: Variant = data.get("keyword_values", {})
 	if raw_keywords is Dictionary:

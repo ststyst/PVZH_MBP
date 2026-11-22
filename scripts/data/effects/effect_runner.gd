@@ -169,6 +169,10 @@ func _exec_primitive(statement: Dictionary) -> void:
 				context.put_random_card_on_deck_top(deck_targets[0], deck_filter)
 			else:
 				context.put_hand_card_on_deck_top(deck_targets[0], deck_filter)
+		"shuffle_buried_positions":
+			var shuffle_targets: Array = _resolve_argument_target(arguments[0])
+			if shuffle_targets.size() == 1:
+				context.shuffle_buried_positions(shuffle_targets[0])
 		"gain_max_health":
 			var max_health_targets: Array = _resolve_argument_target(arguments[0])
 			var max_health_delta: int = _as_int(_eval(arguments[1], {}))
@@ -208,7 +212,9 @@ func _exec_target_primitive(primitive_name: String, arguments: Array, line: int)
 	for argument_index: int in range(1, arguments.size()):
 		extra_values.append(_eval(arguments[argument_index], {}))
 	for handle: Variant in handles:
-		if handle == null or not context.can_target(handle):
+		if handle == null:
+			continue
+		if primitive_name not in ["destroy", "remove_entity"] and not context.can_target(handle):
 			continue
 		match primitive_name:
 			"deal_damage":
@@ -325,6 +331,12 @@ func _eval_call(expression: Dictionary, facts: Dictionary) -> Variant:
 			var count_max: int = _as_int(_eval(arguments[2], facts))
 			var count_buff: String = _as_string(_eval(arguments[3], facts))
 			return context.count_buff_in_columns(count_side, count_min, count_max, count_buff)
+		"buried_in_columns":
+			return context.buried_in_columns(
+				_as_string(_eval(arguments[0], facts)),
+				_as_int(_eval(arguments[1], facts)),
+				_as_int(_eval(arguments[2], facts)),
+			)
 		_:
 			_error("原语只能作为语句调用：%s" % function_name, _line_of(expression))
 			return null

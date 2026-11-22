@@ -54,10 +54,11 @@ func set_spell_source(value: bool) -> void:
 
 
 func can_target(handle) -> bool:
-	if not is_spell_source:
-		return true
 	if handle is BattleEntity:
-		return not handle.is_spell_immune()
+		if handle.has_buff("buried"):
+			return false
+		if is_spell_source:
+			return not handle.is_spell_immune()
 	return true
 
 
@@ -323,6 +324,26 @@ func random_targets(count: int, selector: String) -> Array:
 	return candidates.slice(0, mini(maxi(count, 0), candidates.size()))
 
 
+func buried_in_columns(side_filter: String, min_offset: int, max_offset: int) -> Array:
+	var reference_column: int = base_column
+	if reference_column < 0 and _self_handle is BattleEntity:
+		reference_column = _self_handle.column
+	var result: Array = []
+	for entity: BattleEntity in engine.entities:
+		if not entity.alive or not entity.has_buff("buried"):
+			continue
+		if entity.column < reference_column + mini(min_offset, max_offset):
+			continue
+		if entity.column > reference_column + maxi(min_offset, max_offset):
+			continue
+		if side_filter == "ally" and entity.side != caster_side:
+			continue
+		if side_filter == "enemy" and entity.side == caster_side:
+			continue
+		result.append(entity)
+	return result
+
+
 func count_buff_in_columns(side_filter: String, min_offset: int, max_offset: int, buff_id: String) -> int:
 	var reference_column: int = base_column
 	if reference_column < 0 and _self_handle is BattleEntity:
@@ -398,6 +419,11 @@ func put_random_card_on_deck_top(target, filter_text: String) -> bool:
 func put_hand_card_on_deck_top(target, filter_text: String) -> bool:
 	var side: String = _side_of(target)
 	return false if side.is_empty() else engine.put_hand_card_on_deck_top(side, filter_text)
+
+
+func shuffle_buried_positions(target) -> bool:
+	var side: String = _side_of(target)
+	return false if side.is_empty() else engine.shuffle_buried_positions(side)
 
 
 func _side_of(target) -> String:

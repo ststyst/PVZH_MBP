@@ -9,6 +9,10 @@ signal game_finished(winner_side: String)
 signal hero_damaged(side: String, amount: int, source_keywords: Array)
 ## 动画触发：trigger = attack / ability / die；target 为 BattleEntity 或 "hero:x"
 signal animation_cue(trigger: String, actor: BattleEntity, target: Variant)
+## 弹射动画：hide_identity 为 true 时不广播实体具体信息
+signal bounce_fx(actor: BattleEntity, target: BattleEntity, hide_identity: bool)
+## 墓碑离场费用广播（不包含实体具体信息）
+signal tombstone_cost_broadcast(side: String, amount: int)
 
 const SIDE_P: String = "p"
 const SIDE_Z: String = "z"
@@ -191,6 +195,28 @@ func put_random_card_on_deck_top(side: String, filter_text: String) -> bool:
 		return false
 	var instance: BattleCardInstance = _new_card_instance(matches[rng.randi_range(0, matches.size() - 1)], side, "deck")
 	state.deck.insert(0, instance)
+	changed.emit()
+	return true
+
+
+func shuffle_buried_positions(side: String) -> bool:
+	var buried: Array[BattleEntity] = []
+	for entity: BattleEntity in entities:
+		if entity.alive and entity.side == side and entity.has_buff("buried"):
+			buried.append(entity)
+	if buried.size() < 2:
+		return false
+	var positions: Array[Vector2i] = []
+	for entity: BattleEntity in buried:
+		positions.append(Vector2i(entity.column, entity.slot))
+	for index: int in range(positions.size() - 1, 0, -1):
+		var swap_index: int = rng.randi_range(0, index)
+		var temp: Vector2i = positions[index]
+		positions[index] = positions[swap_index]
+		positions[swap_index] = temp
+	for index: int in range(buried.size()):
+		buried[index].column = positions[index].x
+		buried[index].slot = positions[index].y
 	changed.emit()
 	return true
 
@@ -826,6 +852,7 @@ func play_card(side: String, hand_index: int, target: Dictionary = {}) -> Dictio
 				side, card, column, slot, instance.attack_bonus
 			)
 			evolved_entity.apply_instance_keywords(instance)
+			_apply_instance_stats(evolved_entity, instance)
 			if not evolved_entity.has_buff("buried"):
 				_fire_event("enter", evolved_entity, target_handles)
 			_apply_enter_keywords(evolved_entity)
@@ -850,6 +877,7 @@ func play_card(side: String, hand_index: int, target: Dictionary = {}) -> Dictio
 			mounted_entity.health += base_health
 			mounted_entity.shield += base_shield
 			mounted_entity.apply_instance_keywords(instance)
+			_apply_instance_stats(mounted_entity, instance)
 			if not mounted_entity.has_buff("buried"):
 				_fire_event("enter", mounted_entity, target_handles)
 			_apply_enter_keywords(mounted_entity)
@@ -864,6 +892,7 @@ func play_card(side: String, hand_index: int, target: Dictionary = {}) -> Dictio
 			side, card, column, slot, instance.attack_bonus
 		)
 		entity.apply_instance_keywords(instance)
+		_apply_instance_stats(entity, instance)
 		if not entity.has_buff("buried"):
 			_fire_event("enter", entity, target_handles)
 		_apply_enter_keywords(entity)
@@ -1301,6 +1330,8 @@ func damage_handle(handle: Variant, amount: int, source_keywords: Array = [], fr
 func damage_entity(entity: BattleEntity, amount: int, source_keywords: Array = [], from_spell: bool = false, source_entity: BattleEntity = null) -> void:
 	if entity == null or not entity.alive:
 		return
+	if entity.has_buff("buried"):
+		return
 	if entity.is_invincible() or (from_spell and entity.is_spell_immune()):
 		_log("%s 免疫本次伤害" % entity.display_name())
 		return
@@ -1348,8 +1379,12 @@ func _apply_bounce(entity: BattleEntity) -> bool:
 		return false
 	var card_id: String = entity.card.card_id if entity.card != null else ""
 	var side: String = entity.side
+	var was_buried: bool = entity.has_buff("buried")
 	if card_id.is_empty():
 		return false
+	bounce_fx.emit(null, entity, was_buried)
+	if was_buried:
+		tombstone_cost_broadcast.emit(side, entity.card.cost if entity.card != null else 0)
 	var state: BattlePlayerState = players.get(side, null)
 	if state == null:
 		return false
@@ -1382,6 +1417,15 @@ func _clear_column_combat_buffs(column: int) -> void:
 				remove_buff_handle(entity, str(buff_id))
 
 
+func _apply_instance_stats(entity: BattleEntity, instance: BattleCardInstance) -> void:
+	if entity == null or instance == null:
+		return
+	entity.max_health = maxi(entity.max_health + instance.health_bonus, 1)
+	entity.health = clampi(entity.health + instance.health_bonus, 1, entity.max_health)
+	entity.shield = maxi(entity.shield + instance.shield_bonus, 0)
+
+
+
 func _apply_enter_keywords(entity: BattleEntity) -> void:
 	if entity == null:
 		return
@@ -1403,6 +1447,9 @@ func _reveal_tombstones() -> void:
 		if not entity.alive:
 			continue
 		remove_buff_handle(entity, "buried")
+		if entity.has_buff("frozen_tombstone"):
+			remove_buff_handle(entity, "frozen_tombstone")
+			apply_buff_handle(entity, "frozen", 1)
 		_fire_event("tombstone_reveal", entity)
 		_fire_event("enter", entity)
 	for side: String in [SIDE_P, SIDE_Z]:
@@ -1657,6 +1704,15 @@ func gain_shield_handle(handle: Variant, amount: int) -> void:
 
 
 func buff_handle(handle: Variant, attack_delta: int, health_delta: int) -> void:
+	if handle is BattleCardInstance:
+		var hand_instance: BattleCardInstance = handle
+		var hand_card: CardData = get_card(hand_instance.card_id)
+		if hand_card == null:
+			return
+		hand_instance.attack_bonus = maxi(hand_instance.attack_bonus + attack_delta, -hand_card.attack)
+		hand_instance.health_bonus = maxi(hand_instance.health_bonus + health_delta, 1 - hand_card.health)
+		changed.emit()
+		return
 	if not handle is BattleEntity:
 		return
 	var entity: BattleEntity = handle
@@ -1674,11 +1730,10 @@ func buff_handle(handle: Variant, attack_delta: int, health_delta: int) -> void:
 		_fire_event("health_changed", entity)
 		if health_delta > 0:
 			_fire_event("healed", entity)
-	if entity.max_health < 1:
+	if entity.max_health < 1 or (health_delta < 0 and entity.health < 1):
 		if entity.has_buff("invincible"):
 			entity.remove_buff("invincible")
-		else:
-			entity.health = 0
+		entity.health = 0
 
 
 func give_keyword_handle(handle: Variant, keyword: String, value: int = 0) -> bool:
