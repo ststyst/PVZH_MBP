@@ -20,6 +20,98 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 color = Color(0.0705882, 0.0784314, 0.109804, 1)
+[node name="ArtPlaceholders" type="Control" parent="Background"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="BattleBackgroundImage" type="TextureRect" parent="Background/ArtPlaceholders"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 6
+
+[node name="BoardArtArea" type="Control" parent="Background/ArtPlaceholders"]
+unique_name_in_owner = true
+layout_mode = 1
+anchor_left = 0.05
+anchor_top = 0.2
+anchor_right = 0.95
+anchor_bottom = 0.8
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="BoardArtTexture" type="TextureRect" parent="Background/ArtPlaceholders/BoardArtArea"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 6
+
+[node name="BoardArtTint" type="ColorRect" parent="Background/ArtPlaceholders/BoardArtArea"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.12, 0.16, 0.22, 0.22)
+
+[node name="BoardArtLabel" type="Label" parent="Background/ArtPlaceholders/BoardArtArea"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.55, 0.65, 0.75, 0.75)
+theme_override_font_sizes/font_size = 13
+text = "棋盘素材区 90% × 60%"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="EnemyHeroArtArea" type="TextureRect" parent="Background/ArtPlaceholders"]
+unique_name_in_owner = true
+layout_mode = 1
+anchor_left = 0.05
+anchor_top = 0.02
+anchor_right = 0.28
+anchor_bottom = 0.14
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 6
+
+[node name="PlayerHeroArtArea" type="TextureRect" parent="Background/ArtPlaceholders"]
+unique_name_in_owner = true
+layout_mode = 1
+anchor_left = 0.05
+anchor_top = 0.86
+anchor_right = 0.28
+anchor_bottom = 0.98
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 6
 
 [node name="Margin" type="MarginContainer" parent="."]
 layout_mode = 1

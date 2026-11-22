@@ -27,10 +27,46 @@ const ICON_INFO: String = "res://assets/ui/deck_menu/info.png"
 @onready var status_label: Label = %StatusLabel
 @onready var card_menu: PopupMenu = %CardMenu
 @onready var info_dialog: CardInfoDialog = %CardInfoDialog
+@onready var deck_background_image: TextureRect = %DeckBackgroundImage
+@onready var hero_portrait_area: TextureRect = %HeroPortraitArea
+@onready var deck_header_art_area: TextureRect = %DeckHeaderArtArea
 
 var _deck: DeckData = null
 var _menu_card_id: String = ""
 var _menu_from_deck: bool = false
+
+
+func set_deck_background(texture: Texture2D) -> void:
+	if deck_background_image != null:
+		deck_background_image.texture = texture
+
+
+func set_deck_background_path(path: String) -> void:
+	if path.is_empty():
+		set_deck_background(null)
+		return
+	var texture: Texture2D = load(path) as Texture2D
+	if texture != null:
+		set_deck_background(texture)
+
+
+func set_hero_portrait(texture: Texture2D) -> void:
+	if hero_portrait_area != null:
+		hero_portrait_area.texture = texture
+
+
+func set_hero_portrait_path(path: String) -> void:
+	if path.is_empty():
+		set_hero_portrait(null)
+		return
+	var texture: Texture2D = load(path) as Texture2D
+	if texture != null:
+		set_hero_portrait(texture)
+
+
+func set_deck_header_art(texture: Texture2D) -> void:
+	if deck_header_art_area != null:
+		deck_header_art_area.texture = texture
 
 
 func _ready() -> void:

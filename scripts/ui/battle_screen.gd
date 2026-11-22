@@ -9,6 +9,8 @@ const CARD_TILE_SCENE: PackedScene = preload("res://scenes/cards/CardTile.tscn")
 const ENTITY_VIEW_SCENE: PackedScene = preload("res://scenes/battle/BattleEntityView.tscn")
 const AI_INTERVAL: float = 0.7
 
+signal battle_background_changed(texture: Texture2D)
+
 var engine: BattleEngine = null
 var player_side: String = "p"
 var enemy_side: String = "z"
@@ -49,10 +51,72 @@ var _ai_accum: float = 0.0
 @onready var _special_play_button: Button = %SpecialPlayButton
 @onready var _special_hand_button: Button = %SpecialHandButton
 @onready var _card_info_dialog: CardInfoDialog = %CardInfoDialog
+@onready var _battle_background_image: TextureRect = %BattleBackgroundImage
+@onready var _board_art_area: Control = %BoardArtArea
+@onready var _enemy_hero_art: TextureRect = %EnemyHeroArtArea
+@onready var _player_hero_art: TextureRect = %PlayerHeroArtArea
 
 var _board_columns: Array[Dictionary] = []
 var _mulligan_used: Array[bool] = []
 var _entity_views: Dictionary = {}
+
+
+## 运行时切换战斗背景；传 null 清空背景图。
+func set_battle_background(texture: Texture2D) -> void:
+	if _battle_background_image == null:
+		return
+	_battle_background_image.texture = texture
+	battle_background_changed.emit(texture)
+
+
+func set_battle_background_path(path: String) -> void:
+	if path.is_empty():
+		set_battle_background(null)
+		return
+	var texture: Texture2D = load(path) as Texture2D
+	if texture != null:
+		set_battle_background(texture)
+
+
+func clear_battle_background() -> void:
+	set_battle_background(null)
+
+
+func get_battle_background() -> Texture2D:
+	return _battle_background_image.texture if _battle_background_image != null else null
+
+
+## 替换 90% × 60% 棋盘区域素材。
+func set_board_art(texture: Texture2D) -> void:
+	if _board_art_area == null:
+		return
+	var art: TextureRect = _board_art_area.get_node_or_null("BoardArtTexture") as TextureRect
+	if art != null:
+		art.texture = texture
+
+
+func set_board_art_path(path: String) -> void:
+	if path.is_empty():
+		set_board_art(null)
+		return
+	var texture: Texture2D = load(path) as Texture2D
+	if texture != null:
+		set_board_art(texture)
+
+
+func set_hero_art(side: String, texture: Texture2D) -> void:
+	var target: TextureRect = _player_hero_art if side == player_side else _enemy_hero_art
+	if target != null:
+		target.texture = texture
+
+
+func set_hero_art_path(side: String, path: String) -> void:
+	if path.is_empty():
+		set_hero_art(side, null)
+		return
+	var texture: Texture2D = load(path) as Texture2D
+	if texture != null:
+		set_hero_art(side, texture)
 var _views_by_entity_id: Dictionary = {}
 var _animation_queue: Array[Dictionary] = []
 var _animation_busy: bool = false

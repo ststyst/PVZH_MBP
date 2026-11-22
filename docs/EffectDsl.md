@@ -425,7 +425,7 @@ add_random_cards_to_hand(enemy_hero, 1, "keyword == 'team_up' and not tribe == '
 # 实体词缀：tombstone
 # 入场时自动获得 buried Buff，不触发 when enter，只触发 when tombstone_enter
 when tombstone_enter:
-    ...
+	...
 
 # Z 方锦囊阶段结束时：
 # 按列从左到右移除 buried，依次触发 tombstone_reveal 和 enter
@@ -458,9 +458,9 @@ when tombstone_enter:
 
 ```text
 when hand_played:
-    gain_attack(1)
+	gain_attack(1)
 when ally_attack_gained:
-    buff_stats(self, 0, 1)
+	buff_stats(self, 0, 1)
 ```
 
 - 这两条异能只在手牌/牌库区域生效
@@ -531,7 +531,7 @@ put_hand_card_on_deck_top(hero, "kind == spell")
 ```text
 double_death_effects()
 when die:
-    deal_damage(random_enemy_in_column_or_hero, 5)
+	deal_damage(random_enemy_in_column_or_hero, 5)
 ```
 
 结算顺序：
@@ -547,10 +547,10 @@ when die:
 
 ```text
 when enter(side != 'enemy'):
-    buff_stats(self, 1, 0)
+	buff_stats(self, 1, 0)
 when enter:
-    summon('novice')
-    summon('novice')
+	summon('novice')
+	summon('novice')
 ```
 
 - 光环类 `when enter` 与入场效果按事件块顺序依次结算
@@ -560,7 +560,7 @@ when enter:
 
 ```text
 when enter:
-    add_random_cards_to_hand(hero, 2, 'kind == spell', -1)
+	add_random_cards_to_hand(hero, 2, 'kind == spell', -1)
 ```
 
 目标示例：
