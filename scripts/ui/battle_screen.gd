@@ -39,6 +39,7 @@ var _ai_accum: float = 0.0
 @onready var _end_phase_button: Button = %EndPhaseButton
 @onready var _confirm_targets_button: Button = %ConfirmTargetsButton
 @onready var _hand_row: HBoxContainer = %HandRow
+@onready var _hand_scroll: ScrollContainer = %HandScroll
 @onready var _mulligan_overlay: Control = %MulliganOverlay
 @onready var _mulligan_row: HBoxContainer = %MulliganRow
 @onready var _mulligan_confirm_button: Button = %MulliganConfirmButton
@@ -724,6 +725,19 @@ func _pending_slot_valid(column: int, slot: int) -> bool:
 
 # ----- 状态刷新 -----
 
+func _align_layout_to_art() -> void:
+	if _board_art_area == null or _board == null:
+		return
+	var board_art: TextureRect = _board_art_area.get_node_or_null("BoardArtTexture") as TextureRect
+	if board_art != null:
+		_board.global_position = board_art.global_position
+		_board.size = board_art.size
+	var hand_placeholder: Control = get_node_or_null("Background/ArtPlaceholders/HandScroll") as Control
+	if hand_placeholder != null and _hand_scroll != null:
+		_hand_scroll.global_position = hand_placeholder.global_position
+		_hand_scroll.size = hand_placeholder.size
+
+
 func _on_engine_changed() -> void:
 	_refresh_all()
 
@@ -971,6 +985,7 @@ func _phase_key() -> String:
 
 
 func _process(delta: float) -> void:
+	_align_layout_to_art()
 	_update_long_press(delta)
 	if engine == null or not _started:
 		return

@@ -10,9 +10,9 @@ const RARITY_COLORS: Dictionary = {
 	"super rare": Color(0.78, 0.55, 1.00),
 	"legend": Color(1.00, 0.72, 0.32),
 }
-const CARD_SIZE: Vector2 = Vector2(160, 200)
-const ART_BOX: Vector2 = Vector2(144, 84)
-const ART_CENTER: Vector2 = Vector2(80, 50)
+const CARD_SIZE: Vector2 = Vector2(126, 104)
+const ART_BOX: Vector2 = Vector2(110, 48)
+const ART_CENTER: Vector2 = Vector2(63, 28)
 
 var card_id: String = ""
 

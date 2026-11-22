@@ -168,8 +168,8 @@ text = "手牌 0 · 牌库 0"
 [node name="Board" type="HBoxContainer" parent="Margin/Root" unique_id=488875423]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(648, 590)
-size_flags_horizontal = 4
 layout_mode = 2
+size_flags_horizontal = 4
 size_flags_vertical = 3
 theme_override_constants/separation = 4
 
@@ -186,7 +186,6 @@ text = "第1列"
 horizontal_alignment = 1
 
 [node name="ZTeamButton" type="Button" parent="Margin/Root/Board/Column1" unique_id=591684975]
-custom_minimum_size = Vector2(0, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -194,7 +193,6 @@ theme_override_font_sizes/font_size = 10
 clip_text = true
 
 [node name="ZNormalButton" type="Button" parent="Margin/Root/Board/Column1" unique_id=1812467483]
-custom_minimum_size = Vector2(0, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -207,7 +205,6 @@ size_flags_vertical = 3
 size_flags_stretch_ratio = 0.333
 
 [node name="PNormalButton" type="Button" parent="Margin/Root/Board/Column1" unique_id=1457443803]
-custom_minimum_size = Vector2(0, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -215,7 +212,6 @@ theme_override_font_sizes/font_size = 10
 clip_text = true
 
 [node name="PTeamButton" type="Button" parent="Margin/Root/Board/Column1" unique_id=1382217987]
-custom_minimum_size = Vector2(0, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -235,7 +231,6 @@ text = "第2列"
 horizontal_alignment = 1
 
 [node name="ZTeamButton" type="Button" parent="Margin/Root/Board/Column2" unique_id=212979608]
-custom_minimum_size = Vector2(0, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -243,7 +238,6 @@ theme_override_font_sizes/font_size = 10
 clip_text = true
 
 [node name="ZNormalButton" type="Button" parent="Margin/Root/Board/Column2" unique_id=97026494]
-custom_minimum_size = Vector2(0, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -256,7 +250,6 @@ size_flags_vertical = 3
 size_flags_stretch_ratio = 0.333
 
 [node name="PNormalButton" type="Button" parent="Margin/Root/Board/Column2" unique_id=1740885115]
-custom_minimum_size = Vector2(0, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -264,7 +257,6 @@ theme_override_font_sizes/font_size = 10
 clip_text = true
 
 [node name="PTeamButton" type="Button" parent="Margin/Root/Board/Column2" unique_id=2048881948]
-custom_minimum_size = Vector2(0, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -284,7 +276,6 @@ text = "第3列"
 horizontal_alignment = 1
 
 [node name="ZTeamButton" type="Button" parent="Margin/Root/Board/Column3" unique_id=36324169]
-custom_minimum_size = Vector2(0, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -292,7 +283,6 @@ theme_override_font_sizes/font_size = 10
 clip_text = true
 
 [node name="ZNormalButton" type="Button" parent="Margin/Root/Board/Column3" unique_id=995268167]
-custom_minimum_size = Vector2(0, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -305,7 +295,6 @@ size_flags_vertical = 3
 size_flags_stretch_ratio = 0.333
 
 [node name="PNormalButton" type="Button" parent="Margin/Root/Board/Column3" unique_id=2099593083]
-custom_minimum_size = Vector2(0, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -313,7 +302,6 @@ theme_override_font_sizes/font_size = 10
 clip_text = true
 
 [node name="PTeamButton" type="Button" parent="Margin/Root/Board/Column3" unique_id=1247432102]
-custom_minimum_size = Vector2(0, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -333,7 +321,6 @@ text = "第4列"
 horizontal_alignment = 1
 
 [node name="ZTeamButton" type="Button" parent="Margin/Root/Board/Column4" unique_id=636511219]
-custom_minimum_size = Vector2(0, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -341,7 +328,6 @@ theme_override_font_sizes/font_size = 10
 clip_text = true
 
 [node name="ZNormalButton" type="Button" parent="Margin/Root/Board/Column4" unique_id=1742556668]
-custom_minimum_size = Vector2(0, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -354,7 +340,6 @@ size_flags_vertical = 3
 size_flags_stretch_ratio = 0.333
 
 [node name="PNormalButton" type="Button" parent="Margin/Root/Board/Column4" unique_id=885078504]
-custom_minimum_size = Vector2(0, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -362,7 +347,6 @@ theme_override_font_sizes/font_size = 10
 clip_text = true
 
 [node name="PTeamButton" type="Button" parent="Margin/Root/Board/Column4" unique_id=1918384931]
-custom_minimum_size = Vector2(0, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -382,7 +366,6 @@ text = "第5列"
 horizontal_alignment = 1
 
 [node name="ZTeamButton" type="Button" parent="Margin/Root/Board/Column5" unique_id=2020468523]
-custom_minimum_size = Vector2(0, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -390,7 +373,6 @@ theme_override_font_sizes/font_size = 10
 clip_text = true
 
 [node name="ZNormalButton" type="Button" parent="Margin/Root/Board/Column5" unique_id=1084482366]
-custom_minimum_size = Vector2(0, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -403,7 +385,6 @@ size_flags_vertical = 3
 size_flags_stretch_ratio = 0.333
 
 [node name="PNormalButton" type="Button" parent="Margin/Root/Board/Column5" unique_id=1261178835]
-custom_minimum_size = Vector2(0, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -411,7 +392,6 @@ theme_override_font_sizes/font_size = 10
 clip_text = true
 
 [node name="PTeamButton" type="Button" parent="Margin/Root/Board/Column5" unique_id=2127170772]
-custom_minimum_size = Vector2(0, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -487,8 +467,8 @@ horizontal_alignment = 2
 [node name="HandScroll" type="ScrollContainer" parent="Margin/Root" unique_id=213899237]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(690, 230)
-size_flags_horizontal = 4
 layout_mode = 2
+size_flags_horizontal = 4
 vertical_scroll_mode = 0
 
 [node name="HandRow" type="HBoxContainer" parent="Margin/Root/HandScroll" unique_id=1046752890]
