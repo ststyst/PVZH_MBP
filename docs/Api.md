@@ -673,13 +673,13 @@ func notify_display_state_changed(handle) -> void
 
 ```gdscript
 {
-    "zone": "board" | "hand" | "deck" | "card",
-    "side": "p" / "z" / "",
-    "attack": int,
-    "health": int,
-    "max_health": int,
-    "shield": int,
-    "cost": int,
+	"zone": "board" | "hand" | "deck" | "card",
+	"side": "p" / "z" / "",
+	"attack": int,
+	"health": int,
+	"max_health": int,
+	"shield": int,
+	"cost": int,
 }
 ```
 

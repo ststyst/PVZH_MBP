@@ -30,7 +30,9 @@ var _ai_accum: float = 0.0
 @onready var _player_hero_button: Button = %PlayerHeroButton
 @onready var _enemy_info_label: Label = %EnemyInfoLabel
 @onready var _player_info_label: Label = %PlayerInfoLabel
-@onready var _board: HBoxContainer = %Board
+@onready var _board: HBoxContainer = %BattleBoard
+@onready var _legacy_board: HBoxContainer = %Board
+@onready var _legacy_hand_scroll: ScrollContainer = %HandScroll
 @onready var _phase_label: Label = %PhaseLabel
 @onready var _turn_label: Label = %TurnLabel
 @onready var _timer_label: Label = %TimerLabel
@@ -38,7 +40,7 @@ var _ai_accum: float = 0.0
 @onready var _status_label: Label = %StatusLabel
 @onready var _end_phase_button: Button = %EndPhaseButton
 @onready var _confirm_targets_button: Button = %ConfirmTargetsButton
-@onready var _hand_row: HBoxContainer = %HandRow
+@onready var _hand_row: HBoxContainer = %HandColumns
 @onready var _mulligan_overlay: Control = %MulliganOverlay
 @onready var _mulligan_row: HBoxContainer = %MulliganRow
 @onready var _mulligan_confirm_button: Button = %MulliganConfirmButton
@@ -135,6 +137,8 @@ var _suppress_slot_click: bool = false
 
 func _ready() -> void:
 	_init_slot_styles()
+	_legacy_board.visible = false
+	_legacy_hand_scroll.visible = false
 	_collect_board_columns()
 	_enemy_hero_button.pressed.connect(_on_enemy_hero_pressed)
 	_player_hero_button.pressed.connect(_on_player_hero_pressed)
@@ -188,8 +192,51 @@ func _to_string_array(raw: Variant) -> Array[String]:
 
 # ----- 场景节点初始化 -----
 
+func _build_board_columns() -> void:
+	for column_index: int in range(BattleEngine.COLUMN_COUNT):
+		var column := VBoxContainer.new()
+		column.name = "Column%d" % (column_index + 1)
+		column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		column.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		column.add_theme_constant_override("separation", 2)
+		var env_label := Label.new()
+		env_label.name = "EnvLabel"
+		env_label.custom_minimum_size = Vector2(0, 22)
+		env_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		env_label.add_theme_font_size_override("font_size", 10)
+		env_label.text = "第%d列" % (column_index + 1)
+		column.add_child(env_label)
+		for side_slot: Array in [
+			["z", "ZTeamButton", BattleEngine.SLOT_TEAM_UP],
+			["z", "ZNormalButton", BattleEngine.SLOT_NORMAL],
+			["separator", "Separator", -1],
+			["p", "PNormalButton", BattleEngine.SLOT_NORMAL],
+			["p", "PTeamButton", BattleEngine.SLOT_TEAM_UP],
+		]:
+			var kind: String = str(side_slot[0])
+			if kind == "separator":
+				var separator := HSeparator.new()
+				separator.name = str(side_slot[1])
+				separator.size_flags_vertical = Control.SIZE_EXPAND_FILL
+				separator.size_flags_stretch_ratio = 0.333
+				column.add_child(separator)
+				continue
+			var button := Button.new()
+			button.name = str(side_slot[1])
+			button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			button.size_flags_vertical = Control.SIZE_EXPAND_FILL
+			button.custom_minimum_size = Vector2(0, 0)
+			button.add_theme_font_size_override("font_size", 10)
+			button.clip_text = true
+			button.text = ""
+			column.add_child(button)
+		_board.add_child(column)
+
+
 func _collect_board_columns() -> void:
 	_board_columns.clear()
+	if _board.get_child_count() == 0:
+		_build_board_columns()
 	for index: int in range(_board.get_child_count()):
 		var column: VBoxContainer = _board.get_child(index) as VBoxContainer
 		if column == null:
@@ -826,12 +873,21 @@ func _rebuild_hand() -> void:
 	if engine == null:
 		return
 	var state: BattlePlayerState = engine.players[player_side]
+	var current_column: VBoxContainer = null
 	for index: int in range(state.hand.size()):
 		var card: CardData = engine.hand_card_display(player_side, index)
 		if card == null:
 			continue
+		if index % 2 == 0:
+			current_column = VBoxContainer.new()
+			current_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
+			current_column.add_theme_constant_override("separation", 4)
+			_hand_row.add_child(current_column)
 		var tile: CardTile = CARD_TILE_SCENE.instantiate()
-		_hand_row.add_child(tile)
+		tile.custom_minimum_size = Vector2(126, 104)
+		tile.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		tile.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		current_column.add_child(tile)
 		tile.setup(card, 0, "", false)
 		tile.pressed.connect(_on_hand_pressed.bind(index))
 		var disabled: bool = not _can_player_act()

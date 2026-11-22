@@ -38,18 +38,18 @@ play_fx(global, "explosion")
 
 ```text
 when attack:
-    play_animation(self, "attack_swing", "whole")
-    wait(0.3)
-    play_animation(target, "hit_flash", "art")
+	play_animation(self, "attack_swing", "whole")
+	wait(0.3)
+	play_animation(target, "hit_flash", "art")
 when ability:
-    play_animation(self, "skill_glow", "background")
+	play_animation(self, "skill_glow", "background")
 when die:
-    play_animation(self, "death_tear", "whole")
+	play_animation(self, "death_tear", "whole")
 when cast:
-    play_animation(self, "cast_glow", "whole")
-    wait(0.2)
-    play_animation(target, "magic_hit", "art")
-    play_fx(global, "explosion")
+	play_animation(self, "cast_glow", "whole")
+	wait(0.2)
+	play_animation(target, "magic_hit", "art")
+	play_fx(global, "explosion")
 ```
 
 单行写法：
