@@ -94,6 +94,8 @@ const PRIMITIVES: Dictionary = {
 	"aura_hand_cost": {"min": 3, "max": 3},
 	"aura_spell_cost": {"min": 2, "max": 2},
 	"double_death_effects": {"min": 0, "max": 0},
+	"put_card_on_deck_top": {"min": 2, "max": 2},
+	"put_hand_card_on_deck_top": {"min": 2, "max": 2},
 }
 
 ## 查询函数（可以出现在表达式里）

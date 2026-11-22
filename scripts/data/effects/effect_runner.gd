@@ -160,6 +160,15 @@ func _exec_primitive(statement: Dictionary) -> void:
 				context.remove_entity(remove_targets[0])
 		"evolve", "base", "aura_buff", "aura_hand_cost", "aura_spell_cost", "double_death_effects":
 			pass
+		"put_card_on_deck_top", "put_hand_card_on_deck_top":
+			var deck_targets: Array = _resolve_argument_target(arguments[0])
+			var deck_filter: String = _as_string(_eval(arguments[1], {}))
+			if deck_targets.size() != 1:
+				_error("%s 需要单个英雄/阵营目标" % primitive_name, line)
+			elif primitive_name == "put_card_on_deck_top":
+				context.put_random_card_on_deck_top(deck_targets[0], deck_filter)
+			else:
+				context.put_hand_card_on_deck_top(deck_targets[0], deck_filter)
 		"gain_max_health":
 			var max_health_targets: Array = _resolve_argument_target(arguments[0])
 			var max_health_delta: int = _as_int(_eval(arguments[1], {}))

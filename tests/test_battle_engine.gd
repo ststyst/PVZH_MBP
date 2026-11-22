@@ -500,6 +500,52 @@ func test_card_filter_and_random_insert() -> void:
 	assert_true(found_gnoll, "塞入的卡牌英文名应为 gnoll")
 
 
+func test_bounce_and_invisible() -> void:
+	var engine: BattleEngine = _started_engine()
+	var card: CardData = _make_test_card("pvzh:test_bounce", "")
+	card.cost = 2
+	card.health = 3
+	var entity: BattleEntity = engine.summon_card("p", card, 0, 0)
+	var state: BattlePlayerState = engine.players["p"]
+	state.hand.clear()
+	assert_true(engine.apply_buff_handle(entity, "bounce"))
+	assert_false(entity.alive, "弹回应移除原实体")
+	assert_eq(state.hand.size(), 1, "弹回应将原牌加入手牌")
+	assert_eq(state.hand[0].card_id, "pvzh:test_bounce")
+	state.hand.clear()
+	var hand_limit: int = engine.mode.hand_limit
+	for _index: int in range(hand_limit):
+		state.hand.append(BattleCardInstance.create(100 + _index, "pvzh:gnoll", "p", "hand"))
+	var second: BattleEntity = engine.summon_card("p", card, 1, 0)
+	assert_true(engine.apply_buff_handle(second, "bounce"))
+	assert_eq(state.deck[0].card_id, "pvzh:test_bounce", "手牌满时弹回到牌库顶")
+	var invisible_card: CardData = _make_test_card("pvzh:test_invisible", "")
+	invisible_card.health = 5
+	invisible_card.keyword_values["invisible"] = 1
+	invisible_card.keywords.append("invisible")
+	var invisible: BattleEntity = engine.summon_card("p", invisible_card, 0, 0)
+	var before: int = invisible.health
+	engine.damage_entity(invisible, 4, [])
+	assert_eq(invisible.health, before, "隐形应免疫无必中伤害")
+	engine.damage_entity(invisible, 4, ["bullseye"])
+	assert_eq(invisible.health, before - 4, "必中伤害应无视隐形")
+	assert_true(engine.remove_entity_handle(invisible), "隐形不能阻止移除")
+
+
+func test_card_filter_cost_comparison() -> void:
+	var filter := CardFilter.new()
+	assert_true(filter.parse("cost <= 3"))
+	var cheap: CardData = _make_test_card("pvzh:test_cost_filter", "")
+	cheap.cost = 3
+	assert_true(filter.matches(cheap))
+	cheap.cost = 4
+	assert_false(filter.matches(cheap))
+	filter = CardFilter.new()
+	assert_true(filter.parse("cost > 2 and cost < 5"))
+	cheap.cost = 3
+	assert_true(filter.matches(cheap))
+
+
 func test_double_death_effects() -> void:
 	var engine: BattleEngine = _started_engine()
 	var mine_card: CardData = _make_test_card("pvzh:test_double_death_mine", "double_death_effects()")

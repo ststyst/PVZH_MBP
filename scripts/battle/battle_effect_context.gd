@@ -390,6 +390,24 @@ func gain_max_health(target, delta: int) -> void:
 	engine.change_max_health_handle(target, delta)
 
 
+func put_random_card_on_deck_top(target, filter_text: String) -> bool:
+	var side: String = _side_of(target)
+	return false if side.is_empty() else engine.put_random_card_on_deck_top(side, filter_text)
+
+
+func put_hand_card_on_deck_top(target, filter_text: String) -> bool:
+	var side: String = _side_of(target)
+	return false if side.is_empty() else engine.put_hand_card_on_deck_top(side, filter_text)
+
+
+func _side_of(target) -> String:
+	if target is BattleEntity:
+		return target.side
+	if target is String and target.begins_with("hero:"):
+		return target.substr(5)
+	return ""
+
+
 func choose_targets(count: int, selector: String) -> bool:
 	if chosen_targets.size() > maxi(count, 0):
 		return false

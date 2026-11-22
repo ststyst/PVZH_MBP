@@ -413,6 +413,52 @@ when tombstone_enter:
 - 揭示后恢复正常入场结算
 - `buried_in_column` 选择器可选当前列全部墓碑实体；`all_buried` 可选全部墓碑实体
 
+### 弹回、隐形与牌库顶
+
+```text
+apply_buff(target, 'bounce')
+apply_buff(target, 'bounce', 1)
+```
+
+`bounce` 是 Debuff：
+
+1. 先进行死亡判定
+2. 存活则移除实体（不触发死亡/亡语）
+3. 将原卡牌以数据库原始数据加入所属玩家手牌
+4. 手牌已满时插入牌库第 0 位
+5. 不触发抽牌或“牌库被插入”事件
+
+隐形词缀：
+
+```text
+give_keyword(self, 'invisible', 2)
+```
+
+- 数值 > 0 时免疫伤害类型不包含 `bullseye`（必中）的伤害
+- 不会免疫消灭 `destroy` 或移除 `remove_entity`
+- 每次回合结束，全场隐形数值 -1，最低为 0
+- 锦囊造成的伤害默认没有任何特殊伤害类型；`from_spell` 仅用于锦囊免疫与来源判断
+
+牌库顶操作：
+
+```text
+put_card_on_deck_top(hero, "cost <= 3")
+put_hand_card_on_deck_top(hero, "kind == spell")
+```
+
+- `put_card_on_deck_top` 从数据库随机抽一张符合筛选的牌放到牌库顶
+- `put_hand_card_on_deck_top` 将手牌中第一张符合筛选的牌移到牌库顶
+- 两者都不触发抽牌/插入事件
+- 筛选器支持 `cost < / <= / > / >= / == / !=`，并可与 `and/or/not` 组合
+
+`destroy` 的机制：
+
+- 不造成伤害，直接尝试将实体生命值设为 0
+- 仍会被无敌 Buff 阻止
+- 会被墓碑等离场规则处理
+- 隐形不阻止 `destroy`
+- `remove_entity` 与 `destroy` 不同：移除不触发死亡与亡语
+
 ### 示例卡牌与结算顺序
 
 终极地雷：

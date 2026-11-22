@@ -94,6 +94,12 @@ const DEFINITIONS: Dictionary = {
 		"description": "入场时埋入墓碑；Z 方锦囊阶段结束时按列揭示并结算入场。",
 		"allowed_kinds": ["entity"],
 	},
+	"invisible": {
+		"label": "隐形",
+		"description": "数值大于 0 时免疫不带必中的伤害；仍可被消灭/移除；回合结束数值 -1。",
+		"value": true,
+		"allowed_kinds": ["entity"],
+	},
 	"frost": {
 		"label": "寒霜",
 		"description": "伤害类型增加冰冻攻击；被命中的实体获得冰冻 Debuff。",

@@ -106,6 +106,22 @@ func _match_condition(node: Dictionary, card: CardData) -> bool:
 		"deck_includable":
 			var wanted: bool = value == "true" or value == "1"
 			return card.deck_includable == wanted if op == "==" or op == "=" else card.deck_includable != wanted
+		"cost":
+			var actual_cost: int = card.cost
+			var wanted_cost: int = int(value)
+			match op:
+				"<":
+					return actual_cost < wanted_cost
+				"<=":
+					return actual_cost <= wanted_cost
+				">":
+					return actual_cost > wanted_cost
+				">=":
+					return actual_cost >= wanted_cost
+				"!=":
+					return actual_cost != wanted_cost
+				_:
+					return actual_cost == wanted_cost
 		_:
 			return false
 	return actual == value if op == "==" or op == "=" else actual != value
@@ -126,9 +142,9 @@ func _tokenize(text: String) -> Array[Dictionary]:
 			result.append({"type": character, "value": character})
 			i += 1
 			continue
-		if character == "=" or character == "!" or character == "&" or character == "|":
+		if character == "=" or character == "!" or character == "&" or character == "|" or character == "<" or character == ">":
 			var two: String = text.substr(i, 2)
-			if two == "==" or two == "!=" or two == "&&" or two == "||":
+			if two == "==" or two == "!=" or two == "&&" or two == "||" or two == "<=" or two == ">=":
 				var op: String = two
 				if op == "&&":
 					result.append({"type": "IDENT", "value": "and"})
@@ -140,10 +156,16 @@ func _tokenize(text: String) -> Array[Dictionary]:
 					continue
 				if op == "!=":
 					op = "!="
+				elif op == "<=" or op == ">=":
+					op = op
 				else:
 					op = "=="
 				result.append({"type": "OP", "value": op})
 				i += 2
+				continue
+			if character == "<" or character == ">":
+				result.append({"type": "OP", "value": character})
+				i += 1
 				continue
 			if character == "=":
 				result.append({"type": "OP", "value": "=="})
@@ -225,7 +247,7 @@ func _parse_primary() -> Dictionary:
 		errors.append("筛选字段后需要 == 或 !=。")
 		return {"type": "cond", "field": field, "op": "==", "value": ""}
 	var operator: String = str(_advance().get("value", "=="))
-	if operator != "==" and operator != "!=":
+	if operator not in ["==", "!=", "<", "<=", ">", ">="]:
 		operator = "=="
 	if not _check_type("VALUE") and not _check_type("IDENT"):
 		errors.append("筛选条件需要比较值。")
@@ -250,6 +272,8 @@ func _normalize_field(field: String) -> String:
 			return "tribe"
 		"deck_includable", "includable":
 			return "deck_includable"
+		"cost", "费用":
+			return "cost"
 	return ""
 
 

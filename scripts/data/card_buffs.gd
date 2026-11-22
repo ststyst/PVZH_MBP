@@ -33,6 +33,12 @@ const DEFINITIONS: Dictionary = {
 		"description": "处于墓碑内；信息与费用对敌方隐匿，Z 方锦囊阶段结束时揭示。",
 		"clear_after_combat": false,
 	},
+	"bounce": {
+		"label": "弹回",
+		"kind": "debuff",
+		"description": "先进行死亡判定；存活则移回手牌，手牌满时放到牌库顶。",
+		"clear_after_combat": false,
+	},
 }
 
 

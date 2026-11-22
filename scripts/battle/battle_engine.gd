@@ -176,6 +176,44 @@ func add_card_to_deck(side: String, card_id: String) -> BattleCardInstance:
 
 
 ## 从卡牌数据库筛选卡牌，随机插入牌库或手牌的随机位置。
+func put_random_card_on_deck_top(side: String, filter_text: String) -> bool:
+	var state: BattlePlayerState = players.get(side, null)
+	if state == null or card_database == null:
+		return false
+	var filter := CardFilter.new()
+	if not filter.parse(filter_text):
+		return false
+	var matches: Array[String] = []
+	for card_id: String in card_database.all_card_ids():
+		if filter.matches(get_card(card_id)):
+			matches.append(card_id)
+	if matches.is_empty():
+		return false
+	var instance: BattleCardInstance = _new_card_instance(matches[rng.randi_range(0, matches.size() - 1)], side, "deck")
+	state.deck.insert(0, instance)
+	changed.emit()
+	return true
+
+
+func put_hand_card_on_deck_top(side: String, filter_text: String) -> bool:
+	var state: BattlePlayerState = players.get(side, null)
+	if state == null:
+		return false
+	var filter := CardFilter.new()
+	if not filter.parse(filter_text):
+		return false
+	for index: int in range(state.hand.size()):
+		var card: CardData = get_card(state.hand[index].card_id)
+		if filter.matches(card):
+			var instance: BattleCardInstance = state.hand[index]
+			state.hand.remove_at(index)
+			instance.zone = "deck"
+			state.deck.insert(0, instance)
+			changed.emit()
+			return true
+	return false
+
+
 func add_random_cards(side: String, zone: String, count: int, filter_text: String, cost_delta: int = 0) -> int:
 	var state: BattlePlayerState = players.get(side, null)
 	if state == null or count <= 0 or card_database == null:
@@ -1266,6 +1304,9 @@ func damage_entity(entity: BattleEntity, amount: int, source_keywords: Array = [
 	if entity.is_invincible() or (from_spell and entity.is_spell_immune()):
 		_log("%s 免疫本次伤害" % entity.display_name())
 		return
+	if entity.keyword_value("invisible") > 0 and not source_keywords.has("bullseye"):
+		_log("%s 的隐形免疫了本次伤害" % entity.display_name())
+		return
 	var damage: int = amount
 	if not source_keywords.has("bullseye"):
 		damage = maxi(damage - entity.shield, 0)
@@ -1287,6 +1328,8 @@ func damage_entity(entity: BattleEntity, amount: int, source_keywords: Array = [
 func apply_buff_handle(entity: BattleEntity, buff_id: String, amount: int = 1) -> bool:
 	if entity == null or not entity.alive or not CardBuffs.has(buff_id):
 		return false
+	if buff_id == "bounce":
+		return _apply_bounce(entity)
 	var applied: bool = false
 	for _index: int in range(maxi(amount, 1)):
 		if entity.add_buff(buff_id):
@@ -1295,6 +1338,31 @@ func apply_buff_handle(entity: BattleEntity, buff_id: String, amount: int = 1) -
 		_log("%s 获得 %s" % [entity.display_name(), CardBuffs.label(buff_id)])
 		_fire_event("buff_applied", entity)
 	return applied
+
+
+func _apply_bounce(entity: BattleEntity) -> bool:
+	if entity == null or not entity.alive:
+		return false
+	if entity.health < 1:
+		_flush_deaths()
+		return false
+	var card_id: String = entity.card.card_id if entity.card != null else ""
+	var side: String = entity.side
+	if card_id.is_empty():
+		return false
+	var state: BattlePlayerState = players.get(side, null)
+	if state == null:
+		return false
+	remove_entity_handle(entity)
+	var instance: BattleCardInstance = _new_card_instance(card_id, side, "hand")
+	if state.hand.size() < mode.hand_limit:
+		state.hand.append(instance)
+	else:
+		instance.zone = "deck"
+		state.deck.insert(0, instance)
+	_log("弹回：%s 返回%s" % [card_id, "手牌" if instance.zone == "hand" else "牌库顶"])
+	changed.emit()
+	return true
 
 
 func remove_buff_handle(entity: BattleEntity, buff_id: String) -> bool:
@@ -1876,6 +1944,10 @@ func _resolve_turn_end() -> void:
 				_fire_event("turn_end", entity)
 		_fire_environment_turn_event(column, "turn_end")
 		_flush_column_deaths(column)
+	for entity: BattleEntity in entities:
+		var invisible: int = entity.keyword_value("invisible")
+		if invisible > 0:
+			entity.keyword_values["invisible"] = invisible - 1
 
 
 func _flush_deaths() -> void:

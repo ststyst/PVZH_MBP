@@ -141,6 +141,16 @@ func gain_max_health(_target, _delta: int) -> void:
 	push_warning("EffectContext.gain_max_health 未实现：需要战斗层提供")
 
 
+func put_random_card_on_deck_top(_target, _filter_text: String) -> bool:
+	push_warning("EffectContext.put_random_card_on_deck_top 未实现：需要战斗层提供")
+	return false
+
+
+func put_hand_card_on_deck_top(_target, _filter_text: String) -> bool:
+	push_warning("EffectContext.put_hand_card_on_deck_top 未实现：需要战斗层提供")
+	return false
+
+
 ## 当前效果来源是否可以作用于该目标；锦囊来源会过滤锦囊免疫。
 func can_target(_target) -> bool:
 	return true
