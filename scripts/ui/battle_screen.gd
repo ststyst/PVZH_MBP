@@ -30,9 +30,7 @@ var _ai_accum: float = 0.0
 @onready var _player_hero_button: Button = %PlayerHeroButton
 @onready var _enemy_info_label: Label = %EnemyInfoLabel
 @onready var _player_info_label: Label = %PlayerInfoLabel
-@onready var _board: HBoxContainer = %BattleBoard
-@onready var _legacy_board: HBoxContainer = %Board
-@onready var _legacy_hand_scroll: ScrollContainer = %HandScroll
+@onready var _board: HBoxContainer = %Board
 @onready var _phase_label: Label = %PhaseLabel
 @onready var _turn_label: Label = %TurnLabel
 @onready var _timer_label: Label = %TimerLabel
@@ -40,7 +38,7 @@ var _ai_accum: float = 0.0
 @onready var _status_label: Label = %StatusLabel
 @onready var _end_phase_button: Button = %EndPhaseButton
 @onready var _confirm_targets_button: Button = %ConfirmTargetsButton
-@onready var _hand_row: HBoxContainer = %HandColumns
+@onready var _hand_row: HBoxContainer = %HandRow
 @onready var _mulligan_overlay: Control = %MulliganOverlay
 @onready var _mulligan_row: HBoxContainer = %MulliganRow
 @onready var _mulligan_confirm_button: Button = %MulliganConfirmButton
@@ -137,8 +135,6 @@ var _suppress_slot_click: bool = false
 
 func _ready() -> void:
 	_init_slot_styles()
-	_legacy_board.visible = false
-	_legacy_hand_scroll.visible = false
 	_collect_board_columns()
 	_enemy_hero_button.pressed.connect(_on_enemy_hero_pressed)
 	_player_hero_button.pressed.connect(_on_player_hero_pressed)
