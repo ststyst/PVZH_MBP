@@ -883,6 +883,7 @@ func _rebuild_hand() -> void:
 	if engine == null:
 		return
 	var state: BattlePlayerState = engine.players[player_side]
+	_hand_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	var current_column: VBoxContainer = null
 	for index: int in range(state.hand.size()):
 		var card: CardData = engine.hand_card_display(player_side, index)
@@ -890,13 +891,14 @@ func _rebuild_hand() -> void:
 			continue
 		if index % 2 == 0:
 			current_column = VBoxContainer.new()
-			current_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
+			current_column.custom_minimum_size = Vector2(126, 212)
+			current_column.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 			current_column.add_theme_constant_override("separation", 4)
 			_hand_row.add_child(current_column)
 		var tile: CardTile = CARD_TILE_SCENE.instantiate()
 		tile.custom_minimum_size = Vector2(126, 104)
-		tile.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		tile.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		tile.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		tile.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 		current_column.add_child(tile)
 		tile.setup(card, 0, "", false)
 		tile.pressed.connect(_on_hand_pressed.bind(index))
