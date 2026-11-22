@@ -608,3 +608,52 @@ DisplayService.apply_preset(str(presets[selected_index]["id"]))
   - 主界面预加载完成、主音量 0.5 → Master 总线 -6.02 dB；
   - 服务器登录返回未实现并保存 IP/账号（不存密码）；
   - 竖屏窗口（独立进程实测）：默认 533×947（9:16，屏幕可用高度 92% 内）；窗口拉成 722×893 时画面居中、左右黑边、完整可见；持久化预设 `405x720` 启动即生效；逻辑分辨率 720×1280 ↔ 1080×1920 切换正常。
+
+## 13. 词缀显示接口
+
+`BattleEngine` 提供：
+
+```gdscript
+signal keyword_changed(handle, keyword, old_value, new_value)
+
+func keyword_value_for(handle, keyword: String) -> int
+func has_keyword_for(handle, keyword: String) -> bool
+```
+
+- `handle` 可以是 `BattleEntity`、`BattleCardInstance` 或 `CardData`
+- 无数值词缀：具备返回 `1`，不具备返回 `0`
+- 有数值词缀：返回当前数值，不具备返回 `0`
+- 手牌实例会合并数据库基础词缀与实例附加词缀
+- `keyword_changed` 适合驱动图标替换、闪光、数字滚动和卡面动画
+
+`BattleEntity` 自身也有：
+
+```gdscript
+signal keyword_changed(keyword, old_value, new_value)
+func keyword_value_for(keyword: String) -> int
+func set_keyword_value(keyword: String, value: int) -> void
+```
+
+推荐 UI 侧适配函数：
+
+```gdscript
+func refresh_keyword_icon(handle) -> void
+func keyword_style_id(handle) -> String
+func keyword_badge_list(handle) -> Array[String]
+```
+
+### 素材推荐尺寸
+
+| 素材 | 推荐源尺寸 |
+|---|---|
+| 卡牌完整框 | 720 × 1000 PNG |
+| 卡牌插画 | 512 × 512 或 768 × 768，1:1 |
+| 手牌缩略图 | 256 × 356 |
+| 攻击力图标 | 128 × 128，显示 48–72 px |
+| 生命值图标 | 128 × 128，显示 48–72 px |
+| 防御值图标 | 128 × 128，显示 40–64 px |
+| 词缀徽章 | 128 × 128，显示 40–56 px |
+| Buff/Debuff 图标 | 128 × 128 |
+| 九宫格卡框边角 | 256 × 256，建议 16–24 px 边距 |
+
+所有图标建议透明通道，并保留 2×/3× 源图以适配 Android 高 DPI。

@@ -500,6 +500,46 @@ func test_card_filter_and_random_insert() -> void:
 	assert_true(found_gnoll, "塞入的卡牌英文名应为 gnoll")
 
 
+func test_keyword_query_and_change_signal() -> void:
+	var engine: BattleEngine = _started_engine()
+	var card: CardData = _make_test_card("pvzh:test_keyword_api", "")
+	card.keywords.append("triple_strike")
+	card.keywords.append("invisible")
+	card.keyword_values["invisible"] = 2
+	var entity: BattleEntity = engine.summon_card("p", card, 0, 0)
+	assert_eq(engine.keyword_value_for(entity, "triple_strike"), 1, "无数值词缀应返回 1")
+	assert_eq(engine.keyword_value_for(entity, "invisible"), 2, "有数值词缀应返回数值")
+	assert_eq(engine.keyword_value_for(entity, "frenzy"), 0, "不具备词缀应返回 0")
+	assert_true(engine.has_keyword_for(entity, "triple_strike"))
+	var changes: Array[Dictionary] = []
+	engine.keyword_changed.connect(func(handle, keyword, old_value, new_value) -> void:
+		changes.append({"handle": handle, "keyword": keyword, "old": old_value, "new": new_value})
+	)
+	engine.give_keyword_handle(entity, "invisible", 1)
+	assert_eq(engine.keyword_value_for(entity, "invisible"), 3)
+	assert_eq(changes.size(), 1, "词缀数值变化应发出回调")
+	assert_eq(changes[0].get("keyword", ""), "invisible")
+	engine.give_keyword_handle(entity, "triple_strike", 0)
+	assert_eq(changes.size(), 1, "已有无数值词缀不应重复发回调")
+
+
+func test_forced_attack_triggers_first_strike_once() -> void:
+	var engine: BattleEngine = _started_engine()
+	var z_state: BattlePlayerState = engine.players["z"]
+	z_state.charge_shield_durability = 0
+	z_state.hero_shield = 0
+	var before: int = z_state.hero_health
+	var card: CardData = _make_test_card("pvzh:test_forced_first_strike", "")
+	card.attack = 1
+	card.health = 5
+	card.keywords.append("first_strike")
+	card.keyword_values["first_strike"] = 2
+	var attacker: BattleEntity = engine.summon_card("p", card, 2, 0)
+	assert_true(engine.force_entity_attack(attacker))
+	assert_eq(z_state.hero_health, before - 3, "强制攻击应先触发一次先攻，再造成普通攻击伤害")
+	assert_true(engine._first_strike_used_this_round.has(attacker.entity_id), "强制攻击也应写入整轮先攻标记")
+
+
 func test_first_strike_once_per_round() -> void:
 	var engine: BattleEngine = _started_engine()
 	var z_state: BattlePlayerState = engine.players["z"]

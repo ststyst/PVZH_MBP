@@ -3,6 +3,8 @@ extends RefCounted
 ## 战斗中的一张卡牌实例（同名卡的不同副本拥有独立 instance_id）。
 ## 牌库/手牌里的攻击、费用修正直接挂在实例上，跟随时移动，打出时转为实体属性。
 
+signal keyword_changed(keyword: String, old_value: int, new_value: int)
+
 var instance_id: int = 0
 var card_id: String = ""
 var owner_side: String = ""

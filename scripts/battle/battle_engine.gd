@@ -9,6 +9,8 @@ signal game_finished(winner_side: String)
 signal hero_damaged(side: String, amount: int, source_keywords: Array)
 ## 动画触发：trigger = attack / ability / die；target 为 BattleEntity 或 "hero:x"
 signal animation_cue(trigger: String, actor: BattleEntity, target: Variant)
+## 词缀新增/数值变化（实体或手牌实例），用于 UI 动画与图标刷新
+signal keyword_changed(handle: Variant, keyword: String, old_value: int, new_value: int)
 ## 弹射动画：hide_identity 为 true 时不广播实体具体信息
 signal bounce_fx(actor: BattleEntity, target: BattleEntity, hide_identity: bool)
 ## 墓碑离场费用广播（不包含实体具体信息）
@@ -1755,9 +1757,38 @@ func buff_handle(handle: Variant, attack_delta: int, health_delta: int) -> void:
 		entity.health = 0
 
 
+func keyword_value_for(handle: Variant, keyword: String) -> int:
+	var normalized: String = CardKeywords.normalize(keyword)
+	if handle is BattleEntity:
+		return handle.keyword_value_for(normalized)
+	if handle is BattleCardInstance:
+		var instance: BattleCardInstance = handle
+		var card: CardData = get_card(instance.card_id)
+		if not CardKeywords.has_value(normalized):
+			if instance.keyword_values.has(normalized):
+				return 1
+			return 1 if card != null and card.has_keyword(normalized) else 0
+		var base_value: int = card.keyword_value(normalized) if card != null else 0
+		return base_value + int(instance.keyword_values.get(normalized, 0))
+	if handle is CardData:
+		if not CardKeywords.has_value(normalized):
+			return 1 if handle.has_keyword(normalized) else 0
+		return handle.keyword_value(normalized)
+	return 0
+
+
+func has_keyword_for(handle: Variant, keyword: String) -> bool:
+	return keyword_value_for(handle, keyword) > 0
+
+
 func give_keyword_handle(handle: Variant, keyword: String, value: int = 0) -> bool:
 	if handle is BattleEntity:
+		var old_value: int = handle.keyword_value_for(keyword)
 		var applied: bool = handle.add_keyword(keyword, value)
+		if applied:
+			var new_value: int = handle.keyword_value_for(keyword)
+			if new_value != old_value:
+				keyword_changed.emit(handle, CardKeywords.normalize(keyword), old_value, new_value)
 		if applied and handle.has_keyword("tombstone") and not handle.has_buff("buried"):
 			apply_buff_handle(handle, "buried", 1)
 			_fire_event("tombstone_enter", handle)
@@ -1777,10 +1808,13 @@ func give_keyword_to_hand_card(side: String, hand_index: int, keyword: String, v
 	var normalized: String = CardKeywords.normalize(keyword)
 	if not CardKeywords.has(normalized) or not CardKeywords.can_receive(normalized, card.kind):
 		return false
+	var old_value: int = keyword_value_for(instance, normalized)
 	if not instance.keyword_values.has(normalized):
 		instance.keyword_values[normalized] = 0
 	if CardKeywords.has_value(normalized):
 		instance.keyword_values[normalized] = int(instance.keyword_values[normalized]) + value
+	instance.keyword_changed.emit(normalized, old_value, keyword_value_for(instance, normalized))
+	keyword_changed.emit(instance, normalized, old_value, keyword_value_for(instance, normalized))
 	return true
 
 
@@ -2083,7 +2117,8 @@ func _resolve_turn_end() -> void:
 	for entity: BattleEntity in entities:
 		var invisible: int = entity.keyword_value("invisible")
 		if invisible > 0:
-			entity.keyword_values["invisible"] = invisible - 1
+			entity.set_keyword_value("invisible", invisible - 1)
+			keyword_changed.emit(entity, "invisible", invisible, entity.keyword_value("invisible"))
 
 
 func _flush_deaths() -> void:

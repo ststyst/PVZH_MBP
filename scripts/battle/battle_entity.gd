@@ -2,6 +2,9 @@ class_name BattleEntity
 extends RefCounted
 ## 战斗中的一个实体（由实体牌召唤）。
 
+## 词缀新增或数值变化：keyword, old_value, new_value
+signal keyword_changed(keyword: String, old_value: int, new_value: int)
+
 var entity_id: int = 0
 var card: CardData = null
 var side: String = "p"
@@ -58,11 +61,35 @@ func add_keyword(keyword: String, value: int = 0) -> bool:
 	var card_kind: String = card.kind if card != null else "entity"
 	if not CardKeywords.can_receive(normalized, card_kind):
 		return false
+	var old_value: int = keyword_value_for(normalized)
 	if not keywords.has(normalized):
 		keywords.append(normalized)
 	if CardKeywords.has_value(normalized):
 		keyword_values[normalized] = int(keyword_values.get(normalized, 0)) + value
+	var new_value: int = keyword_value_for(normalized)
+	if new_value != old_value:
+		keyword_changed.emit(normalized, old_value, new_value)
 	return true
+
+
+func keyword_value_for(keyword: String) -> int:
+	var normalized: String = CardKeywords.normalize(keyword)
+	if not keywords.has(normalized):
+		return 0
+	if not CardKeywords.has_value(normalized):
+		return 1
+	return int(keyword_values.get(normalized, 0))
+
+
+func set_keyword_value(keyword: String, value: int) -> void:
+	var normalized: String = CardKeywords.normalize(keyword)
+	if not keywords.has(normalized):
+		return
+	var old_value: int = keyword_value_for(normalized)
+	keyword_values[normalized] = maxi(value, 0)
+	var new_value: int = keyword_value_for(normalized)
+	if new_value != old_value:
+		keyword_changed.emit(normalized, old_value, new_value)
 
 
 func apply_instance_keywords(instance: BattleCardInstance) -> void:
