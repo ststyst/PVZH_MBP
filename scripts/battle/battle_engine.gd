@@ -11,6 +11,8 @@ signal hero_damaged(side: String, amount: int, source_keywords: Array)
 signal animation_cue(trigger: String, actor: BattleEntity, target: Variant)
 ## 词缀新增/数值变化（实体或手牌实例），用于 UI 动画与图标刷新
 signal keyword_changed(handle: Variant, keyword: String, old_value: int, new_value: int)
+## 实体的 Buff/词缀/数值或手牌费用/数值变化，用于统一刷新卡面与图标
+signal display_state_changed(handle: Variant)
 ## 弹射动画：hide_identity 为 true 时不广播实体具体信息
 signal bounce_fx(actor: BattleEntity, target: BattleEntity, hide_identity: bool)
 ## 墓碑离场费用广播（不包含实体具体信息）
@@ -1325,6 +1327,8 @@ func change_max_health_handle(handle: Variant, delta: int) -> void:
 		state.hero_max_health = maxi(state.hero_max_health + delta, 1)
 		state.hero_health = mini(state.hero_health, state.hero_max_health)
 	changed.emit()
+	if handle is BattleEntity:
+		display_state_changed.emit(handle)
 
 
 func _battle_over() -> bool:
@@ -1369,6 +1373,7 @@ func damage_entity(entity: BattleEntity, amount: int, source_keywords: Array = [
 		destroy_handle(source_entity)
 	if damage > 0 or source_keywords.has("deadly"):
 		_fire_event("health_changed", entity)
+		display_state_changed.emit(entity)
 	if source_keywords.has("frost") and damage > 0:
 		apply_buff_handle(entity, "frozen", 1)
 
@@ -1384,6 +1389,7 @@ func apply_buff_handle(entity: BattleEntity, buff_id: String, amount: int = 1) -
 			applied = true
 	if applied:
 		_log("%s 获得 %s" % [entity.display_name(), CardBuffs.label(buff_id)])
+		display_state_changed.emit(entity)
 		_fire_event("buff_applied", entity)
 	return applied
 
@@ -1421,6 +1427,7 @@ func remove_buff_handle(entity: BattleEntity, buff_id: String) -> bool:
 	if entity == null or not entity.remove_buff(buff_id):
 		return false
 	_log("%s 解除 %s" % [entity.display_name(), CardBuffs.label(buff_id)])
+	display_state_changed.emit(entity)
 	_fire_event("buff_removed", entity)
 	return true
 
@@ -1573,6 +1580,14 @@ func _refresh_auras() -> void:
 			continue
 		for source_id: Variant in desired[key]:
 			target.add_buff_from_source(buff_id, int(source_id))
+	for entity: BattleEntity in entities:
+		display_state_changed.emit(entity)
+	for side: String in [SIDE_P, SIDE_Z]:
+		var state: BattlePlayerState = players.get(side, null)
+		if state == null:
+			continue
+		for instance: BattleCardInstance in state.hand:
+			display_state_changed.emit(instance)
 
 
 func _aura_target_matches(selector: String, source_side: String, target_side: String) -> bool:
@@ -1706,6 +1721,7 @@ func heal_handle(handle: Variant, amount: int) -> void:
 		if entity.health != before:
 			_fire_event("health_changed", entity)
 			_fire_event("healed", entity)
+			display_state_changed.emit(entity)
 	elif handle is String and handle.begins_with("hero:"):
 		var state: BattlePlayerState = players.get(handle.substr(5), null)
 		if state != null:
@@ -1717,6 +1733,7 @@ func gain_shield_handle(handle: Variant, amount: int) -> void:
 		return
 	if handle is BattleEntity:
 		handle.shield += amount
+		display_state_changed.emit(handle)
 	elif handle is String and handle.begins_with("hero:"):
 		var state: BattlePlayerState = players.get(handle.substr(5), null)
 		if state != null:
@@ -1732,6 +1749,7 @@ func buff_handle(handle: Variant, attack_delta: int, health_delta: int) -> void:
 		hand_instance.attack_bonus = maxi(hand_instance.attack_bonus + attack_delta, -hand_card.attack)
 		hand_instance.health_bonus = maxi(hand_instance.health_bonus + health_delta, 1 - hand_card.health)
 		changed.emit()
+		display_state_changed.emit(hand_instance)
 		return
 	if not handle is BattleEntity:
 		return
@@ -1755,6 +1773,7 @@ func buff_handle(handle: Variant, attack_delta: int, health_delta: int) -> void:
 		if entity.has_buff("invincible"):
 			entity.remove_buff("invincible")
 		entity.health = 0
+	display_state_changed.emit(entity)
 
 
 func keyword_value_for(handle: Variant, keyword: String) -> int:
@@ -1781,6 +1800,144 @@ func has_keyword_for(handle: Variant, keyword: String) -> bool:
 	return keyword_value_for(handle, keyword) > 0
 
 
+## 最终展示数值：攻击/当前生命/生命上限/防御/当前费用。
+func get_display_stats(handle: Variant) -> Dictionary:
+	if handle is BattleEntity:
+		return {
+			"zone": "board",
+			"side": handle.side,
+			"attack": handle.attack,
+			"health": handle.health,
+			"max_health": handle.max_health,
+			"shield": handle.shield,
+			"cost": handle.card.cost if handle.card != null else 0,
+		}
+	if handle is BattleCardInstance:
+		var instance: BattleCardInstance = handle
+		var card: CardData = get_card(instance.card_id)
+		if card == null:
+			return {}
+		var cost: int = card.cost + instance.cost_delta
+		if instance.owner_side in players:
+			var hand_index: int = _hand_index(instance.owner_side, instance)
+			if hand_index >= 0:
+				cost = effective_hand_cost(instance.owner_side, hand_index)
+		return {
+			"zone": instance.zone,
+			"side": instance.owner_side,
+			"attack": maxi(card.attack + instance.attack_bonus, 0),
+			"health": maxi(card.health + instance.health_bonus, 1),
+			"max_health": maxi(card.health + instance.health_bonus, 1),
+			"shield": maxi(card.shield + instance.shield_bonus, 0),
+			"cost": maxi(cost, 0),
+		}
+	if handle is CardData:
+		return {
+			"zone": "card",
+			"side": "",
+			"attack": handle.attack,
+			"health": handle.health,
+			"max_health": handle.health,
+			"shield": handle.shield,
+			"cost": handle.cost,
+		}
+	return {}
+
+
+## 展示条目：在场实体返回关键词 + Buff/Debuff；手牌只返回关键词。
+func get_display_entries(handle: Variant) -> Array[Dictionary]:
+	var entries: Array[Dictionary] = []
+	var seen: Dictionary = {}
+	var keyword_ids: Array[String] = []
+	if handle is BattleEntity:
+		if handle.card != null:
+			keyword_ids = handle.card.keywords.duplicate()
+		for keyword: Variant in handle.keyword_values.keys():
+			if not keyword_ids.has(str(keyword)):
+				keyword_ids.append(str(keyword))
+	else:
+		var card: CardData = null
+		var instance: BattleCardInstance = null
+		if handle is BattleCardInstance:
+			instance = handle
+			card = get_card(instance.card_id)
+		elif handle is CardData:
+			card = handle
+		if card != null:
+			keyword_ids = card.keywords.duplicate()
+			for keyword: Variant in card.keyword_values.keys():
+				if not keyword_ids.has(str(keyword)):
+					keyword_ids.append(str(keyword))
+		if instance != null:
+			for keyword: Variant in instance.keyword_values.keys():
+				if not keyword_ids.has(str(keyword)):
+					keyword_ids.append(str(keyword))
+	for keyword: String in keyword_ids:
+		var value: int = keyword_value_for(handle, keyword)
+		if value <= 0:
+			continue
+		entries.append({
+			"kind": "keyword",
+			"id": keyword,
+			"label": CardKeywords.label(keyword),
+			"value": value,
+		})
+		seen["keyword:%s" % keyword] = true
+	if handle is BattleEntity:
+		for buff_id: Variant in handle.buffs.keys():
+			var id: String = str(buff_id)
+			if seen.has("buff:%s" % id):
+				continue
+			entries.append({
+				"kind": "buff",
+				"id": id,
+				"label": CardBuffs.label(id),
+				"value": int(handle.buffs[buff_id]),
+				"buff_kind": CardBuffs.kind(id),
+			})
+	return entries
+
+
+## 图标换图用的风格 id；Buff 与词缀一起参与判断。
+func get_display_icon_styles(handle: Variant) -> Dictionary:
+	var styles: Dictionary = {"attack": "normal", "health": "normal", "shield": "normal", "cost": "normal"}
+	if handle is BattleEntity:
+		if handle.has_buff("buried"):
+			return {"attack": "buried", "health": "buried", "shield": "buried", "cost": "buried"}
+		if handle.has_buff("invincible"):
+			styles["attack"] = "invincible"
+			styles["health"] = "invincible"
+		if handle.has_buff("frozen"):
+			styles["health"] = "frozen"
+		if handle.has_buff("hatred"):
+			styles["attack"] = "hatred"
+	if has_keyword_for(handle, "deadly"):
+		styles["attack"] = "deadly"
+	elif has_keyword_for(handle, "invisible"):
+		styles["attack"] = "invisible"
+	elif has_keyword_for(handle, "triple_strike"):
+		styles["attack"] = "triple"
+	elif has_keyword_for(handle, "frenzy"):
+		styles["attack"] = "frenzy"
+	if has_keyword_for(handle, "amphibious"):
+		styles["health"] = "amphibious"
+	return styles
+
+
+func notify_display_state_changed(handle: Variant) -> void:
+	display_state_changed.emit(handle)
+
+
+func _hand_index(side: String, instance: BattleCardInstance) -> int:
+	var state: BattlePlayerState = players.get(side, null)
+	if state == null:
+		return -1
+	for index: int in range(state.hand.size()):
+		if state.hand[index] == instance:
+			return index
+	return -1
+
+
 func give_keyword_handle(handle: Variant, keyword: String, value: int = 0) -> bool:
 	if handle is BattleEntity:
 		var old_value: int = handle.keyword_value_for(keyword)
@@ -1789,6 +1946,7 @@ func give_keyword_handle(handle: Variant, keyword: String, value: int = 0) -> bo
 			var new_value: int = handle.keyword_value_for(keyword)
 			if new_value != old_value:
 				keyword_changed.emit(handle, CardKeywords.normalize(keyword), old_value, new_value)
+				display_state_changed.emit(handle)
 		if applied and handle.has_keyword("tombstone") and not handle.has_buff("buried"):
 			apply_buff_handle(handle, "buried", 1)
 			_fire_event("tombstone_enter", handle)
@@ -1815,6 +1973,7 @@ func give_keyword_to_hand_card(side: String, hand_index: int, keyword: String, v
 		instance.keyword_values[normalized] = int(instance.keyword_values[normalized]) + value
 	instance.keyword_changed.emit(normalized, old_value, keyword_value_for(instance, normalized))
 	keyword_changed.emit(instance, normalized, old_value, keyword_value_for(instance, normalized))
+	display_state_changed.emit(instance)
 	return true
 
 

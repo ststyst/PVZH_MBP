@@ -660,6 +660,35 @@ func test_triple_strike_and_aloe_captain() -> void:
 	assert_eq(aloe_entity.max_health, 4, "入场应保留手牌生命增益")
 
 
+func test_display_state_api() -> void:
+	var engine: BattleEngine = _started_engine()
+	var card: CardData = _make_test_card("pvzh:test_display_api", "")
+	card.attack = 2
+	card.health = 3
+	card.shield = 1
+	card.keywords.append("deadly")
+	var entity: BattleEntity = engine.summon_card("p", card, 0, 0)
+	assert_eq(engine.get_display_stats(entity).get("attack", 0), 2)
+	engine.apply_buff_handle(entity, "frozen", 1)
+	var display: Dictionary = engine.get_display_stats(entity)
+	assert_eq(display.get("health", 0), 3)
+	var entries: Array[Dictionary] = engine.get_display_entries(entity)
+	var ids: Array[String] = []
+	for entry: Dictionary in entries:
+		ids.append(str(entry.get("id", "")))
+	assert_true(ids.has("deadly"), "在场实体应返回词缀")
+	assert_true(ids.has("frozen"), "在场实体应返回 Buff")
+	assert_eq(str(engine.get_display_icon_styles(entity).get("attack", "")), "deadly")
+	assert_eq(str(engine.get_display_icon_styles(entity).get("health", "")), "frozen")
+	var changes: Array = []
+	engine.display_state_changed.connect(func(_handle) -> void: changes.append(1))
+	var hand_instance: BattleCardInstance = BattleCardInstance.create(7001, "pvzh:gnoll", "p", "hand")
+	engine.players["p"].hand.append(hand_instance)
+	engine.buff_handle(hand_instance, 3, 2)
+	assert_eq(engine.get_display_stats(hand_instance).get("attack", 0), 4, "手牌攻击应为最终值")
+	assert_false(changes.is_empty(), "手牌数值变化应触发显示刷新")
+
+
 func test_bounce_and_invisible() -> void:
 	var engine: BattleEngine = _started_engine()
 	var card: CardData = _make_test_card("pvzh:test_bounce", "")

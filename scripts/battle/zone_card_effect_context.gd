@@ -26,8 +26,10 @@ func get_zone() -> String:
 func gain_attack(amount: int) -> void:
 	if card_instance != null:
 		card_instance.attack_bonus += amount
+		engine.notify_display_state_changed(card_instance)
 
 
 func reduce_cost(amount: int) -> void:
 	if card_instance != null:
 		card_instance.cost_delta -= amount
+		engine.notify_display_state_changed(card_instance)

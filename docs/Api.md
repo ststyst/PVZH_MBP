@@ -657,3 +657,67 @@ func keyword_badge_list(handle) -> Array[String]
 | 九宫格卡框边角 | 256 × 256，建议 16–24 px 边距 |
 
 所有图标建议透明通道，并保留 2×/3× 源图以适配 Android 高 DPI。
+
+## 14. 统一显示状态与最终数值
+
+```gdscript
+signal display_state_changed(handle)
+
+func get_display_stats(handle) -> Dictionary
+func get_display_entries(handle) -> Array[Dictionary]
+func get_display_icon_styles(handle) -> Dictionary
+func notify_display_state_changed(handle) -> void
+```
+
+`get_display_stats` 返回最终显示值：
+
+```gdscript
+{
+    "zone": "board" | "hand" | "deck" | "card",
+    "side": "p" / "z" / "",
+    "attack": int,
+    "health": int,
+    "max_health": int,
+    "shield": int,
+    "cost": int,
+}
+```
+
+- 在场实体：攻击、当前生命、生命上限、防御均为已结算后的当前值
+- 手牌：攻击/生命/防御合并卡牌基础值与实例修正
+- 手牌费用使用 `effective_hand_cost`，包含实例费用、光环费用和特殊回合折扣
+- 不在手牌的实例费用只返回基础费用 + 持久费用修正
+
+`get_display_entries`：
+
+- 在场实体返回关键词 + Buff/Debuff
+- 手牌只返回关键词
+- 每条：`kind`（keyword/buff）、`id`、`label`、`value`、`buff_kind`
+
+`get_display_icon_styles` 返回：
+
+```gdscript
+{"attack": "...", "health": "...", "shield": "...", "cost": "..."}
+```
+
+当前风格例：
+
+- `normal`
+- `deadly`
+- `invisible`
+- `triple`
+- `frenzy`
+- `hatred`
+- `invincible`
+- `frozen`
+- `buried`
+- `amphibious`
+
+推荐 UI 直接连接：
+
+```gdscript
+engine.display_state_changed.connect(_on_display_state_changed)
+engine.keyword_changed.connect(_on_keyword_changed)
+```
+
+`display_state_changed` 已在 Buff 添加/移除、光环刷新、攻击/生命/防御变化、伤害、治疗、死亡判定、词缀变化、手牌费用变化等路径触发。
