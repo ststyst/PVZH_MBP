@@ -478,6 +478,10 @@ func advance_phase() -> void:
 				active_side = SIDE_Z
 				_log("z 阵营锦囊/环境阶段")
 		PHASE_SPELL:
+			if active_side == SIDE_Z:
+				_reveal_tombstones()
+				if winner != "":
+					return
 			phase = PHASE_COMBAT
 			active_side = ""
 			_log("对战回合：开始逐列结算")
@@ -691,6 +695,12 @@ func choose_candidates(selector: String, caster_side: String, exclude_spell_immu
 			wanted_side = opposite_side(caster_side)
 		"injured_allies":
 			wanted_side = caster_side
+		"all_buried":
+			var buried_candidates: Array = []
+			for entity: BattleEntity in entities:
+				if entity.is_alive() and entity.has_buff("buried"):
+					buried_candidates.append(entity)
+			return buried_candidates
 		"all_heroes_and_entities":
 			var everyone: Array = [hero_handle(SIDE_P), hero_handle(SIDE_Z)]
 			for entity: BattleEntity in entities:
@@ -769,6 +779,8 @@ func play_card(side: String, hand_index: int, target: Dictionary = {}) -> Dictio
 					"组队" if other_slot == SLOT_TEAM_UP else "普通",
 				])
 		_spend_and_remove(state, hand_index, card, effective_cost)
+		if card.has_keyword("tombstone"):
+			state.hidden_energy_spent += effective_cost
 		if evolved_from != null:
 			var evolved_card: CardData = evolved_from.card
 			remove_entity_handle(evolved_from)
@@ -776,7 +788,8 @@ func play_card(side: String, hand_index: int, target: Dictionary = {}) -> Dictio
 				side, card, column, slot, instance.attack_bonus
 			)
 			evolved_entity.apply_instance_keywords(instance)
-			_fire_event("enter", evolved_entity, target_handles)
+			if not evolved_entity.has_buff("buried"):
+				_fire_event("enter", evolved_entity, target_handles)
 			_apply_enter_keywords(evolved_entity)
 			if evolved_card != null and card.ability_script != null:
 				var filter := CardFilter.new()
@@ -799,7 +812,8 @@ func play_card(side: String, hand_index: int, target: Dictionary = {}) -> Dictio
 			mounted_entity.health += base_health
 			mounted_entity.shield += base_shield
 			mounted_entity.apply_instance_keywords(instance)
-			_fire_event("enter", mounted_entity, target_handles)
+			if not mounted_entity.has_buff("buried"):
+				_fire_event("enter", mounted_entity, target_handles)
 			_apply_enter_keywords(mounted_entity)
 			if base_card != null and base_card.ability_script != null:
 				var context := BaseEffectContext.new(self, base_side)
@@ -812,7 +826,8 @@ func play_card(side: String, hand_index: int, target: Dictionary = {}) -> Dictio
 			side, card, column, slot, instance.attack_bonus
 		)
 		entity.apply_instance_keywords(instance)
-		_fire_event("enter", entity, target_handles)
+		if not entity.has_buff("buried"):
+			_fire_event("enter", entity, target_handles)
 		_apply_enter_keywords(entity)
 	elif card.is_environment():
 		var column: int = int(target.get("column", -1))
@@ -994,7 +1009,8 @@ func summon_card_by_name(side: String, card_name: String) -> Array:
 	var entity: BattleEntity = summon_card(
 		side, card, int(slot_info.get("column", 0)), int(slot_info.get("slot", SLOT_NORMAL))
 	)
-	_fire_event("enter", entity)
+	if not entity.has_buff("buried"):
+		_fire_event("enter", entity)
 	_apply_enter_keywords(entity)
 	result.append(entity)
 	return result
@@ -1032,7 +1048,8 @@ func summon_card_in_column(side: String, card: CardData, column: int) -> BattleE
 	if occupants.size() == 1:
 		slot = SLOT_NORMAL if occupants[0].slot == SLOT_TEAM_UP else SLOT_TEAM_UP
 	var summoned: BattleEntity = summon_card(side, card, column, slot)
-	_fire_event("enter", summoned)
+	if not summoned.has_buff("buried"):
+		_fire_event("enter", summoned)
 	_apply_enter_keywords(summoned)
 	return summoned
 
@@ -1303,6 +1320,67 @@ func _apply_enter_keywords(entity: BattleEntity) -> void:
 	if entity.has_keyword("invincible") and not entity.has_buff("invincible"):
 		apply_buff_handle(entity, "invincible", 1)
 	_refresh_counter_bonus(entity)
+	if entity.has_keyword("tombstone") and not entity.has_buff("buried"):
+		apply_buff_handle(entity, "buried", 1)
+		_fire_event("tombstone_enter", entity)
+
+
+func _reveal_tombstones() -> void:
+	var buried: Array[BattleEntity] = []
+	for entity: BattleEntity in entities:
+		if entity.alive and entity.has_buff("buried"):
+			buried.append(entity)
+	buried.sort_custom(func(a: BattleEntity, b: BattleEntity) -> bool: return a.column < b.column)
+	for entity: BattleEntity in buried:
+		if not entity.alive:
+			continue
+		remove_buff_handle(entity, "buried")
+		_fire_event("tombstone_reveal", entity)
+		_fire_event("enter", entity)
+	for side: String in [SIDE_P, SIDE_Z]:
+		var state: BattlePlayerState = players.get(side, null)
+		if state != null:
+			state.hidden_energy_spent = 0
+	_flush_deaths()
+	changed.emit()
+
+
+func visible_energy_for(side: String, viewer_side: String) -> int:
+	var state: BattlePlayerState = players.get(side, null)
+	if state == null:
+		return 0
+	if side == viewer_side:
+		return state.energy
+	return state.energy + state.hidden_energy_spent
+
+
+func is_entity_visible_to(entity: BattleEntity, viewer_side: String) -> bool:
+	if entity == null:
+		return false
+	return not (entity.has_buff("buried") and entity.side != viewer_side)
+
+
+func public_entity_snapshot(viewer_side: String) -> Array:
+	var result: Array = []
+	for entity: BattleEntity in entities:
+		if not entity.alive:
+			continue
+		if not is_entity_visible_to(entity, viewer_side):
+			result.append({"entity_id": entity.entity_id, "hidden": true})
+		else:
+			result.append({
+				"entity_id": entity.entity_id,
+				"card_id": entity.card.card_id if entity.card != null else "",
+				"side": entity.side,
+				"column": entity.column,
+				"slot": entity.slot,
+				"attack": entity.attack,
+				"health": entity.health,
+				"max_health": entity.max_health,
+				"shield": entity.shield,
+				"hidden": false,
+			})
+	return result
 
 
 func _trigger_hunt(entered: BattleEntity) -> void:
@@ -1537,7 +1615,11 @@ func buff_handle(handle: Variant, attack_delta: int, health_delta: int) -> void:
 
 func give_keyword_handle(handle: Variant, keyword: String, value: int = 0) -> bool:
 	if handle is BattleEntity:
-		return handle.add_keyword(keyword, value)
+		var applied: bool = handle.add_keyword(keyword, value)
+		if applied and handle.has_keyword("tombstone") and not handle.has_buff("buried"):
+			apply_buff_handle(handle, "buried", 1)
+			_fire_event("tombstone_enter", handle)
+		return applied
 	return false
 
 

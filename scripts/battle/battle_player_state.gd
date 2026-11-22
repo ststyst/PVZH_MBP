@@ -14,6 +14,8 @@ var hero_damage_immune: bool = false
 var charge_shield: int = 0
 var charge_shield_durability: int = 3
 var charge_shield_emergency_uses: int = 1
+## 墓碑打出时对敌方隐藏的费用支出（仅网络可见性使用）
+var hidden_energy_spent: int = 0
 ## 本局该英雄的超能力牌池（尚未发放的卡牌 ID）
 var superpower_pool: Array[String] = []
 ## 当前特殊回合提供给该玩家的超能力牌实例 ID（0 表示无）

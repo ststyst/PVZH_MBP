@@ -33,6 +33,8 @@ const EVENTS: Array[String] = [
 	"evolved",
 	"mounted",
 	"extra_attack",
+	"tombstone_enter",
+	"tombstone_reveal",
 ]
 const SELECTORS: Array[String] = [
 	"self",
@@ -53,6 +55,9 @@ const SELECTORS: Array[String] = [
 	"enemy_hero_or_entities",
 	"frozen_enemies",
 	"injured_allies",
+	"buried_entities",
+	"buried_in_column",
+	"all_buried",
 ]
 
 ## 原语（只能作为语句调用）

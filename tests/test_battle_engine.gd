@@ -500,6 +500,73 @@ func test_card_filter_and_random_insert() -> void:
 	assert_true(found_gnoll, "塞入的卡牌英文名应为 gnoll")
 
 
+func test_tombstone_burial_reveal_and_hidden_energy() -> void:
+	var engine: BattleEngine = _started_engine()
+	var tomb_card: CardData = _make_test_card(
+		"pvzh:test_tombstone",
+		"when enter:\n    add_marker(\"revealed\", 1)"
+	)
+	tomb_card.keywords.append("tombstone")
+	tomb_card.cost = 1
+	tomb_card.health = 3
+	var state: BattlePlayerState = engine.players["p"]
+	_set_hand(engine, "p", [tomb_card.card_id])
+	state.energy = 3
+	engine.phase = BattleEngine.PHASE_HAND
+	engine.active_side = "p"
+	var result: Dictionary = engine.play_card("p", 0, {"column": 2, "slot": 0})
+	assert_true(bool(result.get("ok", false)))
+	assert_eq(state.energy, 2)
+	assert_eq(state.hidden_energy_spent, 1)
+	assert_eq(engine.visible_energy_for("p", "z"), 3, "敌方看到的费用应隐藏墓碑支出")
+	var buried: BattleEntity = engine._entity_at(2, "p", 0)
+	assert_true(buried.has_buff("buried"))
+	assert_eq(state.marker_count("revealed"), 0, "埋入墓碑时不应触发入场")
+	assert_false(engine.is_entity_visible_to(buried, "z"), "敌方不应看到墓碑内实体信息")
+	engine._reveal_tombstones()
+	assert_false(buried.has_buff("buried"))
+	assert_eq(state.marker_count("revealed"), 1, "揭示时应结算入场效果")
+	assert_eq(engine.visible_energy_for("p", "z"), 2, "揭示后费用恢复公开")
+
+
+func test_tombstone_removal_spells() -> void:
+	var engine: BattleEngine = _started_engine()
+	var grave_card: CardData = _make_test_card("pvzh:test_grave_target", "")
+	grave_card.keywords.append("tombstone")
+	grave_card.health = 5
+	var first: BattleEntity = engine.summon_card("p", grave_card, 1, 0)
+	var second: BattleEntity = engine.summon_card("p", grave_card, 2, 0)
+	assert_true(first.has_buff("buried") and second.has_buff("buried"))
+	var sweep: CardData = _make_test_card(
+		"pvzh:test_grave_sweep",
+		"choose_column(); destroy(buried_in_column)"
+	)
+	sweep.kind = "spell"
+	sweep.cost = 1
+	var state: BattlePlayerState = engine.players["p"]
+	_set_hand(engine, "p", [sweep.card_id])
+	state.energy = 10
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "p"
+	var result: Dictionary = engine.play_card("p", 0, {"column": 1})
+	assert_true(bool(result.get("ok", false)))
+	assert_false(first.alive)
+	assert_true(second.alive)
+	var execute: CardData = _make_test_card(
+		"pvzh:test_grave_execute",
+		"choose(1, \"all_buried\"); destroy(chosen)"
+	)
+	execute.kind = "spell"
+	execute.cost = 1
+	_set_hand(engine, "p", [execute.card_id])
+	state.energy = 10
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "p"
+	var execute_result: Dictionary = engine.play_card("p", 0, {"handles": [second]})
+	assert_true(bool(execute_result.get("ok", false)))
+	assert_false(second.alive)
+
+
 func test_buff_and_keyword_combat_features() -> void:
 	var engine: BattleEngine = _started_engine()
 	var striker_card: CardData = _make_test_card("pvzh:test_buff_striker", "")

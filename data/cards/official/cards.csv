@@ -37,3 +37,6 @@ umbrella,保护伞,entity,2,1,3,0,guardian,rare,"team_up","","aura_buff('ally', 
 thorn_rose,带刺玫瑰,entity,3,2,4,0,crazy,rare,"","","aura_buff('ally', 'hatred', -4, 4, false)","为所有友方实体提供仇恨。",1,"",""
 dark_matter_dragonfruit,暗物质火龙果,entity,5,4,5,0,brainy,legend,"","","aura_spell_cost('enemy', 6)","敌方锦囊费用 +6。",1,"",""
 soldier_captain,士兵队长,entity,3,3,4,0,hearty,rare,"","","aura_hand_cost('self', 'kind == spell', -1)","我方锦囊手牌费用 -1。",1,"",""
+tombstone_guard,墓碑守卫,entity,2,2,3,0,guardian,normal,"tombstone","","when enter: buff_stats(all_allies, 1, 0)","入场时埋入墓碑，揭示时为友方加攻。",1,"",""
+grave_sweep,掘墓清扫,spell,3,0,0,0,neutral,rare,"","","choose_column(); destroy(buried_in_column)","选择一列，消灭该列所有埋入墓碑的实体。",1,"",""
+grave_execute,墓碑处决,spell,2,0,0,0,neutral,rare,"","","choose(1, 'all_buried'); destroy(chosen)","选择一个埋入墓碑的实体并消灭。",1,"",""

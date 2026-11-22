@@ -442,7 +442,9 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 | `entities_in_column(min, max, side, min_attack)` | 相对基准列范围查询实体数组 |
 | `apply_buff_handle(entity, buff_id, amount)` / `remove_buff_handle` | 施加/解除内置 Buff/Debuff |
 | `force_entity_attack(entity)` | 让实体按当前列目标攻击一次；冰冻时失败 |
-| `remove_entity_handle(entity)` | 移除实体但不触发死亡/亡语 |
+| `public_entity_snapshot(viewer_side)` | 供网络快照使用；隐藏敌方墓碑实体信息 |
+| `visible_energy_for(side, viewer_side)` | 墓碑费用对敌方隐藏后的可见费用 |
+| `is_entity_visible_to(entity, viewer_side)` | 实体信息是否对观察方可见 |
 | `CardEffectScript.evolve_filter_text` / `is_base_ability` | 进化筛选与底座声明，供 UI/放置逻辑使用 |
 | `CardFilter.parse(text)` / `matches(card)` | 支持 and/or/not 的卡牌筛选表达式 |
 | `move_entity(entity, column, slot)` | 卡牌效果移动实体；合法位置仅限该实体所属阵营，触发 `position_changed` |

@@ -117,6 +117,27 @@ func resolve_selector(selector: String) -> Array:
 				if entity.health < entity.max_health:
 					injured.append(entity)
 			return injured
+		"buried_entities":
+			var buried_all: Array = []
+			for entity: BattleEntity in _entities_of(caster_side):
+				if entity.has_buff("buried"):
+					buried_all.append(entity)
+			return buried_all
+		"all_buried":
+			var any_buried: Array = []
+			for entity: BattleEntity in engine.entities:
+				if entity.alive and entity.has_buff("buried"):
+					any_buried.append(entity)
+			return any_buried
+		"buried_in_column":
+			var buried_column: Array = []
+			var reference_column: int = base_column
+			if reference_column < 0 and _self_handle is BattleEntity:
+				reference_column = _self_handle.column
+			for entity: BattleEntity in engine.entities:
+				if entity.alive and entity.has_buff("buried") and entity.column == reference_column:
+					buried_column.append(entity)
+			return buried_column
 		"other_allies":
 			return _other_allies()
 		"random_ally":

@@ -27,6 +27,12 @@ const DEFINITIONS: Dictionary = {
 		"description": "受到实体伤害时，消灭伤害来源。",
 		"clear_after_combat": false,
 	},
+	"buried": {
+		"label": "埋入墓碑",
+		"kind": "buff",
+		"description": "处于墓碑内；信息与费用对敌方隐匿，Z 方锦囊阶段结束时揭示。",
+		"clear_after_combat": false,
+	},
 }
 
 

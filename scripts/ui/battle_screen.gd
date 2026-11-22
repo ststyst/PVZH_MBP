@@ -347,6 +347,11 @@ func _update_long_press(delta: float) -> void:
 		_long_press_entity = null
 		_long_press_fired = false
 		return
+	if _long_press_entity.has_buff("buried") and _long_press_entity.side != player_side:
+		_long_press_entity = null
+		_long_press_fired = false
+		_set_status("无法查看敌方墓碑内的实体信息。", true)
+		return
 	if _long_press_fired:
 		return
 	_long_press_elapsed += delta
@@ -641,7 +646,7 @@ func _update_hero_bars() -> void:
 	_enemy_hero_button.text = "%s（%s） 生命 %d/%d · 费用 %d/%d · 充能 %d/%d · 耐久 %d" % [
 		enemy_state.hero.display_name(), enemy_side.to_upper(),
 		enemy_state.hero_health, enemy_state.hero_max_health,
-		enemy_state.energy, enemy_state.energy_cap,
+		engine.visible_energy_for(enemy_side, player_side), enemy_state.energy_cap,
 		enemy_state.charge_shield, mode.charge_shield_max,
 		enemy_state.charge_shield_durability,
 	]
@@ -726,6 +731,11 @@ func _update_slot_button(
 			button.disabled = true
 		return
 	var view: BattleEntityView = _get_entity_view(button)
+	if entity.has_buff("buried") and entity.side != player_side:
+		view.visible = false
+		button.text = "墓碑"
+		button.disabled = false
+		return
 	view.visible = true
 	view.setup(entity)
 	_views_by_entity_id[entity.entity_id] = view

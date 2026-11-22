@@ -395,6 +395,24 @@ add_random_cards_to_hand(enemy_hero, 1, "keyword == 'team_up' and not tribe == '
 - 例：`"deck_includable == false"` 可以显式允许不可组入卡牌
 - 比较值建议用引号；布尔值写 `true` / `false`
 
+### 墓碑
+
+```text
+# 实体词缀：tombstone
+# 入场时自动获得 buried Buff，不触发 when enter，只触发 when tombstone_enter
+when tombstone_enter:
+    ...
+
+# Z 方锦囊阶段结束时：
+# 按列从左到右移除 buried，依次触发 tombstone_reveal 和 enter
+```
+
+- 埋入墓碑期间，敌方看不到实体信息；低层快照用 `public_entity_snapshot(viewer_side)` 过滤
+- 墓碑费用通过 `visible_energy_for(side, viewer_side)` 对敌方隐藏
+- 对场上实体施加 `tombstone` 词缀会立刻埋入并触发 `tombstone_enter`
+- 揭示后恢复正常入场结算
+- `buried_in_column` 选择器可选当前列全部墓碑实体；`all_buried` 可选全部墓碑实体
+
 ### 目标选择与随机目标
 
 ```text

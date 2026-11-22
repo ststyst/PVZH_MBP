@@ -143,3 +143,7 @@ func is_invincible() -> bool:
 
 func is_spell_immune() -> bool:
 	return has_buff("spell_immune") or has_keyword("spell_immune") or has_keyword("untrickable")
+
+
+func is_buried() -> bool:
+	return has_buff("buried")

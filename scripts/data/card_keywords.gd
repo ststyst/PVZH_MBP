@@ -89,6 +89,11 @@ const DEFINITIONS: Dictionary = {
 		"description": "不会获得 Debuff。",
 		"allowed_kinds": ["entity"],
 	},
+	"tombstone": {
+		"label": "墓碑",
+		"description": "入场时埋入墓碑；Z 方锦囊阶段结束时按列揭示并结算入场。",
+		"allowed_kinds": ["entity"],
+	},
 	"frost": {
 		"label": "寒霜",
 		"description": "伤害类型增加冰冻攻击；被命中的实体获得冰冻 Debuff。",
