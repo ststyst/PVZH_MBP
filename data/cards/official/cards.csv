@@ -53,3 +53,4 @@ execute_strong,处决,spell,4,0,0,0,neutral,rare,"","","choose(1, 'enemy_entitie
 frost_purge,寒冰净化,spell,4,0,0,0,smarty,rare,"","","destroy(random_targets(2, 'frozen_enemies'))","随机消灭两个冰冻敌方实体。",1,"",""
 heal_injured,治疗伤员,spell,3,0,0,0,solar,normal,"","","heal(random_targets(2, 'injured_allies'), 6)","随机治疗两个受伤友方实体6点。",1,"",""
 mass_heal,群体治疗,spell,4,0,0,0,solar,rare,"","","heal(all_allies_and_hero, 5)","为友方英雄和全部友方实体治疗5点。",1,"",""
+aloe_captain,芦荟队长,entity,3,2,3,0,smarty,rare,"","","when hand_played: gain_attack(1); when ally_attack_gained: buff_stats(self, 0, 1)","在手牌中：我方打出手牌时攻击+1；友方实体加攻时生命+1。",1,"",""

@@ -1023,6 +1023,7 @@ func _spend_and_remove(
 	if instance != null:
 		instance.zone = "discard"
 		state.discard.append(instance)
+	_fire_zone_event(state.side, "hand_played", null)
 
 
 func _run_script(card: CardData, side: String, chosen: Variant, position: Dictionary = {}) -> void:
@@ -1726,6 +1727,7 @@ func buff_handle(handle: Variant, attack_delta: int, health_delta: int) -> void:
 	var did_change_health: bool = entity.health != old_health
 	if did_change_attack:
 		_fire_event("attack_changed", entity)
+		_fire_zone_event(entity.side, "ally_attack_gained", entity)
 	if did_change_health:
 		_fire_event("health_changed", entity)
 		if health_delta > 0:
@@ -1886,7 +1888,7 @@ func _combat_column(column: int) -> void:
 			return
 		if not attacker.alive or attacker.is_frozen() or attacker.attack < 1:
 			continue
-		_execute_entity_attack(attacker, _choose_attack_target(attacker), 0)
+		_execute_attack_action(attacker, false)
 	_flush_column_deaths(column)
 	if winner != "":
 		return
@@ -1895,7 +1897,7 @@ func _combat_column(column: int) -> void:
 		if winner != "":
 			return
 		if attacker.alive and attacker.has_keyword("double_strike") and not attacker.is_frozen() and attacker.attack >= 1:
-			_execute_entity_attack(attacker, _choose_attack_target(attacker), 0)
+			_execute_attack_action(attacker, false)
 	_flush_column_deaths(column)
 	if winner != "":
 		return
@@ -1903,16 +1905,41 @@ func _combat_column(column: int) -> void:
 
 
 func _choose_attack_target(attacker: BattleEntity) -> Variant:
+	return _choose_attack_target_in_column(attacker, attacker.column)
+
+
+func _choose_attack_target_in_column(attacker: BattleEntity, column: int) -> Variant:
 	for entity: BattleEntity in entities:
-		if entity.is_alive() and entity.side != attacker.side and entity.column == attacker.column:
+		if entity.is_alive() and entity.side != attacker.side and entity.column == column:
 			return entity
 	return hero_handle(opposite_side(attacker.side))
+
+
+func _execute_attack_action(attacker: BattleEntity, extra_attack: bool) -> void:
+	if attacker == null or not attacker.alive or attacker.is_frozen() or attacker.attack < 1:
+		return
+	if attacker.has_keyword("triple_strike"):
+		var columns: Array[int] = [attacker.column - 1, attacker.column, attacker.column + 1]
+		for index: int in range(columns.size()):
+			var attack_column: int = columns[index]
+			if attack_column < 0 or attack_column >= COLUMN_COUNT:
+				continue
+			if not attacker.alive or attacker.attack < 1:
+				break
+			_execute_entity_attack(
+				attacker,
+				_choose_attack_target_in_column(attacker, attack_column),
+				0,
+				extra_attack and index == 0,
+			)
+		return
+	_execute_entity_attack(attacker, _choose_attack_target(attacker), 0, extra_attack)
 
 
 func force_entity_attack(attacker: BattleEntity) -> bool:
 	if attacker == null or not attacker.alive or attacker.is_frozen() or attacker.attack < 1:
 		return false
-	_execute_entity_attack(attacker, _choose_attack_target(attacker), 0, true)
+	_execute_attack_action(attacker, true)
 	_flush_column_deaths(attacker.column)
 	_clear_column_combat_buffs(attacker.column)
 	return true
@@ -1962,7 +1989,7 @@ func _execute_entity_attack(attacker: BattleEntity, target: Variant, frenzy_dept
 	if killed_enemy and attacker.alive and attacker.has_keyword("frenzy") and frenzy_depth < 8:
 		_flush_column_deaths(attacker.column)
 		if attacker.alive:
-			_execute_entity_attack(attacker, _choose_attack_target(attacker), frenzy_depth + 1, true)
+			_execute_attack_action(attacker, true)
 		_flush_column_deaths(attacker.column)
 
 
@@ -2106,6 +2133,24 @@ func _trigger_zone_effects(event_name: String, event_entity: BattleEntity) -> vo
 			var context := ZoneCardEffectContext.new(self, event_entity.side, zone, instance)
 			context.set_event_target(event_entity)
 			var errors: Array[String] = card.ability_script.run_event(context, event_name, event_entity)
+			for message: String in errors:
+				_log("区域效果错误（%s·%s）：%s" % [card.display_name(), zone, message])
+
+
+func _fire_zone_event(side: String, event_name: String, event_handle) -> void:
+	var state: BattlePlayerState = players.get(side, null)
+	if state == null:
+		return
+	for zone: String in ["hand", "deck"]:
+		var instances: Array[BattleCardInstance] = state.hand if zone == "hand" else state.deck
+		for instance: BattleCardInstance in instances:
+			var card: CardData = get_card(instance.card_id)
+			if card == null or card.ability_script == null or not card.ability_script.has_event(event_name):
+				continue
+			var context := ZoneCardEffectContext.new(self, side, zone, instance)
+			context.set_self_target(instance)
+			context.set_event_target(event_handle)
+			var errors: Array[String] = card.ability_script.run_event(context, event_name, event_handle)
 			for message: String in errors:
 				_log("区域效果错误（%s·%s）：%s" % [card.display_name(), zone, message])
 

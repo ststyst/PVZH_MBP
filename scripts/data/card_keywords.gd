@@ -100,6 +100,11 @@ const DEFINITIONS: Dictionary = {
 		"value": true,
 		"allowed_kinds": ["entity"],
 	},
+	"triple_strike": {
+		"label": "三连打",
+		"description": "攻击时依次攻击左侧列、自身列、右侧列；不合法列跳过。",
+		"allowed_kinds": ["entity"],
+	},
 	"frost": {
 		"label": "寒霜",
 		"description": "伤害类型增加冰冻攻击；被命中的实体获得冰冻 Debuff。",

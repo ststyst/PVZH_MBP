@@ -446,6 +446,38 @@ when tombstone_enter:
 - 揭示后恢复正常入场结算
 - `buried_in_column` 选择器可选当前列全部墓碑实体；`all_buried` 可选全部墓碑实体
 
+### 三连打
+
+```text
+# 实体词缀：triple_strike
+# 攻击时依次攻击左列、自身列、右列
+# 第一列没有左列、最后一列没有右列时跳过该次攻击
+```
+
+### 芦荟队长
+
+```text
+when hand_played:
+    gain_attack(1)
+when ally_attack_gained:
+    buff_stats(self, 0, 1)
+```
+
+- 这两条异能只在手牌/牌库区域生效
+- 入场后保留手牌期间获得的攻击/生命修正
+- 入场后不再触发这两条区域异能
+
+### 墓碑目标规则
+
+当前埋入墓碑的实体：
+
+- 不会受到任何伤害（`damage_entity` 直接返回）
+- 不会被普通实体锦囊选为目标（`can_target` 返回 false）
+- 可以被 `destroy` 消灭
+- 可以被 `remove_entity` 移除
+- 可以被墓碑专用消灭能力选为目标
+- 可以被墓碑专用弹回/冻结/移动/打乱能力处理；这些能力需要走墓碑专用入口，不走普通目标选择
+
 ### 弹回、隐形与牌库顶
 
 ```text

@@ -214,7 +214,10 @@ func _exec_target_primitive(primitive_name: String, arguments: Array, line: int)
 	for handle: Variant in handles:
 		if handle == null:
 			continue
-		if primitive_name not in ["destroy", "remove_entity"] and not context.can_target(handle):
+		var bypass_target_check: bool = primitive_name in ["destroy", "remove_entity"]
+		if primitive_name == "apply_buff" and not extra_values.is_empty():
+			bypass_target_check = str(extra_values[0]) in ["bounce", "frozen_tombstone"]
+		if not bypass_target_check and not context.can_target(handle):
 			continue
 		match primitive_name:
 			"deal_damage":
@@ -242,7 +245,7 @@ func _matches_trigger(trigger: Dictionary, event_handle) -> bool:
 	var predicate: Variant = trigger.get("predicate")
 	if predicate == null:
 		# 无过滤条件：普通实体默认只响应自己；环境/底座监听其所在列/挂载。
-		return _is_self(event_handle) or (context != null and context.get_zone() in ["environment", "base"])
+		return _is_self(event_handle) or (context != null and context.get_zone() in ["environment", "base", "hand", "deck"])
 	if context == null:
 		return false
 	var facts: Dictionary = context.describe_entity(event_handle)

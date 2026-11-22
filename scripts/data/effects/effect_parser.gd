@@ -35,6 +35,8 @@ const EVENTS: Array[String] = [
 	"extra_attack",
 	"tombstone_enter",
 	"tombstone_reveal",
+	"hand_played",
+	"ally_attack_gained",
 ]
 const SELECTORS: Array[String] = [
 	"self",

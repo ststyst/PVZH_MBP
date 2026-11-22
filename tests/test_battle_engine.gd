@@ -500,6 +500,50 @@ func test_card_filter_and_random_insert() -> void:
 	assert_true(found_gnoll, "塞入的卡牌英文名应为 gnoll")
 
 
+func test_triple_strike_and_aloe_captain() -> void:
+	var engine: BattleEngine = _started_engine()
+	var attacker_card: CardData = _make_test_card("pvzh:test_triple", "")
+	attacker_card.attack = 1
+	attacker_card.health = 5
+	attacker_card.keywords.append("triple_strike")
+	engine.summon_card("p", attacker_card, 2, 0)
+	var targets: Array[BattleEntity] = []
+	for column: int in [1, 2, 3]:
+		var target_card: CardData = _make_test_card("pvzh:test_triple_target_%d" % column, "")
+		target_card.attack = 0
+		target_card.health = 5
+		targets.append(engine.summon_card("z", target_card, column, 0))
+	engine._combat_column(2)
+	assert_eq(targets[0].health, 4, "三连打应先攻击左列")
+	assert_eq(targets[1].health, 4, "三连打应攻击自身列")
+	assert_eq(targets[2].health, 4, "三连打应攻击右列")
+
+	var state: BattlePlayerState = engine.players["p"]
+	var aloe_card: CardData = _make_test_card(
+		"pvzh:test_aloe",
+		"when hand_played:\n    gain_attack(1)\nwhen ally_attack_gained:\n    buff_stats(self, 0, 1)"
+	)
+	aloe_card.attack = 2
+	aloe_card.health = 3
+	state.hand.clear()
+	state.hand.append(BattleCardInstance.create(9001, aloe_card.card_id, "p", "hand"))
+	state.hand.append(BattleCardInstance.create(9002, "pvzh:gnoll", "p", "hand"))
+	state.energy = 10
+	engine.phase = BattleEngine.PHASE_HAND
+	engine.active_side = "p"
+	var played: Dictionary = engine.play_card("p", 1, {"column": 0, "slot": 0})
+	assert_true(bool(played.get("ok", false)))
+	assert_eq(state.hand[0].attack_bonus, 1, "芦荟队长在手牌中应因打出牌获得攻击")
+	var ally: BattleEntity = engine._entity_at(0, "p", 0)
+	engine.buff_handle(ally, 2, 0)
+	assert_eq(state.hand[0].health_bonus, 1, "友方实体加攻时芦荟队长应获得生命")
+	var aloe_entity: BattleEntity = engine.summon_card("p", aloe_card, 0, 0, state.hand[0].attack_bonus)
+	aloe_entity.apply_instance_keywords(state.hand[0])
+	engine._apply_instance_stats(aloe_entity, state.hand[0])
+	assert_eq(aloe_entity.attack, 3, "入场应保留手牌攻击增益")
+	assert_eq(aloe_entity.max_health, 4, "入场应保留手牌生命增益")
+
+
 func test_bounce_and_invisible() -> void:
 	var engine: BattleEngine = _started_engine()
 	var card: CardData = _make_test_card("pvzh:test_bounce", "")
