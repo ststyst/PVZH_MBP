@@ -1032,6 +1032,7 @@ func _spend_and_remove(
 	if instance != null:
 		instance.zone = "discard"
 		state.discard.append(instance)
+	_log("%s 打出 %s" % [state.side.to_upper(), card.display_name()])
 	_fire_zone_event(state.side, "hand_played", null)
 
 
@@ -1336,18 +1337,18 @@ func _battle_over() -> bool:
 	return winner != ""
 
 
-func damage_handle(handle: Variant, amount: int, source_keywords: Array = [], from_spell: bool = false) -> void:
+func damage_handle(handle: Variant, amount: int, source_keywords: Array = [], from_spell: bool = false, source_entity: BattleEntity = null, explicit_source: String = "") -> void:
 	if _battle_over():
 		return
 	if amount <= 0:
 		return
 	if handle is BattleEntity:
-		damage_entity(handle, amount, source_keywords, from_spell)
+		damage_entity(handle, amount, source_keywords, from_spell, source_entity, explicit_source)
 	elif handle is String and handle.begins_with("hero:"):
-		damage_hero(handle.substr(5), amount, source_keywords, null, "锦囊" if from_spell else "")
+		damage_hero(handle.substr(5), amount, source_keywords, source_entity, explicit_source if not explicit_source.is_empty() else ("锦囊" if from_spell else ""))
 
 
-func damage_entity(entity: BattleEntity, amount: int, source_keywords: Array = [], from_spell: bool = false, source_entity: BattleEntity = null) -> void:
+func damage_entity(entity: BattleEntity, amount: int, source_keywords: Array = [], from_spell: bool = false, source_entity: BattleEntity = null, explicit_source: String = "") -> void:
 	if _battle_over():
 		return
 	if entity == null or not entity.alive:
@@ -1369,7 +1370,7 @@ func damage_entity(entity: BattleEntity, amount: int, source_keywords: Array = [
 		entity.health = 0
 	_log("%s 受到 %d 点伤害（来源：%s；生命 %d，护盾 %d）" % [
 		entity.display_name(), amount,
-		_damage_source_label(source_entity, source_keywords, from_spell),
+		_damage_source_label(source_entity, source_keywords, from_spell) if explicit_source.is_empty() else explicit_source,
 		entity.health, entity.shield,
 	])
 	if damage > 0 or source_keywords.has("deadly"):

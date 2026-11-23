@@ -234,7 +234,9 @@ func draw_cards(count: int, cost_delta: int = 0) -> int:
 
 
 func deal_damage(target, amount: int) -> void:
-	engine.damage_handle(target, amount, source_keywords, is_spell_source)
+	var source_entity: BattleEntity = _self_handle if _self_handle is BattleEntity else null
+	var source_label: String = "环境" if get_zone() == "environment" else ""
+	engine.damage_handle(target, amount, source_keywords, is_spell_source, source_entity, source_label)
 
 
 func heal(target, amount: int) -> void:

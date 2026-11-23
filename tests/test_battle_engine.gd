@@ -99,6 +99,43 @@ func _started_engine(p_card: String = "pvzh:gnoll", z_card: String = "pvzh:hound
 	return engine
 
 
+func test_play_logs_both_sides_and_entity_ability_source() -> void:
+	var engine: BattleEngine = _started_engine()
+	var spell: CardData = _make_test_card(
+		"pvzh:test_log_spell",
+		"deal_damage(enemy_hero, 1)"
+	)
+	spell.kind = "spell"
+	spell.cost = 1
+	_set_hand(engine, "p", [spell.card_id])
+	engine.players["p"].energy = 10
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "p"
+	assert_true(bool(engine.play_card("p", 0, {}).get("ok", false)))
+	var has_play_log: bool = false
+	var expected_play_log: String = "P 打出 %s" % spell.display_name()
+	for entry: String in engine.log_entries:
+		if entry == expected_play_log:
+			has_play_log = true
+	assert_true(has_play_log, "打出锦囊应写入战报")
+	var source_card: CardData = _make_test_card(
+		"pvzh:test_log_ability_source",
+		"when enter:\n    deal_damage(all_enemies, 1)"
+	)
+	source_card.attack = 1
+	source_card.health = 3
+	var target_card: CardData = _make_test_card("pvzh:test_log_ability_target", "")
+	target_card.health = 3
+	engine.summon_card("z", target_card, 1, 0)
+	engine.summon_card("p", source_card, 1, 0)
+	engine._fire_event("enter", engine._entity_at(1, "p", 0))
+	var has_source: bool = false
+	for entry: String in engine.log_entries:
+		if entry.contains("来源：") and entry.contains(source_card.display_name()):
+			has_source = true
+	assert_true(has_source, "实体能力伤害应记录来源实体")
+
+
 func test_damage_log_has_source() -> void:
 	var engine: BattleEngine = _started_engine()
 	var attacker_card: CardData = _make_test_card("pvzh:test_log_source_attacker", "")
