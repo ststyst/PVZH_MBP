@@ -26,6 +26,7 @@ const FX_DIR: String = "res://assets/battle/fx/"
 @onready var background_root: Control = %BackgroundRoot
 @onready var art_root: Control = %ArtRoot
 @onready var background_sprite: Sprite2D = %BackgroundSprite
+@onready var border_sprite: Sprite2D = %BorderSprite
 @onready var art_sprite: Sprite2D = %ArtSprite
 @onready var attack_icon_sprite: Sprite2D = %AttackIconSprite
 @onready var health_icon_sprite: Sprite2D = %HealthIconSprite
@@ -68,6 +69,7 @@ func setup(entity: BattleEntity) -> void:
 	visible = true
 	name_label.text = entity.display_name()
 	_apply_background(entity.card.rarity)
+	_apply_border(entity.card.rarity)
 	_apply_art(entity.card)
 	attack_label.text = str(entity.attack)
 	health_label.text = str(entity.health)
@@ -77,6 +79,35 @@ func setup(entity: BattleEntity) -> void:
 
 func set_highlight(enabled: bool) -> void:
 	border_panel.visible = enabled
+
+
+## 手动替换场上的实体边框；传 null 隐藏。
+func set_border_texture(texture: Texture2D) -> void:
+	if border_sprite == null:
+		return
+	border_sprite.texture = texture
+	border_sprite.visible = texture != null
+	if texture == null:
+		return
+	border_sprite.position = DESIGN_SIZE * 0.5
+	var cover_scale: float = maxf(
+		DESIGN_SIZE.x / float(texture.get_width()),
+		DESIGN_SIZE.y / float(texture.get_height()),
+	)
+	border_sprite.scale = Vector2(cover_scale, cover_scale)
+
+
+func set_border_path(path: String) -> void:
+	if path.is_empty():
+		set_border_texture(null)
+		return
+	var texture: Texture2D = load(path) as Texture2D
+	if texture != null:
+		set_border_texture(texture)
+
+
+func _apply_border(rarity: String) -> void:
+	set_border_texture(CardArt.get_entity_border(rarity))
 
 
 ## 播放指定模式的具名动画，返回动画时长（找不到/无动画时返回 0）。

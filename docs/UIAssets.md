@@ -100,3 +100,81 @@ set_deck_header_art(texture: Texture2D)
 | 手牌槽位安全区 | 126 × 104 | 建议内缩 6 px |
 
 实体与手牌素材应比高度宽，并保留透明边距，避免内容贴边被裁切。
+
+## 边框素材接入
+
+### 手牌/牌组卡牌
+
+节点：`CardTile/BorderSprite`
+
+固定按稀有度加载：
+
+```text
+res://assets/cards/borders/<rarity>.png
+```
+
+例如：
+
+```text
+res://assets/cards/borders/normal.png
+res://assets/cards/borders/rare.png
+res://assets/cards/borders/super_rare.png
+res://assets/cards/borders/legend.png
+```
+
+接口：
+
+```gdscript
+tile.set_border_texture(texture)
+tile.set_border_path("res://assets/cards/borders/rare.png")
+```
+
+边框素材与卡牌背景同尺寸：
+
+- 母版：`512 × 640`
+- 九宫格边距：`32 px`
+- 透明 PNG
+
+### 场上实体
+
+节点：`BattleEntityView/WholeRoot/BorderSprite`
+
+优先：
+
+```text
+res://assets/battle/entities/borders/<rarity>.png
+```
+
+通用回退：
+
+```text
+res://assets/battle/entities/borders/border.png
+```
+
+接口：
+
+```gdscript
+view.set_border_texture(texture)
+view.set_border_path("res://assets/battle/entities/borders/rare.png")
+```
+
+边框素材与实体背景同尺寸，当前实体背景设计尺寸为 `136 × 84`，建议源图 `272 × 168`（2×）。
+
+### 费用文字
+
+`CardTile` 已补回 `CostLabel`：
+
+- 节点：`CardTile/CostLabel`
+- 自动显示 `CardData.cost`
+- 位置在卡面右上角
+- 费用图标仍由 `CostIconSprite` 承载
+
+## 卡牌素材尺寸
+
+| 素材 | 推荐尺寸 |
+|---|---|
+| 完整卡面母版 | 504 × 516 |
+| 手牌显示 | 126 × 104 |
+| 手牌插画区域 | 110 × 48 |
+| 卡牌背景/边框 | 512 × 640 |
+| 实体背景/边框 | 272 × 168（2×） |

@@ -17,7 +17,9 @@ const ART_CENTER: Vector2 = Vector2(63, 28)
 var card_id: String = ""
 
 @onready var background_sprite: Sprite2D = %BackgroundSprite
+@onready var border_sprite: Sprite2D = %BorderSprite
 @onready var art_sprite: Sprite2D = %ArtSprite
+@onready var cost_label: Label = %CostLabel
 @onready var attack_icon_sprite: Sprite2D = %AttackIconSprite
 @onready var health_icon_sprite: Sprite2D = %HealthIconSprite
 @onready var attack_label: Label = %AttackLabel
@@ -33,8 +35,10 @@ var card_id: String = ""
 func setup(card: CardData, owned_count: int, status_text: String = "", show_owned: bool = true) -> void:
 	card_id = card.card_id
 	_apply_background_sprite(card.rarity)
+	_apply_border_sprite(card.rarity)
 	_apply_art_sprite(card)
 	_apply_stats(card)
+	cost_label.text = str(card.cost)
 	name_label.text = card.display_name()
 	name_label.add_theme_color_override("font_color", _rarity_color(card.rarity))
 	meta_label.text = _build_meta_text(card)
@@ -68,6 +72,33 @@ func _apply_background_sprite(rarity: String) -> void:
 		CARD_SIZE.y / float(texture.get_height()),
 	)
 	background_sprite.scale = Vector2(cover_scale, cover_scale)
+
+
+func _apply_border_sprite(rarity: String) -> void:
+	var texture: Texture2D = CardArt.get_card_border(rarity)
+	set_border_texture(texture)
+
+
+func set_border_texture(texture: Texture2D) -> void:
+	border_sprite.texture = texture
+	border_sprite.visible = texture != null
+	if texture == null:
+		return
+	border_sprite.position = CARD_SIZE * 0.5
+	var cover_scale: float = maxf(
+		CARD_SIZE.x / float(texture.get_width()),
+		CARD_SIZE.y / float(texture.get_height()),
+	)
+	border_sprite.scale = Vector2(cover_scale, cover_scale)
+
+
+func set_border_path(path: String) -> void:
+	if path.is_empty():
+		set_border_texture(null)
+		return
+	var texture: Texture2D = load(path) as Texture2D
+	if texture != null:
+		set_border_texture(texture)
 
 
 func _apply_art_sprite(card: CardData) -> void:

@@ -2,8 +2,8 @@
 
 [ext_resource type="Script" uid="uid://cfdw5r8274jtg" path="res://scripts/ui/battle_screen.gd" id="1_battle"]
 [ext_resource type="PackedScene" path="res://scenes/cards/CardInfoDialog.tscn" id="2_card_info"]
-[ext_resource type="Texture2D" uid="uid://bgj16vhym0d3m" path="res://assets/battle/backgrounds/图层 3.png" id="2_w6b63"]
-[ext_resource type="Texture2D" uid="uid://bufy3qccyf63m" path="res://assets/battle/backgrounds/战斗区域.png" id="3_emwda"]
+[ext_resource type="Texture2D" uid="uid://doqs025c2ahmc" path="res://assets/battle/backgrounds/bg1.png" id="2_w6b63"]
+[ext_resource type="Texture2D" uid="uid://cf6ayoesjnveb" path="res://assets/battle/boards/战斗区域.png" id="3_emwda"]
 
 [node name="Battle" type="Control" unique_id=513367747]
 layout_mode = 3
