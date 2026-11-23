@@ -301,3 +301,17 @@ border_sprite.scale = Vector2(cover_scale, cover_scale * BORDER_HEIGHT_SCALE)
 ### 手牌
 
 手牌仍为 `126 × 104`，背景/边框仍可用 `512 × 640` 九宫格素材。
+
+## 实体显示比例与插画倍数
+
+- `DISPLAY_SIZE_RATIO = 0.95`：实体显示占按钮宽高的 95%
+- 四周各留 2.5% 空隙，避免相邻实体贴在一起
+- `ART_SCALE_MULTIPLIER = 2.0`：实体插画在“宽度铺满”基础上再放大 2 倍
+- 插画仍由实体窗口裁切
+
+修改位置：
+
+```gdscript
+const DISPLAY_SIZE_RATIO: float = 0.95
+const ART_SCALE_MULTIPLIER: float = 2.0
+```

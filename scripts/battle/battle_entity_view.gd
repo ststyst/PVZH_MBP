@@ -10,7 +10,10 @@ extends Control
 ## 动画素材放在 assets/animations/<mode>.tres（AnimationLibrary，动画名唯一）。
 
 const DESIGN_SIZE: Vector2 = Vector2(136, 84)
-const VIEW_MARGIN: float = 2.0
+## 实体显示占可放置按钮的比例；0.95 表示四周各留 2.5% 空隙
+const DISPLAY_SIZE_RATIO: float = 0.95
+## 实体插画额外放大倍数
+const ART_SCALE_MULTIPLIER: float = 2.0
 const ART_BOX: Vector2 = Vector2(124, 58)
 const ART_CENTER: Vector2 = Vector2(68, 34)
 const MODE_WHOLE: String = "whole"
@@ -46,11 +49,15 @@ var _last_card: CardData = null
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	visible = false
-	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	offset_left = VIEW_MARGIN
-	offset_top = VIEW_MARGIN
-	offset_right = -VIEW_MARGIN
-	offset_bottom = -VIEW_MARGIN
+	var inset: float = (1.0 - DISPLAY_SIZE_RATIO) * 0.5
+	anchor_left = inset
+	anchor_top = inset
+	anchor_right = 1.0 - inset
+	anchor_bottom = 1.0 - inset
+	offset_left = 0.0
+	offset_top = 0.0
+	offset_right = 0.0
+	offset_bottom = 0.0
 	resized.connect(_on_view_resized)
 	_configure_animation_layers()
 
@@ -213,4 +220,7 @@ func _apply_art(card: CardData) -> void:
 	var view: Vector2 = _view_size()
 	art_sprite.position = Vector2(view.x * 0.5, view.y * 0.5)
 	var width_scale: float = view.x / float(texture.get_width())
-	art_sprite.scale = Vector2(width_scale, width_scale)
+	art_sprite.scale = Vector2(
+		width_scale * ART_SCALE_MULTIPLIER,
+		width_scale * ART_SCALE_MULTIPLIER,
+	)
