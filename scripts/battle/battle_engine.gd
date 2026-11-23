@@ -2412,6 +2412,8 @@ func _trigger_zone_effects(event_name: String, event_entity: BattleEntity) -> vo
 			if not card.ability_script.has_event(event_name):
 				continue
 			var context := ZoneCardEffectContext.new(self, event_entity.side, zone, instance)
+			context.set_source_name(card.display_name())
+			context.set_self_target(instance)
 			context.set_event_target(event_entity)
 			var errors: Array[String] = card.ability_script.run_event(context, event_name, event_entity)
 			for message: String in errors:
@@ -2450,6 +2452,8 @@ func _trigger_zone_ally_death(dead_entity: BattleEntity) -> void:
 			if not card.ability_script.has_event("ally_die"):
 				continue
 			var context := ZoneCardEffectContext.new(self, dead_entity.side, zone, instance)
+			context.set_source_name(card.display_name())
+			context.set_self_target(instance)
 			context.set_event_target(dead_entity)
 			var errors: Array[String] = card.ability_script.run_event(context, "ally_die", dead_entity)
 			for message: String in errors:
