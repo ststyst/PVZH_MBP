@@ -235,7 +235,17 @@ func draw_cards(count: int, cost_delta: int = 0) -> int:
 
 func deal_damage(target, amount: int) -> void:
 	var source_entity: BattleEntity = _self_handle if _self_handle is BattleEntity else null
-	var source_label: String = "环境" if get_zone() == "environment" else ""
+	var source_label: String = ""
+	match get_zone():
+		"environment":
+			source_label = "环境"
+		"hand", "deck":
+			if _self_handle is BattleCardInstance:
+				var source_card: CardData = engine.get_card(_self_handle.card_id)
+				source_label = "%s：%s" % [
+					"手牌" if get_zone() == "hand" else "牌库",
+					source_card.display_name() if source_card != null else _self_handle.card_id,
+				]
 	engine.damage_handle(target, amount, source_keywords, is_spell_source, source_entity, source_label)
 
 
