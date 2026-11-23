@@ -158,7 +158,7 @@ func _exec_primitive(statement: Dictionary) -> void:
 				_error("remove_entity 需要单个实体目标", line)
 			else:
 				context.remove_entity(remove_targets[0])
-		"evolve", "base", "aura_buff", "aura_hand_cost", "aura_spell_cost", "double_death_effects":
+		"evolve", "base", "aura_buff", "aura_hand_cost", "aura_spell_cost", "double_death_effects", "in_hand", "in_deck":
 			pass
 		"put_card_on_deck_top", "put_hand_card_on_deck_top":
 			var deck_targets: Array = _resolve_argument_target(arguments[0])

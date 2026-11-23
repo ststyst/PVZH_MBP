@@ -136,6 +136,22 @@ func test_play_logs_both_sides_and_entity_ability_source() -> void:
 	assert_true(has_source, "实体能力伤害应记录来源实体")
 
 
+func test_hand_entity_ability_does_not_fire_from_hand() -> void:
+	var engine: BattleEngine = _started_engine()
+	var hand_card: CardData = _make_test_card(
+		"pvzh:test_hand_entity_enter",
+		"when enter:\n    deal_damage(all_enemies, 2)"
+	)
+	hand_card.health = 3
+	var target_card: CardData = _make_test_card("pvzh:test_hand_entity_target", "")
+	target_card.health = 5
+	var target: BattleEntity = engine.summon_card("z", target_card, 0, 0)
+	_set_hand(engine, "p", [hand_card.card_id])
+	var source: BattleEntity = engine.summon_card("p", _make_test_card("pvzh:test_hand_entity_source", ""), 1, 0)
+	engine._fire_event("enter", source)
+	assert_eq(target.health, 5, "手牌中实体牌的 when enter 不应在场上触发")
+
+
 func test_damage_log_has_source() -> void:
 	var engine: BattleEngine = _started_engine()
 	var attacker_card: CardData = _make_test_card("pvzh:test_log_source_attacker", "")
@@ -319,7 +335,7 @@ func test_effect_chain_resolves_before_play_ends() -> void:
 	reactor.health = 3
 	var hand_card: CardData = _make_test_card(
 		"pvzh:test_health_hand",
-		"when health_changed(side == 'ally'):\n    reduce_cost(1)"
+		"in_hand()\nwhen health_changed(side == 'ally'):\n    reduce_cost(1)"
 	)
 	hand_card.cost = 5
 	var spell: CardData = _make_test_card(
@@ -732,7 +748,7 @@ func test_triple_strike_and_aloe_captain() -> void:
 	var state: BattlePlayerState = engine.players["p"]
 	var aloe_card: CardData = _make_test_card(
 		"pvzh:test_aloe",
-		"when hand_played:\n    gain_attack(1)\nwhen ally_attack_gained:\n    buff_stats(self, 0, 1)"
+		"in_hand()\nwhen hand_played:\n    gain_attack(1)\nwhen ally_attack_gained:\n    buff_stats(self, 0, 1)"
 	)
 	aloe_card.attack = 2
 	aloe_card.health = 3
@@ -1618,7 +1634,7 @@ func test_surrender_sets_opponent_winner() -> void:
 func test_zone_deck_death_bonus_and_play_attack() -> void:
 	var card: CardData = _make_test_card(
 		"pvzh:test_deck_bonus",
-		"when ally_die(zone == 'deck'):\n    gain_attack(1)"
+		"in_deck()\nwhen ally_die(zone == 'deck'):\n    gain_attack(1)"
 	)
 	var engine: BattleEngine = _started_engine()
 	var state: BattlePlayerState = engine.players["p"]
@@ -1655,7 +1671,7 @@ func test_zone_deck_death_bonus_and_play_attack() -> void:
 func test_zone_hand_death_bonus_cost_and_play() -> void:
 	var card: CardData = _make_test_card(
 		"pvzh:test_hand_bonus",
-		"when ally_die(zone == 'hand'):\n    gain_attack(1)\n    reduce_cost(1)"
+		"in_hand()\nwhen ally_die(zone == 'hand'):\n    gain_attack(1)\n    reduce_cost(1)"
 	)
 	var engine: BattleEngine = _started_engine()
 	var state: BattlePlayerState = engine.players["p"]

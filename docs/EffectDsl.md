@@ -684,3 +684,26 @@ card.ability_script.run_on_play(ctx2)
 ```
 
 `RecordingEffectContext` 是现成的测试实现，可直接断言原语调用。
+
+### 区域作用域
+
+实体牌默认能力只在**场上**生效。若要在手牌或牌库生效，必须显式声明：
+
+```text
+in_hand()
+when health_changed(side == 'ally'):
+    reduce_cost(1)
+
+in_deck()
+when ally_die(zone == 'deck'):
+    gain_attack(1)
+```
+
+规则：
+
+- 没有 `in_hand()` / `in_deck()` 的实体牌能力不会从手牌/牌库触发
+- `in_hand()` 允许手牌中的能力响应事件
+- `in_deck()` 允许牌库中的能力响应事件
+- 可以同时声明两者
+- 手牌/牌库能力的伤害来源会记录为 `手牌：卡名` 或 `牌库：卡名`
+- `when hand_played`、`when ally_attack_gained` 等事件仍需要对应的 `in_hand()` 作用域

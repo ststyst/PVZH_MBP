@@ -2049,6 +2049,8 @@ func _fire_event(event_name: String, event_entity: BattleEntity, chosen_targets:
 	for listener: BattleEntity in entities.duplicate():
 		if listener.card == null or listener.card.ability_script == null:
 			continue
+		if listener.card.ability_script.in_hand_scope or listener.card.ability_script.in_deck_scope:
+			continue
 		if not listener.card.ability_script.has_effect():
 			continue
 		var context := BattleEffectContext.new(self, listener.side)
@@ -2065,7 +2067,7 @@ func _fire_event(event_name: String, event_entity: BattleEntity, chosen_targets:
 		if event_name != "die":
 			_emit_animation_cue("ability", listener, event_entity)
 	if event_name != "die" and event_entity != null:
-		_trigger_zone_effects(event_name, event_entity)
+		_trigger_scoped_zone_effects(event_name, event_entity)
 	if event_name != "turn_start" and event_name != "turn_end":
 		_fire_environment_event(event_name, event_entity)
 	_refresh_all_counter_bonuses()
@@ -2397,7 +2399,7 @@ func surrender(side: String) -> void:
 	changed.emit()
 
 
-func _trigger_zone_effects(event_name: String, event_entity: BattleEntity) -> void:
+func _trigger_scoped_zone_effects(event_name: String, event_entity: BattleEntity) -> void:
 	if event_entity == null:
 		return
 	var state: BattlePlayerState = players.get(event_entity.side, null)
@@ -2410,6 +2412,10 @@ func _trigger_zone_effects(event_name: String, event_entity: BattleEntity) -> vo
 			if card == null or card.ability_script == null:
 				continue
 			if not card.ability_script.has_event(event_name):
+				continue
+			if zone == "hand" and not card.ability_script.in_hand_scope:
+				continue
+			if zone == "deck" and not card.ability_script.in_deck_scope:
 				continue
 			var context := ZoneCardEffectContext.new(self, event_entity.side, zone, instance)
 			context.set_source_name(card.display_name())
@@ -2429,6 +2435,10 @@ func _fire_zone_event(side: String, event_name: String, event_handle) -> void:
 		for instance: BattleCardInstance in instances:
 			var card: CardData = get_card(instance.card_id)
 			if card == null or card.ability_script == null or not card.ability_script.has_event(event_name):
+				continue
+			if zone == "hand" and not card.ability_script.in_hand_scope:
+				continue
+			if zone == "deck" and not card.ability_script.in_deck_scope:
 				continue
 			var context := ZoneCardEffectContext.new(self, side, zone, instance)
 			context.set_source_name(card.display_name())
@@ -2450,6 +2460,10 @@ func _trigger_zone_ally_death(dead_entity: BattleEntity) -> void:
 			if card == null or card.ability_script == null:
 				continue
 			if not card.ability_script.has_event("ally_die"):
+				continue
+			if zone == "hand" and not card.ability_script.in_hand_scope:
+				continue
+			if zone == "deck" and not card.ability_script.in_deck_scope:
 				continue
 			var context := ZoneCardEffectContext.new(self, dead_entity.side, zone, instance)
 			context.set_source_name(card.display_name())

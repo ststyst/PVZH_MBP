@@ -99,6 +99,8 @@ const PRIMITIVES: Dictionary = {
 	"put_card_on_deck_top": {"min": 2, "max": 2},
 	"put_hand_card_on_deck_top": {"min": 2, "max": 2},
 	"shuffle_buried_positions": {"min": 1, "max": 1},
+	"in_hand": {"min": 0, "max": 0},
+	"in_deck": {"min": 0, "max": 0},
 }
 
 ## 查询函数（可以出现在表达式里）
