@@ -3,9 +3,7 @@
 [ext_resource type="Script" uid="uid://b0c1h3k4b37xh" path="res://scripts/battle/battle_entity_view.gd" id="1_entity_view"]
 [ext_resource type="FontFile" uid="uid://coev8tv05u67j" path="res://assets/ttf/VonwaonBitmap-16pxLite.ttf" id="2_m5twh"]
 [ext_resource type="AnimationLibrary" path="res://assets/animations/whole.tres" id="2_whole_lib"]
-[ext_resource type="Texture2D" uid="uid://bdox7xjuptnr1" path="res://assets/battle/entities/normal.png" id="2_yp471"]
 [ext_resource type="AnimationLibrary" path="res://assets/animations/background.tres" id="3_background_lib"]
-[ext_resource type="Texture2D" uid="uid://beswwax2v2ujf" path="res://assets/battle/entities/borders/rare.png" id="3_eg4et"]
 [ext_resource type="AnimationLibrary" path="res://assets/animations/art.tres" id="4_art_lib"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_border"]
@@ -21,8 +19,8 @@ corner_radius_bottom_right = 6
 corner_radius_bottom_left = 6
 
 [node name="BattleEntityView" type="Control" unique_id=1707741377]
-clip_contents = true
 custom_minimum_size = Vector2(0, 84)
+clip_contents = true
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -57,13 +55,11 @@ mouse_filter = 2
 [node name="BackgroundSprite" type="Sprite2D" parent="WholeRoot/BackgroundRoot" unique_id=1898431007]
 unique_name_in_owner = true
 position = Vector2(68, 42)
-texture = ExtResource("2_yp471")
 
 [node name="BorderSprite" type="Sprite2D" parent="WholeRoot" unique_id=991100301]
 unique_name_in_owner = true
 z_index = 2
 position = Vector2(68, 42)
-texture = ExtResource("3_eg4et")
 
 [node name="ArtRoot" type="Control" parent="WholeRoot" unique_id=1625685971]
 unique_name_in_owner = true
@@ -82,14 +78,17 @@ position = Vector2(68, 34)
 
 [node name="AttackIconSprite" type="Sprite2D" parent="WholeRoot" unique_id=842813093]
 unique_name_in_owner = true
+z_index = 3
 position = Vector2(20, 68)
 
 [node name="HealthIconSprite" type="Sprite2D" parent="WholeRoot" unique_id=2112509806]
 unique_name_in_owner = true
+z_index = 3
 position = Vector2(116, 68)
 
 [node name="NameLabel" type="Label" parent="WholeRoot" unique_id=833768024]
 unique_name_in_owner = true
+z_index = 3
 layout_mode = 0
 offset_left = 2.0
 offset_right = 134.0
@@ -103,12 +102,13 @@ horizontal_alignment = 1
 
 [node name="AttackLabel" type="Label" parent="WholeRoot" unique_id=693756563]
 unique_name_in_owner = true
+z_index = 3
 layout_mode = 0
 offset_left = -8.0
 offset_top = 74.0
 offset_right = 110.0
 offset_bottom = 310.0
-theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_colors/font_color = Color(1, 0.92, 0.72, 1)
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 4
 theme_override_fonts/font = ExtResource("2_m5twh")
@@ -118,12 +118,13 @@ horizontal_alignment = 1
 
 [node name="HealthLabel" type="Label" parent="WholeRoot" unique_id=672717612]
 unique_name_in_owner = true
+z_index = 3
 layout_mode = 0
 offset_left = 26.0
 offset_top = 97.0
 offset_right = 146.0
 offset_bottom = 337.0
-theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_colors/font_color = Color(1, 0.92, 0.72, 1)
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 4
 theme_override_fonts/font = ExtResource("2_m5twh")
