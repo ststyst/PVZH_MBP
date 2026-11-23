@@ -11,6 +11,7 @@ extends Control
 
 const DESIGN_SIZE: Vector2 = Vector2(136, 84)
 const VIEW_MARGIN: float = 2.0
+const BORDER_HEIGHT_SCALE: float = 1.5
 const ART_BOX: Vector2 = Vector2(124, 58)
 const ART_CENTER: Vector2 = Vector2(68, 34)
 const MODE_WHOLE: String = "whole"
@@ -115,7 +116,7 @@ func set_border_texture(texture: Texture2D) -> void:
 		_view_size().x / float(texture.get_width()),
 		_view_size().y / float(texture.get_height()),
 	)
-	border_sprite.scale = Vector2(cover_scale, cover_scale)
+	border_sprite.scale = Vector2(cover_scale, cover_scale * BORDER_HEIGHT_SCALE)
 
 
 func set_border_path(path: String) -> void:

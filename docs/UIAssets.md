@@ -239,3 +239,22 @@ ART_WINDOW_CENTER_Y = 0.45
 - 超出实体视图的上下部分被裁切
 
 这样完整卡牌插画会优先填满宽度，手牌/实体只显示窗口内的部分，不再使用 `contain` 留白。
+
+## 实体边框高度 1.5 倍
+
+- 实体边框横向按槽位覆盖
+- 纵向缩放为横向缩放的 1.5 倍
+- 以边框中心为缩放中心，向上下扩展
+- 实体视图本身不再启用整体裁剪
+- `BackgroundRoot` 与 `ArtRoot` 各自启用裁剪，背景和插画仍限制在槽内
+- 边框允许向槽位上下溢出
+- 实体视图仍相对放置按钮内缩 2 px
+
+对应代码：
+
+```gdscript
+const BORDER_HEIGHT_SCALE: float = 1.5
+border_sprite.scale = Vector2(cover_scale, cover_scale * BORDER_HEIGHT_SCALE)
+```
+
+实体边框素材建议继续使用与实体背景相同的尺寸，当前为 2× 约 `272 × 168`。
