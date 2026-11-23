@@ -24,7 +24,7 @@ func teardown() -> void:
 func test_card_art_loader() -> void:
 	assert_true(CardArt.get_texture("res://icon.svg") != null, "存在的美术文件应能加载")
 	assert_true(CardArt.get_texture("") != null, "空路径应回退默认卡面")
-	assert_true(CardArt.get_texture("res://missing_art.png") == null, "缺失文件应返回 null")
+	assert_true(CardArt.get_texture("res://missing_art.png") != null, "缺失文件应回退默认卡面")
 
 
 func test_csv_set_loaded() -> void:

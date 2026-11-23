@@ -28,12 +28,14 @@ var card_id: String = ""
 @onready var meta_label: Label = %CardMeta
 @onready var desc_label: Label = %CardDesc
 @onready var owned_label: Label = %CardOwned
+@onready var content: Control = $Content
 
 
 ## 注入卡牌数据与拥有数量。必须在 add_child 之后调用（依赖 @onready 节点）。
 ## status_text 非空时替换左下角状态文字（例如“拥有 2 · 编入 1”）。
-func setup(card: CardData, owned_count: int, status_text: String = "", show_owned: bool = true) -> void:
+func setup(card: CardData, owned_count: int, status_text: String = "", show_owned: bool = true, compact: bool = false) -> void:
 	card_id = card.card_id
+	content.visible = not compact
 	_apply_background_sprite(card.rarity)
 	_apply_border_sprite(card.rarity)
 	_apply_art_sprite(card)

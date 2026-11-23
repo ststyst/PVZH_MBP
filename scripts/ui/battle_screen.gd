@@ -342,7 +342,7 @@ func _rebuild_mulligan_row() -> void:
 		columns[index % 2].add_child(entry)
 		var tile: CardTile = CARD_TILE_SCENE.instantiate()
 		entry.add_child(tile)
-		tile.setup(card, 0, "", false)
+		tile.setup(card, 0, "", false, true)
 		var refresh := Button.new()
 		refresh.text = "刷新"
 		refresh.disabled = index < _mulligan_used.size() and _mulligan_used[index]
@@ -1110,7 +1110,7 @@ func _rebuild_hand() -> void:
 		tile.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 		tile.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 		current_column.add_child(tile)
-		tile.setup(card, 0, "", false)
+		tile.setup(card, 0, "", false, true)
 		tile.pressed.connect(_on_hand_pressed.bind(index))
 		tile.gui_input.connect(_on_hand_tile_gui_input.bind(index))
 		var disabled: bool = not _can_player_act()

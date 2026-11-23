@@ -29,10 +29,22 @@ static func get_texture(art_path: String) -> Texture2D:
 		path = DEFAULT_CARD_ART
 	if _cache.has(path):
 		return _cache[path] as Texture2D
-	var texture: Texture2D = null
-	if ResourceLoader.exists(path):
-		texture = load(path) as Texture2D
+	var texture: Texture2D = _load_valid_texture(path)
+	if texture == null and path != DEFAULT_CARD_ART:
+		texture = _load_valid_texture(DEFAULT_CARD_ART)
 	_cache[path] = texture
+	return texture
+
+
+static func _load_valid_texture(path: String) -> Texture2D:
+	if path.is_empty() or not ResourceLoader.exists(path):
+		return null
+	var resource: Resource = load(path)
+	var texture: Texture2D = resource as Texture2D
+	if texture == null:
+		return null
+	if texture.get_width() <= 0 or texture.get_height() <= 0:
+		return null
 	return texture
 
 
