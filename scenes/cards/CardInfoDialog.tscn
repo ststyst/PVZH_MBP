@@ -1,11 +1,12 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/card_info_dialog.gd" id="1_card_info"]
+[ext_resource type="PackedScene" path="res://scenes/battle/BattleEntityView.tscn" id="2_entity_preview"]
 
 [node name="CardInfoDialog" type="AcceptDialog"]
 title = "卡牌信息"
-size = Vector2i(380, 600)
-min_size = Vector2i(340, 480)
+size = Vector2i(460, 820)
+min_size = Vector2i(380, 600)
 ok_button_text = "关闭"
 script = ExtResource("1_card_info")
 
@@ -23,6 +24,21 @@ theme_override_constants/margin_bottom = 64
 [node name="VBox" type="VBoxContainer" parent="Margin"]
 layout_mode = 2
 
+[node name="PreviewFrame" type="Control" parent="Margin/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 240)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="EntityPreview" parent="Margin/VBox/PreviewFrame" instance=ExtResource("2_entity_preview")]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
 [node name="CardFrame" type="PanelContainer" parent="Margin/VBox"]
 unique_name_in_owner = true
 layout_mode = 2

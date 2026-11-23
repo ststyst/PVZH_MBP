@@ -12,6 +12,8 @@ const RARITY_COLORS: Dictionary = {
 }
 
 @onready var card_frame: PanelContainer = %CardFrame
+@onready var preview_frame: Control = %PreviewFrame
+@onready var entity_preview: BattleEntityView = %EntityPreview
 @onready var art_texture: TextureRect = %CardArt
 @onready var cost_label: Label = %CostLabel
 @onready var name_label: Label = %NameLabel
@@ -24,6 +26,19 @@ const RARITY_COLORS: Dictionary = {
 
 func _ready() -> void:
 	ok_button_text = "关闭"
+	_apply_white_text_style()
+
+
+func _apply_white_text_style() -> void:
+	for label: Label in [cost_label, name_label, meta_label, stats_label, keywords_label, tribes_label, description_label]:
+		label.add_theme_color_override("font_color", Color(1, 1, 1, 1))
+	cost_label.add_theme_font_size_override("font_size", 42)
+	name_label.add_theme_font_size_override("font_size", 30)
+	meta_label.add_theme_font_size_override("font_size", 16)
+	stats_label.add_theme_font_size_override("font_size", 21)
+	keywords_label.add_theme_font_size_override("font_size", 17)
+	tribes_label.add_theme_font_size_override("font_size", 16)
+	description_label.add_theme_font_size_override("font_size", 17)
 
 
 ## 显示一张卡牌的信息。
@@ -32,7 +47,7 @@ func show_card(card: CardData) -> void:
 		return
 	cost_label.text = str(card.cost)
 	name_label.text = card.display_name()
-	name_label.add_theme_color_override("font_color", _rarity_color(card.rarity))
+	name_label.add_theme_color_override("font_color", Color(1, 1, 1, 1))
 	meta_label.text = "%s · %s · %s" % [card.get_type_text(), card.get_class_text(), card.get_rarity_text()]
 	if card.is_entity():
 		stats_label.text = "攻击 %d　生命 %d　防御 %d" % [card.attack, card.health, card.shield]
@@ -45,26 +60,34 @@ func show_card(card: CardData) -> void:
 	tribes_label.visible = not tribes_label.text.is_empty()
 	description_label.text = card.description
 	_apply_art(card)
+	_apply_preview(card)
 	_apply_rarity_style(card.rarity)
 	popup_centered()
 
 
+func _apply_preview(card: CardData) -> void:
+	preview_frame.visible = card.is_entity()
+	entity_preview.visible = false
+	if not card.is_entity():
+		return
+	var preview_entity := BattleEntity.new()
+	preview_entity.setup(card, "p", 0, 0)
+	entity_preview.setup(preview_entity)
+	entity_preview.visible = true
+
+
 func _apply_art(card: CardData) -> void:
 	var texture: Texture2D = CardArt.get_texture(card.art_path)
-	art_texture.visible = texture != null
+	art_texture.visible = false
 	art_texture.texture = texture
 
 
-func _apply_rarity_style(rarity: String) -> void:
-	var background: StyleBoxTexture = CardArt.get_card_background_style(rarity)
-	if background != null:
-		card_frame.add_theme_stylebox_override("panel", background)
-		return
+func _apply_rarity_style(_rarity: String) -> void:
 	var box := StyleBoxFlat.new()
-	box.bg_color = Color(0.10, 0.11, 0.15)
-	box.border_color = _rarity_color(rarity)
-	box.set_border_width_all(3)
-	box.set_corner_radius_all(12)
+	box.bg_color = Color(0, 0, 0, 1)
+	box.border_color = Color(0, 0, 0, 1)
+	box.set_border_width_all(0)
+	box.set_corner_radius_all(10)
 	box.content_margin_left = 12
 	box.content_margin_right = 12
 	box.content_margin_top = 12
