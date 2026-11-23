@@ -6,6 +6,7 @@ extends RefCounted
 ## 空路径/加载失败返回 null（回退纯色外观）。
 
 const CARD_BACKGROUND_DIR: String = "res://assets/cards/backgrounds/"
+const DEFAULT_CARD_ART: String = "res://assets/cards/art/XXXdefault.png"
 const CARD_BORDER_DIR: String = "res://assets/cards/borders/"
 const ENTITY_BACKGROUND_DIR: String = "res://assets/battle/entities/"
 const ENTITY_BORDER_DIR: String = "res://assets/battle/entities/borders/"
@@ -25,7 +26,7 @@ static var _entity_border_cache: Dictionary = {}
 static func get_texture(art_path: String) -> Texture2D:
 	var path: String = art_path.strip_edges()
 	if path.is_empty():
-		return null
+		path = DEFAULT_CARD_ART
 	if _cache.has(path):
 		return _cache[path] as Texture2D
 	var texture: Texture2D = null

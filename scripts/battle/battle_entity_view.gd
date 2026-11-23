@@ -68,6 +68,7 @@ func setup(entity: BattleEntity) -> void:
 		return
 	visible = true
 	name_label.text = entity.display_name()
+	_layout_runtime()
 	_apply_background(entity.card.rarity)
 	_apply_border(entity.card.rarity)
 	_apply_art(entity.card)
@@ -89,10 +90,10 @@ func set_border_texture(texture: Texture2D) -> void:
 	border_sprite.visible = texture != null
 	if texture == null:
 		return
-	border_sprite.position = DESIGN_SIZE * 0.5
+	border_sprite.position = _view_size() * 0.5
 	var cover_scale: float = maxf(
-		DESIGN_SIZE.x / float(texture.get_width()),
-		DESIGN_SIZE.y / float(texture.get_height()),
+		_view_size().x / float(texture.get_width()),
+		_view_size().y / float(texture.get_height()),
 	)
 	border_sprite.scale = Vector2(cover_scale, cover_scale)
 
@@ -108,6 +109,33 @@ func set_border_path(path: String) -> void:
 
 func _apply_border(rarity: String) -> void:
 	set_border_texture(CardArt.get_entity_border(rarity))
+
+
+func _view_size() -> Vector2:
+	if size.x > 0.0 and size.y > 0.0:
+		return size
+	return DESIGN_SIZE
+
+
+func _layout_runtime() -> void:
+	var view: Vector2 = _view_size()
+	whole_root.pivot_offset = view * 0.5
+	background_root.pivot_offset = view * 0.5
+	art_root.pivot_offset = view * 0.5
+	name_label.offset_left = 2.0
+	name_label.offset_top = 0.0
+	name_label.offset_right = view.x - 2.0
+	name_label.offset_bottom = 16.0
+	attack_label.offset_left = 2.0
+	attack_label.offset_top = view.y - 22.0
+	attack_label.offset_right = 38.0
+	attack_label.offset_bottom = view.y - 2.0
+	health_label.offset_left = view.x - 38.0
+	health_label.offset_top = view.y - 22.0
+	health_label.offset_right = view.x - 2.0
+	health_label.offset_bottom = view.y - 2.0
+	attack_icon_sprite.position = Vector2(20.0, view.y - 12.0)
+	health_icon_sprite.position = Vector2(view.x - 20.0, view.y - 12.0)
 
 
 ## 播放指定模式的具名动画，返回动画时长（找不到/无动画时返回 0）。
@@ -156,10 +184,10 @@ func _apply_background(rarity: String) -> void:
 	background_sprite.texture = texture
 	if texture == null:
 		return
-	background_sprite.position = DESIGN_SIZE * 0.5
+	background_sprite.position = _view_size() * 0.5
 	var cover_scale: float = maxf(
-		DESIGN_SIZE.x / float(texture.get_width()),
-		DESIGN_SIZE.y / float(texture.get_height()),
+		_view_size().x / float(texture.get_width()),
+		_view_size().y / float(texture.get_height()),
 	)
 	background_sprite.scale = Vector2(cover_scale, cover_scale)
 
@@ -170,9 +198,12 @@ func _apply_art(card: CardData) -> void:
 	art_sprite.texture = texture
 	if texture == null:
 		return
-	art_sprite.position = ART_CENTER
+	var view: Vector2 = _view_size()
+	var art_box: Vector2 = Vector2(view.x * 0.94, view.y * 0.62)
+	var art_center: Vector2 = Vector2(view.x * 0.5, view.y * 0.34)
+	art_sprite.position = art_center
 	var contain_scale: float = minf(
-		ART_BOX.x / float(texture.get_width()),
-		ART_BOX.y / float(texture.get_height()),
+		art_box.x / float(texture.get_width()),
+		art_box.y / float(texture.get_height()),
 	)
 	art_sprite.scale = Vector2(contain_scale, contain_scale)
