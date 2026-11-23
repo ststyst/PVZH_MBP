@@ -107,6 +107,17 @@ func test_multiple_when_blocks_newline() -> void:
 	assert_false(script.has_errors(), "多事件块（换行）应可解析：%s" % [script.errors])
 	assert_eq(script.events.size(), 2)
 
+func test_entity_chosen_requires_choose() -> void:
+	var bad: CardEffectScript = CardEffectScript.parse(
+		"when enter:\n    deal_damage(chosen, 2)"
+	)
+	assert_false(bad.validate_for_kind("entity").is_empty(), "实体 chosen 没有 choose 应报错")
+	var good: CardEffectScript = CardEffectScript.parse(
+		"when enter:\n    choose(1, \"all_enemies\")\n    deal_damage(chosen, 2)"
+	)
+	assert_true(good.validate_for_kind("entity").is_empty(), "实体 choose+chosen 应合法")
+
+
 func test_evolve_and_base_are_entity_only() -> void:
 	var evolve: CardEffectScript = CardEffectScript.parse("evolve(\"name == 'gnoll'\")\nwhen evolved: add_marker(\"x\", 1)")
 	assert_true(evolve.validate_for_kind("entity").is_empty())

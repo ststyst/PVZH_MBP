@@ -136,11 +136,34 @@ func test_play_logs_both_sides_and_entity_ability_source() -> void:
 	assert_true(has_source, "实体能力伤害应记录来源实体")
 
 
+func test_environment_temporary_keyword_grants_are_removed_on_replace() -> void:
+	var engine: BattleEngine = _started_engine()
+	var entity_card: CardData = _make_test_card("pvzh:test_env_keyword_entity", "")
+	entity_card.keywords = ["deadly"]
+	entity_card.health = 4
+	var entity: BattleEntity = engine.summon_card("p", entity_card, 1, 0)
+	assert_true(entity.has_keyword("deadly"))
+	assert_eq(entity.keyword_value("deadly"), 1)
+	var env_card: CardData = _make_test_card(
+		"pvzh:test_env_keyword",
+		"environment_grant_keyword('deadly', 2, 'ally')"
+	)
+	env_card.kind = "environment"
+	env_card.english_name = "test_env_keyword"
+	assert_true(engine._place_environment("p", 1, env_card))
+	assert_eq(entity.keyword_value("deadly"), 3, "环境临时致命应与已有致命叠加，实际 %d，buffs=%s" % [entity.keyword_value("deadly"), str(entity.buffs)])
+	var other_env: CardData = _make_test_card("pvzh:test_env_other", "")
+	other_env.kind = "environment"
+	other_env.english_name = "test_env_other"
+	assert_true(engine._place_environment("p", 1, other_env))
+	assert_eq(entity.keyword_value("deadly"), 1, "环境被覆盖后应只移除环境赋予的临时词缀，实际 %d buffs=%s" % [entity.keyword_value("deadly"), str(entity.buffs)])
+
+
 func test_heal_all_spell_can_play_without_target() -> void:
 	var engine: BattleEngine = _started_engine()
 	var entity_card: CardData = _make_test_card("pvzh:test_heal_target", "")
 	entity_card.health = 5
-	var entity: BattleEntity = engine.summon_card("p", entity_card, 0, 0)
+	var entity: BattleEntity = engine.summon_card("p", entity_card, 1, 0)
 	entity.health = 2
 	var heal_card: CardData = cards.get_card("pvzh:heal")
 	assert_true(heal_card != null)
@@ -543,7 +566,7 @@ func test_normal_attack_hero_damage_uses_shield() -> void:
 func test_keyword_values_stack_and_respect_whitelist() -> void:
 	var engine: BattleEngine = _started_engine()
 	var entity_card: CardData = _make_test_card("pvzh:test_keyword_entity", "")
-	var entity: BattleEntity = engine.summon_card("p", entity_card, 0, 0)
+	var entity: BattleEntity = engine.summon_card("p", entity_card, 1, 0)
 	assert_true(entity.add_keyword("first_strike", 2))
 	assert_true(entity.add_keyword("first_strike", 3))
 	assert_eq(entity.keyword_value("first_strike"), 5, "同词缀数值应相加")
@@ -563,9 +586,9 @@ func test_keyword_values_stack_and_respect_whitelist() -> void:
 	engine.phase = BattleEngine.PHASE_HAND
 	engine.active_side = "p"
 	engine.players["p"].energy = 10
-	var played: Dictionary = engine.play_card("p", 1, {"column": 1, "slot": 0})
+	var played: Dictionary = engine.play_card("p", 1, {"column": 2, "slot": 0})
 	assert_true(bool(played.get("ok", false)), "带手牌词缀的实体应能打出")
-	var played_entity: BattleEntity = engine._entity_at(1, "p", 0)
+	var played_entity: BattleEntity = engine._entity_at(2, "p", 0)
 	assert_true(played_entity != null)
 	if played_entity != null:
 		assert_eq(played_entity.keyword_value("first_strike"), 2, "手牌词缀应转为实体词缀")
@@ -1180,7 +1203,7 @@ func test_remove_entity_does_not_trigger_death() -> void:
 		"pvzh:test_remove",
 		"when die:\n    add_marker(\"died\", 1)"
 	)
-	var entity: BattleEntity = engine.summon_card("p", entity_card, 0, 0)
+	var entity: BattleEntity = engine.summon_card("p", entity_card, 1, 0)
 	assert_true(engine.remove_entity_handle(entity))
 	assert_false(entity.alive)
 	assert_eq(engine.players["p"].marker_count("died"), 0, "移除不应触发死亡事件/亡语")

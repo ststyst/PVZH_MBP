@@ -278,6 +278,14 @@ func give_keyword(target, keyword: String, value: int = 0) -> void:
 	engine.give_keyword_handle(target, keyword, value)
 
 
+func environment_grant_keyword(keyword: String, value: int, side_filter: String) -> void:
+	engine.grant_environment_keyword(base_column, caster_side, keyword, value, side_filter)
+
+
+func environment_grant_keyword_persistent(keyword: String, value: int, side_filter: String) -> void:
+	engine.grant_environment_keyword_persistent(base_column, caster_side, keyword, value, side_filter)
+
+
 func destroy(target) -> void:
 	if target is BattleEntity and is_spell_source and target.is_spell_immune():
 		return

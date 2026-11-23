@@ -83,6 +83,14 @@ func give_keyword(_target, _keyword: String, _value: int = 0) -> void:
 	push_warning("EffectContext.give_keyword 未实现：需要战斗层提供")
 
 
+func environment_grant_keyword(_keyword: String, _value: int, _side_filter: String) -> void:
+	push_warning("EffectContext.environment_grant_keyword 未实现：需要战斗层提供")
+
+
+func environment_grant_keyword_persistent(_keyword: String, _value: int, _side_filter: String) -> void:
+	push_warning("EffectContext.environment_grant_keyword_persistent 未实现：需要战斗层提供")
+
+
 func destroy(_target) -> void:
 	push_warning("EffectContext.destroy 未实现：需要战斗层提供")
 

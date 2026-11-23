@@ -57,6 +57,8 @@ var card_database: Object = null
 ## 当前环境牌与所属阵营：column -> card_id / side
 var environment_cards: Dictionary = {}
 var environment_owners: Dictionary = {}
+## 环境临时赋予的词缀：column -> [{entity_id, buff_id, layers}]
+var environment_keyword_grants: Dictionary = {}
 ## 不能被环境牌覆盖的环境 id
 var protected_environments: Array[String] = ["highground", "water"]
 ## 环境 id -> 实体词缀限制表达式
@@ -692,9 +694,9 @@ func _is_base_entity(entity: BattleEntity) -> bool:
 
 
 func card_needs_target(card: CardData) -> bool:
-	if card == null or card.ability.is_empty():
+	if card == null or card.ability_script == null:
 		return false
-	return card.ability.find("chosen") != -1
+	return card.ability_script.requires_single_target()
 
 
 func target_mode_for(card: CardData) -> String:
@@ -966,6 +968,7 @@ func can_change_environment(column: int) -> bool:
 func _place_environment(side: String, column: int, card: CardData) -> bool:
 	if card == null or not card.is_environment() or not can_change_environment(column):
 		return false
+	_clear_environment_keyword_grants(column)
 	environments[column] = card.english_name.to_lower().replace(" ", "_")
 	environment_labels[column] = card.display_name()
 	environment_cards[column] = card.card_id
@@ -974,6 +977,76 @@ func _place_environment(side: String, column: int, card: CardData) -> bool:
 	if card.ability_script != null and card.ability_script.has_effect():
 		_run_script(card, side, [], {"column": column})
 	return true
+
+
+func _clear_environment_keyword_grants(column: int) -> void:
+	var grants: Array = environment_keyword_grants.get(column, [])
+	for grant: Dictionary in grants:
+		var entity: BattleEntity = find_entity_by_id(int(grant.get("entity_id", -1)))
+		if entity == null:
+			continue
+		for _layer: int in range(maxi(int(grant.get("layers", 1)), 1)):
+			entity.remove_buff(str(grant.get("buff_id", "")))
+	environment_keyword_grants.erase(column)
+
+
+func find_entity_by_id(entity_id: int) -> BattleEntity:
+	for entity: BattleEntity in entities:
+		if entity.entity_id == entity_id:
+			return entity
+	return null
+
+
+func grant_environment_keyword(
+	column: int,
+	owner_side: String,
+	keyword: String,
+	value: int,
+	side_filter: String,
+) -> void:
+	if column < 0 or column >= COLUMN_COUNT:
+		return
+	var normalized: String = CardKeywords.normalize(keyword)
+	if not CardKeywords.has(normalized):
+		return
+	var filter: String = side_filter.strip_edges().to_lower()
+	var layers: int = maxi(value, 1)
+	var buff_id: String = "temp_%s" % normalized
+	for entity: BattleEntity in entities.duplicate():
+		if not entity.is_alive() or entity.column != column:
+			continue
+		if filter == "ally" and entity.side != owner_side:
+			continue
+		if filter == "enemy" and entity.side == owner_side:
+			continue
+		if not apply_buff_handle(entity, buff_id, layers):
+			continue
+		var grants: Array = environment_keyword_grants.get(column, [])
+		grants.append({"entity_id": entity.entity_id, "buff_id": buff_id, "layers": layers})
+		environment_keyword_grants[column] = grants
+
+
+func grant_environment_keyword_persistent(
+	column: int,
+	owner_side: String,
+	keyword: String,
+	value: int,
+	side_filter: String,
+) -> void:
+	if column < 0 or column >= COLUMN_COUNT:
+		return
+	var normalized: String = CardKeywords.normalize(keyword)
+	if not CardKeywords.has(normalized):
+		return
+	var filter: String = side_filter.strip_edges().to_lower()
+	for entity: BattleEntity in entities.duplicate():
+		if not entity.is_alive() or entity.column != column:
+			continue
+		if filter == "ally" and entity.side != owner_side:
+			continue
+		if filter == "enemy" and entity.side == owner_side:
+			continue
+		give_keyword_handle(entity, normalized, maxi(value, 1))
 
 
 func place_environment_by_name(side: String, column: int, card_name: String) -> bool:

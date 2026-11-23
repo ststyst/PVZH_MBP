@@ -121,6 +121,30 @@ func move_requires_position() -> bool:
 	return _find_move_to_chosen_position(on_play)
 
 
+## 顶层语句是否真正引用了 chosen / chosen_if 目标节点。
+func requires_single_target() -> bool:
+	return _has_chosen_reference(on_play)
+
+
+func _has_chosen_reference(node: Variant) -> bool:
+	if node is Array:
+		for item: Variant in node:
+			if _has_chosen_reference(item):
+				return true
+		return false
+	if not node is Dictionary:
+		return false
+	var data: Dictionary = node
+	if str(data.get("type", "")) == "target":
+		var selector: String = str(data.get("selector", ""))
+		if selector == "chosen" or selector == "chosen_if":
+			return true
+	for key: Variant in data.keys():
+		if _has_chosen_reference(data[key]):
+			return true
+	return false
+
+
 ## 该卡是否要求玩家在打出时选择一列。
 func column_requirement() -> bool:
 	return _find_call(on_play, "choose_column")
@@ -192,6 +216,10 @@ func validate_for_kind(kind: String) -> Array[String]:
 			if str(data.get("type", "")) != "call" or call_name not in ["evolve", "base", "aura_buff", "aura_hand_cost", "aura_spell_cost", "double_death_effects", "in_hand", "in_deck"]:
 				problems.append("实体牌顶层只允许 evolve/base/aura/double_death_effects/in_hand/in_deck 声明；其他能力必须写在 when 事件块中。")
 				break
+		for trigger: Dictionary in events:
+			var body: Array = trigger.get("body", [])
+			if _has_chosen_reference(body) and _find_choose(body).is_empty():
+				problems.append("实体牌事件“%s”使用了 chosen，但没有声明 choose(...) 目标选择。" % str(trigger.get("event", "")))
 	elif kind == "spell" or kind == "environment":
 		if is_base_ability or is_evolve_ability or not aura_buffs.is_empty() or not aura_hand_costs.is_empty() or not aura_spell_costs.is_empty() or doubles_death_effects or in_hand_scope or in_deck_scope:
 			problems.append("evolve / base / aura / 双亡语 / 区域作用域只能用于实体牌，不能用于锦囊或环境牌。")

@@ -91,6 +91,18 @@ func _exec_primitive(statement: Dictionary) -> void:
 			context.gain_energy(_as_int(_eval(arguments[0], {})))
 		"deal_damage", "heal", "gain_shield", "buff_stats", "give_keyword", "destroy":
 			_exec_target_primitive(primitive_name, arguments, line)
+		"environment_grant_keyword":
+			context.environment_grant_keyword(
+				_as_string(_eval(arguments[0], {})),
+				_as_int(_eval(arguments[1], {})),
+				_as_string(_eval(arguments[2], {}))
+			)
+		"environment_grant_keyword_persistent":
+			context.environment_grant_keyword_persistent(
+				_as_string(_eval(arguments[0], {})),
+				_as_int(_eval(arguments[1], {})),
+				_as_string(_eval(arguments[2], {}))
+			)
 		"choose":
 			var choose_count: int = maxi(_as_int(_eval(arguments[0], {})), 0)
 			var choose_selector: String = _as_string(_eval(arguments[1], {}))
@@ -233,6 +245,12 @@ func _exec_target_primitive(primitive_name: String, arguments: Array, line: int)
 				if extra_values.size() > 1:
 					keyword_value = _as_int(extra_values[1])
 				context.give_keyword(handle, _as_string(extra_values[0]), keyword_value)
+			"environment_grant_keyword":
+				context.environment_grant_keyword(
+					_as_string(extra_values[0]),
+					_as_int(extra_values[1]),
+					_as_string(extra_values[2])
+				)
 			"destroy":
 				context.destroy(handle)
 			_:

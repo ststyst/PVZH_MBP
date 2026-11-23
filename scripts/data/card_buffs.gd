@@ -49,11 +49,37 @@ const DEFINITIONS: Dictionary = {
 
 
 static func has(buff_id: String) -> bool:
-	return DEFINITIONS.has(buff_id.strip_edges().to_lower())
+	var normalized: String = buff_id.strip_edges().to_lower()
+	return DEFINITIONS.has(normalized) or _temporary_keyword(normalized) != ""
 
 
 static func definition(buff_id: String) -> Dictionary:
-	return DEFINITIONS.get(buff_id.strip_edges().to_lower(), {})
+	var normalized: String = buff_id.strip_edges().to_lower()
+	if DEFINITIONS.has(normalized):
+		return DEFINITIONS[normalized]
+	var keyword: String = _temporary_keyword(normalized)
+	if keyword.is_empty():
+		return {}
+	return {
+		"label": "临时%s" % CardKeywords.label(keyword),
+		"kind": "buff",
+		"description": "临时获得%s词缀，离开来源后移除。" % CardKeywords.label(keyword),
+		"keyword": keyword,
+		"temporary_keyword": true,
+		"clear_after_combat": false,
+	}
+
+
+## buff_id = temp_<keyword>；返回对应词缀，否则空字符串。
+static func temporary_keyword(buff_id: String) -> String:
+	return _temporary_keyword(buff_id.strip_edges().to_lower())
+
+
+static func _temporary_keyword(normalized: String) -> String:
+	if not normalized.begins_with("temp_"):
+		return ""
+	var keyword: String = normalized.substr(5)
+	return keyword if CardKeywords.has(keyword) else ""
 
 
 static func kind(buff_id: String) -> String:
@@ -76,5 +102,7 @@ static func all_ids() -> Array[String]:
 	var result: Array[String] = []
 	for buff_id: Variant in DEFINITIONS.keys():
 		result.append(str(buff_id))
+	for keyword: Variant in CardKeywords.DEFINITIONS.keys():
+		result.append("temp_%s" % str(keyword))
 	result.sort()
 	return result

@@ -21,6 +21,8 @@ var keyword_values: Dictionary = {}
 var buffs: Dictionary = {}
 ## buff_id -> 提供该 Buff 的来源实体 id 数组（用于光环来源追踪）
 var buff_sources: Dictionary = {}
+## 临时词缀加成：keyword -> 额外数值（不影响原始 keywords/keyword_values）
+var temporary_keyword_bonus: Dictionary = {}
 var team_up: bool = false
 var alive: bool = true
 ## 克制英雄词缀提供的临时攻击力
@@ -46,11 +48,12 @@ func display_name() -> String:
 
 
 func has_keyword(keyword: String) -> bool:
-	return keywords.has(CardKeywords.normalize(keyword))
+	var normalized: String = CardKeywords.normalize(keyword)
+	return keywords.has(normalized) or int(temporary_keyword_bonus.get(normalized, 0)) > 0
 
 
 func keyword_value(keyword: String) -> int:
-	return int(keyword_values.get(CardKeywords.normalize(keyword), 0))
+	return keyword_value_for(keyword)
 
 
 ## 赋予/叠加词缀数值；返回是否成功（受卡牌种类白名单限制）。
@@ -74,11 +77,10 @@ func add_keyword(keyword: String, value: int = 0) -> bool:
 
 func keyword_value_for(keyword: String) -> int:
 	var normalized: String = CardKeywords.normalize(keyword)
-	if not keywords.has(normalized):
-		return 0
-	if not CardKeywords.has_value(normalized):
-		return 1
-	return int(keyword_values.get(normalized, 0))
+	var base_value: int = 0
+	if keywords.has(normalized):
+		base_value = int(keyword_values.get(normalized, 0)) if CardKeywords.has_value(normalized) else 1
+	return base_value + int(temporary_keyword_bonus.get(normalized, 0))
 
 
 func set_keyword_value(keyword: String, value: int) -> void:
@@ -114,6 +116,9 @@ func add_buff(buff_id: String) -> bool:
 	if has_keyword("debuff_immune") and CardBuffs.kind(normalized) == "debuff":
 		return false
 	buffs[normalized] = int(buffs.get(normalized, 0)) + 1
+	var temp_keyword: String = CardBuffs.temporary_keyword(normalized)
+	if not temp_keyword.is_empty():
+		temporary_keyword_bonus[temp_keyword] = int(temporary_keyword_bonus.get(temp_keyword, 0)) + 1
 	return true
 
 
@@ -121,8 +126,17 @@ func remove_buff(buff_id: String) -> bool:
 	var normalized: String = buff_id.strip_edges().to_lower()
 	if not buffs.has(normalized):
 		return false
-	buffs.erase(normalized)
-	buff_sources.erase(normalized)
+	var stacks: int = int(buffs.get(normalized, 1))
+	if stacks > 1:
+		buffs[normalized] = stacks - 1
+	else:
+		buffs.erase(normalized)
+		buff_sources.erase(normalized)
+	var temp_keyword: String = CardBuffs.temporary_keyword(normalized)
+	if not temp_keyword.is_empty():
+		temporary_keyword_bonus[temp_keyword] = maxi(int(temporary_keyword_bonus.get(temp_keyword, 1)) - 1, 0)
+		if int(temporary_keyword_bonus[temp_keyword]) <= 0:
+			temporary_keyword_bonus.erase(temp_keyword)
 	return true
 
 
@@ -138,6 +152,9 @@ func add_buff_from_source(buff_id: String, source_id: int) -> bool:
 	sources.append(source_id)
 	buff_sources[normalized] = sources
 	buffs[normalized] = int(buffs.get(normalized, 0)) + 1
+	var temp_keyword: String = CardBuffs.temporary_keyword(normalized)
+	if not temp_keyword.is_empty():
+		temporary_keyword_bonus[temp_keyword] = int(temporary_keyword_bonus.get(temp_keyword, 0)) + 1
 	return true
 
 
@@ -150,6 +167,11 @@ func remove_buff_from_source(buff_id: String, source_id: int) -> bool:
 	if sources.is_empty():
 		buff_sources.erase(normalized)
 		buffs.erase(normalized)
+		var temp_keyword: String = CardBuffs.temporary_keyword(normalized)
+		if not temp_keyword.is_empty():
+			temporary_keyword_bonus[temp_keyword] = maxi(int(temporary_keyword_bonus.get(temp_keyword, 1)) - 1, 0)
+			if int(temporary_keyword_bonus[temp_keyword]) <= 0:
+				temporary_keyword_bonus.erase(temp_keyword)
 	else:
 		buff_sources[normalized] = sources
 		buffs[normalized] = maxi(int(buffs.get(normalized, 1)) - 1, 1)
