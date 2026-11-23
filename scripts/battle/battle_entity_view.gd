@@ -10,7 +10,7 @@ extends Control
 ## 动画素材放在 assets/animations/<mode>.tres（AnimationLibrary，动画名唯一）。
 
 const DESIGN_SIZE: Vector2 = Vector2(136, 84)
-const VIEW_SCALE: float = 0.96
+const VIEW_MARGIN: float = 2.0
 const ART_BOX: Vector2 = Vector2(124, 58)
 const ART_CENTER: Vector2 = Vector2(68, 34)
 const MODE_WHOLE: String = "whole"
@@ -46,6 +46,11 @@ var _last_card: CardData = null
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	visible = false
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	offset_left = VIEW_MARGIN
+	offset_top = VIEW_MARGIN
+	offset_right = -VIEW_MARGIN
+	offset_bottom = -VIEW_MARGIN
 	resized.connect(_on_view_resized)
 	_configure_animation_layers()
 
@@ -134,8 +139,6 @@ func _view_size() -> Vector2:
 
 func _layout_runtime() -> void:
 	var view: Vector2 = _view_size()
-	pivot_offset = view * 0.5
-	scale = Vector2(VIEW_SCALE, VIEW_SCALE)
 	whole_root.pivot_offset = view * 0.5
 	background_root.pivot_offset = view * 0.5
 	art_root.pivot_offset = view * 0.5
