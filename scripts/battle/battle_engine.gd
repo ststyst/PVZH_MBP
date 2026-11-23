@@ -551,11 +551,10 @@ func advance_phase() -> void:
 				phase = PHASE_SPELL
 				active_side = SIDE_Z
 				_log("z 阵营锦囊/环境阶段")
-		PHASE_SPELL:
-			if active_side == SIDE_Z:
 				_reveal_tombstones()
 				if winner != "":
 					return
+		PHASE_SPELL:
 			phase = PHASE_COMBAT
 			active_side = ""
 			_log("对战回合：开始逐列结算")

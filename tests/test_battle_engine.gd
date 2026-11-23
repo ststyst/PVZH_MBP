@@ -99,6 +99,35 @@ func _started_engine(p_card: String = "pvzh:gnoll", z_card: String = "pvzh:hound
 	return engine
 
 
+func test_enter_does_not_attack() -> void:
+	var engine: BattleEngine = _started_engine()
+	var target_card: CardData = _make_test_card("pvzh:test_enter_target", "")
+	target_card.health = 5
+	var target: BattleEntity = engine.summon_card("z", target_card, 0, 0)
+	var played_card: CardData = _make_test_card("pvzh:test_enter_unit", "")
+	played_card.attack = 3
+	played_card.health = 3
+	_set_hand(engine, "p", [played_card.card_id])
+	engine.players["p"].energy = 10
+	engine.phase = BattleEngine.PHASE_HAND
+	engine.active_side = "p"
+	var result: Dictionary = engine.play_card("p", 0, {"column": 0, "slot": 0})
+	assert_true(bool(result.get("ok", false)))
+	assert_eq(target.health, 5, "实体入场不应自动攻击")
+
+	var tomb_card: CardData = _make_test_card(
+		"pvzh:test_reveal_at_spell_start",
+		"when enter:\n    add_marker(\"revealed_at_spell\", 1)"
+	)
+	tomb_card.keywords.append("tombstone")
+	engine.summon_card("p", tomb_card, 1, 0)
+	var state: BattlePlayerState = engine.players["p"]
+	engine.phase = BattleEngine.PHASE_HAND
+	engine.active_side = "p"
+	engine.advance_phase()
+	assert_eq(state.marker_count("revealed_at_spell"), 1, "墓碑应在Z方锦囊阶段开始时揭示")
+
+
 func test_initial_draw_and_mulligan() -> void:
 	var engine: BattleEngine = _new_engine()
 	assert_eq(engine.phase, BattleEngine.PHASE_MULLIGAN)

@@ -315,3 +315,9 @@ border_sprite.scale = Vector2(cover_scale, cover_scale * BORDER_HEIGHT_SCALE)
 const DISPLAY_SIZE_RATIO: float = 0.95
 const ART_SCALE_MULTIPLIER: float = 2.0
 ```
+
+## 实体间距修正
+
+之前 `_get_entity_view()` 在实体 ready 后再次调用 `set_anchors_and_offsets_preset(PRESET_FULL_RECT)`，覆盖了 `DISPLAY_SIZE_RATIO = 0.95` 的 95% 锚点，所以仍无空隙。
+
+已移除该覆盖。现在实体视图按 95% 宽高显示，四周各留 2.5% 空隙。

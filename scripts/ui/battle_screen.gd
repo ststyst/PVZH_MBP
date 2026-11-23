@@ -295,7 +295,6 @@ func _get_entity_view(button: Button) -> BattleEntityView:
 			return existing
 	var view: BattleEntityView = ENTITY_VIEW_SCENE.instantiate() as BattleEntityView
 	button.add_child(view)
-	view.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	view.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_entity_views[button] = view
 	return view
