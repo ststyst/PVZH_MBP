@@ -246,6 +246,8 @@ func deal_damage(target, amount: int) -> void:
 					"手牌" if get_zone() == "hand" else "牌库",
 					source_card.display_name() if source_card != null else _self_handle.card_id,
 				]
+	if source_label.is_empty() and source_entity == null and not is_spell_source:
+		source_label = "%s 方效果" % caster_side.to_upper()
 	engine.damage_handle(target, amount, source_keywords, is_spell_source, source_entity, source_label)
 
 
