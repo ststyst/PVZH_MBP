@@ -57,6 +57,7 @@ var _ai_accum: float = 0.0
 @onready var _player_hero_art: TextureRect = %PlayerHeroArtArea
 
 var _board_columns: Array[Dictionary] = []
+var _slot_highlights: Dictionary = {}
 var _mulligan_used: Array[bool] = []
 var _entity_views: Dictionary = {}
 
@@ -839,6 +840,7 @@ func _update_slot_button(
 		actionable = false
 	if _pending_mode == "choose_spell":
 		actionable = entity != null and _pending_candidates.has(entity)
+	_set_slot_highlight_overlay(button, actionable)
 	if entity == null:
 		if _entity_views.has(button):
 			var hidden_view: BattleEntityView = _entity_views[button] as BattleEntityView
@@ -881,6 +883,24 @@ func _update_slot_button(
 	button.text = ""
 	_apply_empty_slot_style(button)
 	button.disabled = false
+
+
+func _set_slot_highlight_overlay(button: Button, visible: bool) -> void:
+	var overlay: Panel = _slot_highlights.get(button, null) as Panel
+	if overlay == null:
+		overlay = Panel.new()
+		overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		overlay.z_index = 30
+		overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		var style := StyleBoxFlat.new()
+		style.bg_color = Color(0, 0, 0, 0)
+		style.border_color = Color(1.0, 0.88, 0.35, 1.0)
+		style.set_border_width_all(4)
+		style.set_corner_radius_all(8)
+		overlay.add_theme_stylebox_override("panel", style)
+		button.add_child(overlay)
+		_slot_highlights[button] = overlay
+	overlay.visible = visible
 
 
 func _rebuild_hand() -> void:

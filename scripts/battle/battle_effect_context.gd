@@ -13,6 +13,7 @@ var base_column: int = -1
 var is_spell_source: bool = false
 var _self_handle: Variant = null
 var _event_handle: Variant = null
+var source_name: String = ""
 
 
 func _init(battle_engine: BattleEngine, side: String) -> void:
@@ -26,6 +27,10 @@ func set_self_target(handle) -> void:
 
 func set_event_target(handle) -> void:
 	_event_handle = handle
+
+
+func set_source_name(name: String) -> void:
+	source_name = name
 
 
 func set_chosen_target(handle) -> void:
@@ -246,8 +251,10 @@ func deal_damage(target, amount: int) -> void:
 					"手牌" if get_zone() == "hand" else "牌库",
 					source_card.display_name() if source_card != null else _self_handle.card_id,
 				]
+	if is_spell_source and not source_name.is_empty():
+		source_label = "锦囊：%s" % source_name
 	if source_label.is_empty() and source_entity == null and not is_spell_source:
-		source_label = "%s 方效果" % caster_side.to_upper()
+		source_label = "%s（%s）" % [source_name, caster_side.to_upper()] if not source_name.is_empty() else "%s 方效果" % caster_side.to_upper()
 	engine.damage_handle(target, amount, source_keywords, is_spell_source, source_entity, source_label)
 
 

@@ -302,7 +302,8 @@ func _grant_superpower_card(side: String, as_offer: bool = true) -> BattleCardIn
 	if as_offer:
 		state.special_offer_id = instance.instance_id
 	_log("%s 获得超能力：%s%s" % [
-		side.to_upper(), instance.card_id,
+		side.to_upper(),
+		get_card(instance.card_id).display_name() if get_card(instance.card_id) != null else instance.card_id,
 		"（特殊回合）" if as_offer else "",
 	])
 	return instance
@@ -1042,6 +1043,7 @@ func _run_script(card: CardData, side: String, chosen: Variant, position: Dictio
 	if card.ability_script == null or not card.ability_script.has_effect():
 		return
 	var context := BattleEffectContext.new(self, side)
+	context.set_source_name(card.display_name())
 	context.set_chosen_position(int(position.get("column", -1)), int(position.get("slot", -1)))
 	context.set_spell_source(card.is_spell())
 	if int(position.get("column", -1)) >= 0:
@@ -1716,10 +1718,13 @@ func damage_hero(side: String, amount: int, source_keywords: Array = [], source_
 			charge_gain = mode.charge_gain_for_damage(damage)
 		var projected_charge: int = state.charge_shield + charge_gain
 		state.charge_shield = projected_charge
+		_log("%s 充能护盾获得 %d 点充能（%d/%d）" % [
+			side.to_upper(), charge_gain, state.charge_shield, mode.charge_shield_max,
+		])
 		if projected_charge >= mode.charge_shield_max and state.charge_shield_durability > 0:
 			state.charge_shield = 0
 			state.charge_shield_durability -= 1
-			_log("%s 充能护盾触发免疫（剩余耐久 %d）" % [side.to_upper(), state.charge_shield_durability])
+			_log("%s 充能护盾满充能，触发免伤（剩余耐久 %d）" % [side.to_upper(), state.charge_shield_durability])
 			_trigger_superpower_offer(side)
 			return
 	state.hero_health -= damage
@@ -2048,6 +2053,7 @@ func _fire_event(event_name: String, event_entity: BattleEntity, chosen_targets:
 			continue
 		var context := BattleEffectContext.new(self, listener.side)
 		context.set_self_target(listener)
+		context.set_source_name(listener.card.display_name())
 		context.set_event_target(event_entity)
 		context.set_source_keywords(listener.keywords)
 		context.set_base_column(listener.column)
@@ -2081,6 +2087,7 @@ func _fire_environment_event(event_name: String, event_entity: BattleEntity, onl
 			continue
 		var owner: String = str(environment_owners.get(column, ""))
 		var context := EnvironmentEffectContext.new(self, owner, column)
+		context.set_source_name(card.display_name())
 		if event_entity != null:
 			context.set_event_target(event_entity)
 		var errors: Array[String] = card.ability_script.run_event(context, event_name, event_entity)
@@ -2422,6 +2429,7 @@ func _fire_zone_event(side: String, event_name: String, event_handle) -> void:
 			if card == null or card.ability_script == null or not card.ability_script.has_event(event_name):
 				continue
 			var context := ZoneCardEffectContext.new(self, side, zone, instance)
+			context.set_source_name(card.display_name())
 			context.set_self_target(instance)
 			context.set_event_target(event_handle)
 			var errors: Array[String] = card.ability_script.run_event(context, event_name, event_handle)
