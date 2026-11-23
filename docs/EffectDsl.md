@@ -692,11 +692,11 @@ card.ability_script.run_on_play(ctx2)
 ```text
 in_hand()
 when health_changed(side == 'ally'):
-    reduce_cost(1)
+	reduce_cost(1)
 
 in_deck()
 when ally_die(zone == 'deck'):
-    gain_attack(1)
+	gain_attack(1)
 ```
 
 规则：

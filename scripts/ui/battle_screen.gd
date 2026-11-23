@@ -55,10 +55,18 @@ var _ai_accum: float = 0.0
 @onready var _board_art_area: Control = %BoardArtArea
 @onready var _enemy_hero_art: TextureRect = %EnemyHeroArtArea
 @onready var _player_hero_art: TextureRect = %PlayerHeroArtArea
+@onready var _hand_safe_area: Control = %HandSafeArea
+@onready var _enemy_hero_target_area: Control = %EnemyHeroTargetArea
+@onready var _player_hero_target_area: Control = %PlayerHeroTargetArea
 
 var _board_columns: Array[Dictionary] = []
 var _slot_highlights: Dictionary = {}
 var _mulligan_used: Array[bool] = []
+var _hand_drag_index: int = -1
+var _hand_drag_active: bool = false
+var _hand_drag_started: bool = false
+var _hand_drag_start_position: Vector2 = Vector2.ZERO
+var _suppress_hand_click: bool = false
 var _entity_views: Dictionary = {}
 
 
@@ -363,7 +371,160 @@ func _on_mulligan_confirm_pressed() -> void:
 
 # ----- 玩家操作 -----
 
+func _on_hand_tile_gui_input(event: InputEvent, index: int) -> void:
+	if not _can_player_act() or _pending_mode != "":
+		return
+	if event is InputEventMouseButton:
+		var mouse_event: InputEventMouseButton = event
+		if mouse_event.button_index != MOUSE_BUTTON_LEFT:
+			return
+		if mouse_event.pressed:
+			_hand_drag_index = index
+			_hand_drag_active = true
+			_hand_drag_started = false
+			_hand_drag_start_position = get_global_mouse_position()
+		elif _hand_drag_active:
+			_hand_drag_active = false
+			if _hand_drag_started:
+				_suppress_hand_click = true
+				_hand_drag_started = false
+				_hand_drag_index = -1
+				_on_hand_drag_drop(index, get_global_mouse_position())
+			else:
+				_hand_drag_index = -1
+	elif event is InputEventMouseMotion and _hand_drag_active:
+		var distance: float = get_global_mouse_position().distance_to(_hand_drag_start_position)
+		if distance >= 12.0:
+			_hand_drag_started = true
+			_set_status("拖动到合法位置后松开即可打出。")
+
+
+func _on_hand_drag_drop(index: int, global_position: Vector2) -> void:
+	if _hand_safe_area != null and _hand_safe_area.get_global_rect().has_point(global_position):
+		_set_status("仍在手牌安全区域，未打出。", true)
+		return
+	var board_target: Dictionary = _board_drop_target(global_position)
+	var hero_side: String = _hero_drop_side(global_position)
+	if board_target.is_empty() and hero_side.is_empty():
+		_set_status("松手位置不在战斗棋盘内。", true)
+		return
+	var card: CardData = engine.hand_card_display(player_side, index)
+	if card == null:
+		return
+	if engine.phase == BattleEngine.PHASE_SPELL and not (card.is_spell() or card.is_environment()):
+		_set_status("当前阶段不能打出实体牌。", true)
+		return
+	if engine.effective_hand_cost(player_side, index) > int(engine.players[player_side].energy):
+		_set_status("费用不足。", true)
+		return
+	if card.is_entity():
+		var requirement: Dictionary = card.ability_script.target_requirement() if card.ability_script != null else {}
+		if int(requirement.get("count", 0)) > 0:
+			_set_status("该实体入场需要先选择能力目标，请点击手牌选择目标。", true)
+			return
+		if board_target.is_empty():
+			_set_status("实体牌需要拖到合法放置位置。", true)
+			return
+		_pending_card_index = index
+		_play_pending({"column": int(board_target.get("column", -1)), "slot": int(board_target.get("slot", -1))})
+		return
+	if card.is_environment():
+		if board_target.is_empty():
+			_set_status("环境牌需要拖到某一列。", true)
+			return
+		_pending_card_index = index
+		_play_pending({"column": int(board_target.get("column", -1))})
+		return
+	if card.ability_script != null and card.ability_script.column_requirement():
+		if board_target.is_empty():
+			_set_status("这张锦囊需要拖到某一列。", true)
+			return
+		_pending_card_index = index
+		_play_pending({"column": int(board_target.get("column", -1))})
+		return
+	var requirement: Dictionary = _card_multi_target_requirement(card)
+	if int(requirement.get("count", 0)) > 0:
+		var first_handle: Variant = board_target.get("entity", null)
+		if first_handle == null and not hero_side.is_empty():
+			first_handle = engine.hero_handle(hero_side)
+		if first_handle == null:
+			_set_status("请拖到第一个合法目标上。", true)
+			return
+		_pending_card_index = index
+		_pending_mode = "choose_spell"
+		_pending_handles = [first_handle]
+		_pending_candidates = engine.choose_candidates(
+			str(requirement.get("selector", "")), player_side, true
+		)
+		if _has_remaining_choose_candidates():
+			_set_status("已选择第一个目标，请继续选择或点击确认。")
+			_refresh_all()
+		else:
+			_on_confirm_targets_pressed()
+		return
+	if engine.card_needs_target(card):
+		var handle: Variant = board_target.get("entity", null)
+		if handle == null and not hero_side.is_empty():
+			handle = engine.hero_handle(hero_side)
+		if handle == null:
+			_set_status("请拖到合法目标上。", true)
+			return
+		_pending_card_index = index
+		_play_pending({"handle": handle})
+		return
+	# 无目标、随机目标、全体目标法术：拖到棋盘任意位置即可施放。
+	_pending_card_index = index
+	_play_pending({})
+
+
+func _board_drop_target(global_position: Vector2) -> Dictionary:
+	for column: int in range(_board_columns.size()):
+		var info: Dictionary = _board_columns[column]
+		for key: String in ["z_team", "z_normal", "p_normal", "p_team"]:
+			var button: Button = info.get(key, null) as Button
+			if button == null or not button.get_global_rect().has_point(global_position):
+				continue
+			var side: String = "z" if key.begins_with("z") else "p"
+			var slot: int = BattleEngine.SLOT_TEAM_UP if key.ends_with("team") else BattleEngine.SLOT_NORMAL
+			return {
+				"column": column,
+				"slot": slot,
+				"side": side,
+				"entity": _entity_at(column, side, slot),
+			}
+	return {}
+
+
+func _hero_drop_side(global_position: Vector2) -> String:
+	if _enemy_hero_target_area != null and _enemy_hero_target_area.get_global_rect().has_point(global_position):
+		return enemy_side
+	if _player_hero_target_area != null and _player_hero_target_area.get_global_rect().has_point(global_position):
+		return player_side
+	if _enemy_hero_button.get_global_rect().has_point(global_position):
+		return enemy_side
+	if _player_hero_button.get_global_rect().has_point(global_position):
+		return player_side
+	return ""
+
+
+func _has_remaining_choose_candidates() -> bool:
+	for candidate: Variant in _pending_candidates:
+		if _pending_handles.has(candidate):
+			continue
+		if candidate is BattleEntity and candidate.is_alive():
+			return true
+		if candidate is String:
+			return true
+	return false
+
+
 func _on_hand_pressed(index: int) -> void:
+	if _suppress_hand_click:
+		_suppress_hand_click = false
+		return
+	if _pending_mode != "":
+		_set_status("请先完成当前目标选择。", true)
+		return
 	if not _can_player_act():
 		_set_status("现在不是你的出牌阶段。", true)
 		return
@@ -386,9 +547,9 @@ func _on_hand_pressed(index: int) -> void:
 		)
 		var required_count: int = int(requirement.get("count", 0))
 		if required_count > 0:
-			for entity: BattleEntity in engine.entities:
-				if entity.alive and entity.side == player_side:
-					_pending_candidates.append(entity)
+			var selector: String = str(requirement.get("selector", "other_allies"))
+			_pending_candidates = engine.choose_candidates(selector, player_side)
+			# 排除当前未入场实体不可能存在的自身引用。
 			if not _pending_candidates.is_empty():
 				_pending_mode = "choose"
 				_set_status("最多选择 %d 个其他友方实体，然后点击空位放置（直接点空位表示少选/不选）。" % required_count)
@@ -520,6 +681,9 @@ func _on_slot_pressed(side: String, column: int, slot: int) -> void:
 			elif _pending_handles.size() < limit:
 				_pending_handles.append(target_entity)
 			_set_status("已选择 %d/%d 个目标；点击“确认目标”结算。" % [_pending_handles.size(), limit])
+			if not _has_remaining_choose_candidates():
+				_on_confirm_targets_pressed()
+				return
 			_refresh_all()
 			return
 		_set_status("请选择高亮的实体目标。", true)
@@ -532,7 +696,10 @@ func _on_slot_pressed(side: String, column: int, slot: int) -> void:
 				_pending_handles.erase(choose_entity)
 			elif _pending_handles.size() < required_count:
 				_pending_handles.append(choose_entity)
-			if required_count > 0 and _pending_handles.size() >= required_count:
+			if not _has_remaining_choose_candidates():
+				_pending_mode = "place"
+				_set_status("没有其他合法目标；请点击放置位置。")
+			elif required_count > 0 and _pending_handles.size() >= required_count:
 				_pending_mode = "place"
 				_set_status("已选满 %d 个目标；点击放置位置（可点已有友方实体所在格）。" % required_count)
 			else:
@@ -598,6 +765,9 @@ func _on_hero_target(side: String) -> void:
 			if _pending_handles.size() < limit:
 				_pending_handles.append(hero_handle)
 		_set_status("已选择 %d 个目标；点击“确认目标”结算。" % _pending_handles.size())
+		if not _has_remaining_choose_candidates():
+			_on_confirm_targets_pressed()
+			return
 		_refresh_all()
 		return
 	if _pending_mode == "target" and _pending_candidates.has(engine.hero_handle(side)):
@@ -625,6 +795,9 @@ func _play_pending(target: Dictionary) -> void:
 
 func _on_end_phase_pressed() -> void:
 	if not _can_player_act():
+		return
+	if _pending_mode != "":
+		_set_status("请先完成目标选择或取消当前出牌。", true)
 		return
 	_clear_pending()
 	engine.end_phase(player_side)
@@ -781,6 +954,16 @@ func _update_hero_bars() -> void:
 	]
 	_player_info_label.text = "手牌 %d · 牌库 %d" % [player_state.hand_count(), player_state.deck_count()]
 	_enemy_info_label.text = "手牌 %d · 牌库 %d" % [enemy_state.hand_count(), enemy_state.deck_count()]
+	var player_targetable: bool = (
+		_pending_mode in ["target", "choose_spell"]
+		and _pending_candidates.has(engine.hero_handle(player_side))
+	)
+	var enemy_targetable: bool = (
+		_pending_mode in ["target", "choose_spell"]
+		and _pending_candidates.has(engine.hero_handle(enemy_side))
+	)
+	_player_hero_button.modulate = Color(1.15, 1.08, 0.55, 1) if player_targetable else Color.WHITE
+	_enemy_hero_button.modulate = Color(1.15, 1.08, 0.55, 1) if enemy_targetable else Color.WHITE
 
 
 func _update_board() -> void:
@@ -929,6 +1112,7 @@ func _rebuild_hand() -> void:
 		current_column.add_child(tile)
 		tile.setup(card, 0, "", false)
 		tile.pressed.connect(_on_hand_pressed.bind(index))
+		tile.gui_input.connect(_on_hand_tile_gui_input.bind(index))
 		var disabled: bool = not _can_player_act()
 		if engine.phase == BattleEngine.PHASE_SPELL and not (card.is_spell() or card.is_environment()):
 			disabled = true

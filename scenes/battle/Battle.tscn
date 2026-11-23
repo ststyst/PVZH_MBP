@@ -656,5 +656,36 @@ layout_mode = 2
 size_flags_horizontal = 3
 text = "移入手牌"
 
+[node name="HandSafeArea" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 0
+offset_left = 18.0
+offset_top = 1042.0
+offset_right = 708.0
+offset_bottom = 1272.0
+mouse_filter = 2
+
+[node name="EnemyHeroTargetArea" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchor_left = 0.05
+anchor_top = 0.02
+anchor_right = 0.95
+anchor_bottom = 0.1
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="PlayerHeroTargetArea" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchor_left = 0.05
+anchor_top = 0.9
+anchor_right = 0.95
+anchor_bottom = 0.98
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
 [node name="CardInfoDialog" parent="." unique_id=543803634 instance=ExtResource("2_card_info")]
 unique_name_in_owner = true

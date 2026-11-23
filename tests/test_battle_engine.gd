@@ -136,6 +136,25 @@ func test_play_logs_both_sides_and_entity_ability_source() -> void:
 	assert_true(has_source, "实体能力伤害应记录来源实体")
 
 
+func test_heal_all_spell_can_play_without_target() -> void:
+	var engine: BattleEngine = _started_engine()
+	var entity_card: CardData = _make_test_card("pvzh:test_heal_target", "")
+	entity_card.health = 5
+	var entity: BattleEntity = engine.summon_card("p", entity_card, 0, 0)
+	entity.health = 2
+	var heal_card: CardData = cards.get_card("pvzh:heal")
+	assert_true(heal_card != null)
+	if heal_card == null:
+		return
+	_set_hand(engine, "p", [heal_card.card_id])
+	engine.players["p"].energy = 10
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "p"
+	var result: Dictionary = engine.play_card("p", 0, {})
+	assert_true(bool(result.get("ok", false)), "全体治疗法术不应要求手动目标：%s" % [result])
+	assert_eq(entity.health, 5, "全体治疗应恢复到生命上限")
+
+
 func test_hand_entity_ability_does_not_fire_from_hand() -> void:
 	var engine: BattleEngine = _started_engine()
 	var hand_card: CardData = _make_test_card(
