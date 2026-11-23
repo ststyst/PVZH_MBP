@@ -99,6 +99,25 @@ func _started_engine(p_card: String = "pvzh:gnoll", z_card: String = "pvzh:hound
 	return engine
 
 
+func test_damage_log_has_source() -> void:
+	var engine: BattleEngine = _started_engine()
+	var attacker_card: CardData = _make_test_card("pvzh:test_log_source_attacker", "")
+	attacker_card.attack = 1
+	attacker_card.health = 3
+	var attacker: BattleEntity = engine.summon_card("p", attacker_card, 0, 0)
+	var target_card: CardData = _make_test_card("pvzh:test_log_source_target", "")
+	target_card.attack = 0
+	target_card.health = 3
+	engine.summon_card("z", target_card, 0, 0)
+	engine._combat_column(0)
+	var found: bool = false
+	for entry: String in engine.log_entries:
+		if entry.contains("来源：") and entry.contains(attacker.display_name()):
+			found = true
+			break
+	assert_true(found, "实体受伤日志应包含伤害来源")
+
+
 func test_enter_does_not_attack() -> void:
 	var engine: BattleEngine = _started_engine()
 	var target_card: CardData = _make_test_card("pvzh:test_enter_target", "")

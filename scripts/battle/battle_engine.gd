@@ -1344,7 +1344,7 @@ func damage_handle(handle: Variant, amount: int, source_keywords: Array = [], fr
 	if handle is BattleEntity:
 		damage_entity(handle, amount, source_keywords, from_spell)
 	elif handle is String and handle.begins_with("hero:"):
-		damage_hero(handle.substr(5), amount, source_keywords)
+		damage_hero(handle.substr(5), amount, source_keywords, null, "锦囊" if from_spell else "")
 
 
 func damage_entity(entity: BattleEntity, amount: int, source_keywords: Array = [], from_spell: bool = false, source_entity: BattleEntity = null) -> void:
@@ -1367,7 +1367,11 @@ func damage_entity(entity: BattleEntity, amount: int, source_keywords: Array = [
 		entity.health -= damage
 	if source_keywords.has("deadly") and damage > 0:
 		entity.health = 0
-	_log("%s 受到 %d 点伤害（生命 %d，护盾 %d）" % [entity.display_name(), amount, entity.health, entity.shield])
+	_log("%s 受到 %d 点伤害（来源：%s；生命 %d，护盾 %d）" % [
+		entity.display_name(), amount,
+		_damage_source_label(source_entity, source_keywords, from_spell),
+		entity.health, entity.shield,
+	])
 	if damage > 0 or source_keywords.has("deadly"):
 		_fire_event("damaged", entity)
 	if entity.has_buff("hatred") and source_entity != null and source_entity.alive and source_entity.side != entity.side:
@@ -1668,7 +1672,21 @@ func _refresh_counter_bonus(entity: BattleEntity) -> void:
 
 
 
-func damage_hero(side: String, amount: int, source_keywords: Array = []) -> void:
+func _damage_source_label(source_entity: BattleEntity, source_keywords: Array, from_spell: bool) -> String:
+	if source_entity != null:
+		return "%s（%s）" % [source_entity.display_name(), source_entity.side.to_upper()]
+	if source_keywords.has("thorns"):
+		return "反伤"
+	if from_spell:
+		return "锦囊"
+	if source_keywords.has("frost"):
+		return "寒霜"
+	if source_keywords.has("overshoot"):
+		return "溅射"
+	return "未知来源"
+
+
+func damage_hero(side: String, amount: int, source_keywords: Array = [], source_entity: BattleEntity = null, explicit_source: String = "") -> void:
 	if _battle_over():
 		return
 	var state: BattlePlayerState = players.get(side, null)
@@ -1706,8 +1724,10 @@ func damage_hero(side: String, amount: int, source_keywords: Array = []) -> void
 	state.hero_health -= damage
 	_check_game_over()
 	hero_damaged.emit(side, damage, source_keywords.duplicate())
-	_log("%s 英雄受到 %d 点伤害（生命 %d，护盾 %d）" % [
-		side.to_upper(), damage, state.hero_health, state.hero_shield,
+	_log("%s 英雄受到 %d 点伤害（来源：%s；生命 %d，护盾 %d）" % [
+		side.to_upper(), damage,
+		explicit_source if not explicit_source.is_empty() else _damage_source_label(source_entity, source_keywords, false),
+		state.hero_health, state.hero_shield,
 	])
 	_check_game_over()
 
@@ -2137,7 +2157,7 @@ func _execute_attack_action(attacker: BattleEntity, extra_attack: bool) -> void:
 	var first_strike: int = attacker.keyword_value("first_strike")
 	if first_strike > 0 and not _first_strike_used_this_round.has(attacker.entity_id):
 		_first_strike_used_this_round[attacker.entity_id] = true
-		damage_hero(opposite_side(attacker.side), first_strike, attacker.keywords)
+		damage_hero(opposite_side(attacker.side), first_strike, attacker.keywords, attacker)
 		if winner != "":
 			return
 	if attacker.has_keyword("triple_strike"):
@@ -2192,7 +2212,7 @@ func _execute_entity_attack(
 		_fire_event("extra_attack", attacker)
 	var first_strike: int = attacker.keyword_value("first_strike")
 	if first_strike_enabled and first_strike > 0:
-		damage_hero(opposite_side(attacker.side), first_strike, attacker.keywords)
+		damage_hero(opposite_side(attacker.side), first_strike, attacker.keywords, attacker)
 		if winner != "":
 			return
 	var killed_enemy: bool = false
@@ -2204,7 +2224,7 @@ func _execute_entity_attack(
 					_fire_event("attacked", entity)
 				if not entity.alive or entity.health <= 0:
 					killed_enemy = true
-		damage_hero(opposite_side(attacker.side), attacker.attack, attacker.keywords)
+		damage_hero(opposite_side(attacker.side), attacker.attack, attacker.keywords, attacker)
 		if _battle_over():
 			return
 	else:
@@ -2216,7 +2236,7 @@ func _execute_entity_attack(
 					killed_enemy = true
 				_try_thorns(attacker, target_entity)
 		elif target is String and target.begins_with("hero:"):
-			damage_hero(target.substr(5), attacker.attack, attacker.keywords)
+			damage_hero(target.substr(5), attacker.attack, attacker.keywords, attacker)
 			if _battle_over():
 				return
 	var splash: int = attacker.keyword_value("overshoot")
