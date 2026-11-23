@@ -115,6 +115,16 @@ func test_initial_draw_and_mulligan() -> void:
 	assert_true(engine.replace_mulligan_card("p", 0), "调度应可用")
 	assert_eq(int(engine.players["p"].hand.size()), 4, "起手调度阶段只有四张起手牌")
 	assert_eq(int(engine.players["p"].deck.size()), 8)
+	var hand_ids: Array[String] = []
+	var replaced_instance_id: int = 0
+	for index: int in range(engine.players["p"].hand.size()):
+		hand_ids.append(engine.players["p"].hand[index].card_id)
+		if index == 1:
+			replaced_instance_id = engine.players["p"].hand[index].instance_id
+	engine.replace_mulligan_card("p", 1)
+	assert_eq(engine.players["p"].hand[0].card_id, hand_ids[0], "刷新应保持位置不回填前移")
+	assert_eq(engine.players["p"].hand[2].card_id, hand_ids[2], "刷新不应移动后续卡牌")
+	assert_eq(engine.players["p"].hand[3].card_id, hand_ids[3], "刷新不应移动后续卡牌")
 
 
 func test_start_after_mulligan() -> void:

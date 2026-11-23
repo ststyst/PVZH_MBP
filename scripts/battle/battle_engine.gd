@@ -497,6 +497,8 @@ func replace_mulligan_card(side: String, hand_index: int) -> bool:
 	_shuffle_zones(state)
 	if not state.deck.is_empty():
 		_move_top_deck_to_hand(state)
+		var replacement: BattleCardInstance = state.hand.pop_back()
+		state.hand.insert(hand_index, replacement)
 	changed.emit()
 	return true
 

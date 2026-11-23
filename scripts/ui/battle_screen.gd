@@ -317,22 +317,31 @@ func _rebuild_mulligan_row() -> void:
 		_mulligan_row.remove_child(child)
 		child.queue_free()
 	var state: BattlePlayerState = engine.players[player_side]
+	_mulligan_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	_mulligan_row.custom_minimum_size = Vector2(600, 0)
+	var columns: Array[VBoxContainer] = []
+	for _column_index: int in range(2):
+		var column := VBoxContainer.new()
+		column.custom_minimum_size = Vector2(126, 0)
+		column.add_theme_constant_override("separation", 28)
+		_mulligan_row.add_child(column)
+		columns.append(column)
 	for index: int in range(state.hand.size()):
 		var card: CardData = engine.hand_card_display(player_side, index)
 		if card == null:
 			continue
-		var column := VBoxContainer.new()
-		column.add_theme_constant_override("separation", 4)
-		_mulligan_row.add_child(column)
+		var entry := VBoxContainer.new()
+		entry.add_theme_constant_override("separation", 6)
+		columns[index % 2].add_child(entry)
 		var tile: CardTile = CARD_TILE_SCENE.instantiate()
-		column.add_child(tile)
+		entry.add_child(tile)
 		tile.setup(card, 0, "", false)
 		var refresh := Button.new()
 		refresh.text = "刷新"
 		refresh.disabled = index < _mulligan_used.size() and _mulligan_used[index]
 		refresh.custom_minimum_size = Vector2(0, 36)
 		refresh.pressed.connect(_on_mulligan_refresh_pressed.bind(index))
-		column.add_child(refresh)
+		entry.add_child(refresh)
 
 
 func _on_mulligan_refresh_pressed(index: int) -> void:
@@ -730,8 +739,9 @@ func _align_layout_to_art() -> void:
 		return
 	var board_art: TextureRect = _board_art_area.get_node_or_null("BoardArtTexture") as TextureRect
 	if board_art != null:
-		_board.global_position = board_art.global_position
-		_board.size = board_art.size
+		var target_size: Vector2 = Vector2(board_art.size.x, board_art.size.y * 1.3)
+		_board.size = target_size
+		_board.global_position = board_art.global_position - Vector2(0.0, (target_size.y - board_art.size.y) * 0.5)
 	var hand_placeholder: Control = get_node_or_null("Background/ArtPlaceholders/HandScroll") as Control
 	if hand_placeholder != null and _hand_scroll != null:
 		_hand_scroll.global_position = hand_placeholder.global_position

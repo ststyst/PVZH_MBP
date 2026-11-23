@@ -167,7 +167,7 @@ text = "手牌 0 · 牌库 0"
 
 [node name="Board" type="HBoxContainer" parent="Margin/Root" unique_id=488875423]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(648, 590)
+custom_minimum_size = Vector2(648, 767)
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 3
@@ -539,7 +539,12 @@ layout_mode = 2
 size_flags_vertical = 3
 vertical_scroll_mode = 0
 
-[node name="MulliganRow" type="HBoxContainer" parent="MulliganOverlay/Margin/VBox/Scroll" unique_id=1195372171]
+[node name="MulliganCenter" type="CenterContainer" parent="MulliganOverlay/Margin/VBox/Scroll" unique_id=991200001]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="MulliganRow" type="HBoxContainer" parent="MulliganOverlay/Margin/VBox/Scroll/MulliganCenter" unique_id=1195372171]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 8
