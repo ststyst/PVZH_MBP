@@ -10,6 +10,7 @@ extends Control
 ## 动画素材放在 assets/animations/<mode>.tres（AnimationLibrary，动画名唯一）。
 
 const DESIGN_SIZE: Vector2 = Vector2(136, 84)
+const VIEW_SCALE: float = 0.96
 const ART_BOX: Vector2 = Vector2(124, 58)
 const ART_CENTER: Vector2 = Vector2(68, 34)
 const MODE_WHOLE: String = "whole"
@@ -39,10 +40,23 @@ const FX_DIR: String = "res://assets/battle/fx/"
 @onready var art_player: AnimationPlayer = %ArtPlayer
 
 
+var _last_card: CardData = null
+
+
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	visible = false
+	resized.connect(_on_view_resized)
 	_configure_animation_layers()
+
+
+func _on_view_resized() -> void:
+	if _last_card == null:
+		return
+	_layout_runtime()
+	_apply_background(_last_card.rarity)
+	_apply_border(_last_card.rarity)
+	_apply_art(_last_card)
 
 
 func _configure_animation_layers() -> void:
@@ -67,6 +81,7 @@ func setup(entity: BattleEntity) -> void:
 		visible = false
 		return
 	visible = true
+	_last_card = entity.card
 	name_label.text = entity.display_name()
 	_layout_runtime()
 	_apply_background(entity.card.rarity)
@@ -119,6 +134,8 @@ func _view_size() -> Vector2:
 
 func _layout_runtime() -> void:
 	var view: Vector2 = _view_size()
+	pivot_offset = view * 0.5
+	scale = Vector2(VIEW_SCALE, VIEW_SCALE)
 	whole_root.pivot_offset = view * 0.5
 	background_root.pivot_offset = view * 0.5
 	art_root.pivot_offset = view * 0.5
@@ -189,8 +206,8 @@ func _apply_art(card: CardData) -> void:
 	if texture == null:
 		return
 	var view: Vector2 = _view_size()
-	var art_box: Vector2 = Vector2(view.x * 0.94, view.y * 0.62)
-	var art_center: Vector2 = Vector2(view.x * 0.5, view.y * 0.34)
+	var art_box: Vector2 = Vector2(view.x * 0.96, view.y * 0.70)
+	var art_center: Vector2 = Vector2(view.x * 0.5, view.y * 0.33)
 	art_sprite.position = art_center
 	var contain_scale: float = minf(
 		art_box.x / float(texture.get_width()),

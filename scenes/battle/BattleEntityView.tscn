@@ -58,6 +58,7 @@ position = Vector2(68, 42)
 [node name="BorderSprite" type="Sprite2D" parent="WholeRoot" unique_id=991100301]
 unique_name_in_owner = true
 position = Vector2(68, 42)
+
 [node name="ArtRoot" type="Control" parent="WholeRoot" unique_id=1625685971]
 unique_name_in_owner = true
 layout_mode = 1
@@ -97,25 +98,25 @@ horizontal_alignment = 1
 [node name="AttackLabel" type="Label" parent="WholeRoot" unique_id=693756563]
 unique_name_in_owner = true
 layout_mode = 0
-offset_left = 2.0
-offset_top = 44.0
-offset_right = 42.0
-offset_bottom = 64.0
+offset_left = 61.0
+offset_top = 1084.0
+offset_right = 101.0
+offset_bottom = 1104.0
 theme_override_colors/font_color = Color(1, 0.92, 0.72, 1)
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 4
 theme_override_fonts/font = ExtResource("2_m5twh")
-theme_override_font_sizes/font_size = 13
+theme_override_font_sizes/font_size = 30
 text = "0"
 horizontal_alignment = 1
 
 [node name="HealthLabel" type="Label" parent="WholeRoot" unique_id=672717612]
 unique_name_in_owner = true
 layout_mode = 0
-offset_left = 94.0
-offset_top = 44.0
-offset_right = 134.0
-offset_bottom = 64.0
+offset_left = 572.0
+offset_top = 1195.0
+offset_right = 612.0
+offset_bottom = 1215.0
 theme_override_colors/font_color = Color(1, 0.92, 0.72, 1)
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 4
