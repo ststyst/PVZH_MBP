@@ -437,13 +437,6 @@ custom_minimum_size = Vector2(120, 36)
 layout_mode = 2
 text = "确认目标"
 
-[node name="LogLabel" type="Label" parent="Margin/Root" unique_id=245353166]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 42)
-layout_mode = 2
-theme_override_font_sizes/font_size = 11
-autowrap_mode = 2
-
 [node name="HandTitleBar" type="HBoxContainer" parent="Margin/Root" unique_id=192767563]
 layout_mode = 2
 

@@ -15,6 +15,10 @@ signal surrender_requested()
 @onready var save_button: Button = %SaveButton
 @onready var developer_button: Button = %DeveloperButton
 @onready var surrender_button: Button = %SurrenderButton
+@onready var battle_log_button: Button = %BattleLogButton
+@onready var battle_log_overlay: Control = %BattleLogOverlay
+@onready var battle_log_text: RichTextLabel = %LogText
+@onready var battle_log_close_button: Button = %BattleLogCloseButton
 @onready var status_label: Label = %StatusLabel
 @onready var version_label: Label = %VersionLabel
 
@@ -33,6 +37,10 @@ func _ready() -> void:
 	developer_button.pressed.connect(_on_developer_pressed)
 	surrender_button.pressed.connect(_on_surrender_pressed)
 	surrender_button.visible = false
+	battle_log_button.pressed.connect(_on_battle_log_pressed)
+	battle_log_close_button.pressed.connect(_on_battle_log_close_pressed)
+	battle_log_button.visible = false
+	battle_log_overlay.visible = false
 	_setup_display_options()
 	_refresh_info()
 	version_label.text = "版本 %s · %s" % [GameState.get_version(), GameState.get_identity_text()]
@@ -128,9 +136,26 @@ func _on_developer_pressed() -> void:
 func open_as_overlay(in_battle: bool) -> void:
 	overlay_mode = true
 	surrender_button.visible = in_battle
+	battle_log_button.visible = in_battle
+	battle_log_overlay.visible = false
 	_refresh_info()
 	_set_status("设置会立即生效并保存。")
 	visible = true
+
+
+func _on_battle_log_pressed() -> void:
+	var scene: Node = get_tree().current_scene
+	var full_log: String = ""
+	if scene != null and scene.has_method("get_full_battle_log"):
+		full_log = str(scene.call("get_full_battle_log"))
+	if full_log.strip_edges().is_empty():
+		full_log = "本局暂无战报。"
+	battle_log_text.text = full_log
+	battle_log_overlay.visible = true
+
+
+func _on_battle_log_close_pressed() -> void:
+	battle_log_overlay.visible = false
 
 
 func _on_surrender_pressed() -> void:

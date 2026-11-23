@@ -34,7 +34,6 @@ var _ai_accum: float = 0.0
 @onready var _phase_label: Label = %PhaseLabel
 @onready var _turn_label: Label = %TurnLabel
 @onready var _timer_label: Label = %TimerLabel
-@onready var _log_label: Label = %LogLabel
 @onready var _status_label: Label = %StatusLabel
 @onready var _end_phase_button: Button = %EndPhaseButton
 @onready var _confirm_targets_button: Button = %ConfirmTargetsButton
@@ -758,7 +757,6 @@ func _refresh_all() -> void:
 	_update_board()
 	_rebuild_hand()
 	_update_labels()
-	_update_log()
 	_update_confirm_targets_button()
 	_refresh_special_overlay()
 
@@ -954,12 +952,10 @@ func _phase_text() -> String:
 			return ""
 
 
-func _update_log() -> void:
-	if engine.log_entries.is_empty():
-		_log_label.text = ""
-		return
-	var start: int = maxi(engine.log_entries.size() - 2, 0)
-	_log_label.text = "\n".join(engine.log_entries.slice(start))
+func get_full_battle_log() -> String:
+	if engine == null:
+		return ""
+	return "\n".join(engine.log_entries)
 
 
 func _can_player_act() -> bool:

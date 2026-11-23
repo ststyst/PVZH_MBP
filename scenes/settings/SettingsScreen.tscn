@@ -140,6 +140,12 @@ layout_mode = 2
 theme_override_colors/font_color = Color(0.941176, 0.54902, 0.54902, 1)
 text = "投降"
 
+[node name="BattleLogButton" type="Button" parent="Margin/VBox/Scroll/Content" unique_id=991300001]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(0, 52)
+layout_mode = 2
+text = "查看完整战报"
 [node name="StatusLabel" type="Label" parent="Margin/VBox" unique_id=2063730850]
 unique_name_in_owner = true
 layout_mode = 2
@@ -152,3 +158,59 @@ layout_mode = 2
 theme_override_colors/font_color = Color(0.478431, 0.501961, 0.568627, 1)
 theme_override_font_sizes/font_size = 11
 text = "版本"
+
+[node name="BattleLogOverlay" type="ColorRect" parent="." unique_id=991300002]
+unique_name_in_owner = true
+visible = false
+z_index = 20
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.02, 0.025, 0.035, 1)
+
+[node name="Margin" type="MarginContainer" parent="BattleLogOverlay" unique_id=991300003]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 20
+
+[node name="VBox" type="VBoxContainer" parent="BattleLogOverlay/Margin" unique_id=991300004]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="LogTitle" type="Label" parent="BattleLogOverlay/Margin/VBox" unique_id=991300005]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.75, 0.35, 1)
+theme_override_font_sizes/font_size = 24
+text = "完整战报"
+
+[node name="LogScroll" type="ScrollContainer" parent="BattleLogOverlay/Margin/VBox" unique_id=991300006]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="LogText" type="RichTextLabel" parent="BattleLogOverlay/Margin/VBox/LogScroll" unique_id=991300007]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_colors/default_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/normal_font_size = 16
+bbcode_enabled = false
+fit_content = true
+scroll_active = false
+
+[node name="BattleLogCloseButton" type="Button" parent="BattleLogOverlay/Margin/VBox" unique_id=991300008]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 56)
+layout_mode = 2
+text = "关闭"
