@@ -11,8 +11,8 @@ const RARITY_COLORS: Dictionary = {
 	"legend": Color(1.00, 0.72, 0.32),
 }
 const CARD_SIZE: Vector2 = Vector2(126, 104)
-const ART_BOX: Vector2 = Vector2(118, 62)
-const ART_CENTER: Vector2 = Vector2(63, 34)
+## 插画宽度始终铺满卡面，高度按原始比例溢出，由卡面裁切。
+const ART_WINDOW_CENTER_Y: float = 0.45
 
 var card_id: String = ""
 
@@ -107,12 +107,11 @@ func _apply_art_sprite(card: CardData) -> void:
 	art_sprite.texture = texture
 	if texture == null:
 		return
-	art_sprite.position = ART_CENTER
-	var contain_scale: float = minf(
-		ART_BOX.x / float(texture.get_width()),
-		ART_BOX.y / float(texture.get_height()),
-	)
-	art_sprite.scale = Vector2(contain_scale, contain_scale)
+	if texture == null or texture.get_width() <= 0:
+		return
+	art_sprite.position = Vector2(CARD_SIZE.x * 0.5, CARD_SIZE.y * ART_WINDOW_CENTER_Y)
+	var width_scale: float = CARD_SIZE.x / float(texture.get_width())
+	art_sprite.scale = Vector2(width_scale, width_scale)
 
 
 func _apply_stats(card: CardData) -> void:

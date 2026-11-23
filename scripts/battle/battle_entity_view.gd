@@ -208,12 +208,9 @@ func _apply_art(card: CardData) -> void:
 	art_sprite.texture = texture
 	if texture == null:
 		return
+	if texture == null or texture.get_width() <= 0:
+		return
 	var view: Vector2 = _view_size()
-	var art_box: Vector2 = Vector2(view.x * 0.96, view.y * 0.70)
-	var art_center: Vector2 = Vector2(view.x * 0.5, view.y * 0.33)
-	art_sprite.position = art_center
-	var contain_scale: float = minf(
-		art_box.x / float(texture.get_width()),
-		art_box.y / float(texture.get_height()),
-	)
-	art_sprite.scale = Vector2(contain_scale, contain_scale)
+	art_sprite.position = Vector2(view.x * 0.5, view.y * 0.5)
+	var width_scale: float = view.x / float(texture.get_width())
+	art_sprite.scale = Vector2(width_scale, width_scale)

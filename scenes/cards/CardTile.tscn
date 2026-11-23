@@ -4,6 +4,7 @@
 [ext_resource type="FontFile" uid="uid://coev8tv05u67j" path="res://assets/ttf/VonwaonBitmap-16pxLite.ttf" id="2_wlbae"]
 
 [node name="CardTile" type="Button" unique_id=1347911508]
+clip_contents = true
 custom_minimum_size = Vector2(126, 104)
 script = ExtResource("1_card_tile")
 
@@ -13,6 +14,7 @@ position = Vector2(63, 52)
 
 [node name="BorderSprite" type="Sprite2D" parent="." unique_id=991100201]
 unique_name_in_owner = true
+z_index = 2
 position = Vector2(63, 52)
 
 [node name="ArtSprite" type="Sprite2D" parent="." unique_id=819906900]
