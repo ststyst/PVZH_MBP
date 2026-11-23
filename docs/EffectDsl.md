@@ -59,13 +59,102 @@
 - 查询函数：`attack(target)`、`health(target)`、`shield(target)`、`min(a,b)`、`max(a,b)`、`has_tribe("pea")`、`marker_count("名字")`（`marker_count` 用于玩家特殊标志物数量）
 - 字符串可用单引号或双引号：`side == 'enemy'` / `side == "enemy"`
 
+### 变量赋值示例
+
+```text
+x = 2 + 3 * 2
+deal_damage(chosen, x)
+```
+
+功能：先计算 `2 + 3 * 2`，结果保存到 `x`，后续语句可用 `x`；按乘法优先，实际伤害为 8。
+
+```text
+damage = 2
+damage = damage + 1
+deal_damage(chosen, damage)
+```
+
+功能：变量可以重复赋值；第二次读取旧值并加 1，最终造成 3 点伤害。
+
+```text
+bonus = 0
+if marker_count("充能") >= 3:
+    bonus = 2
+deal_damage(all_enemies, 2 + bonus)
+```
+
+功能：默认额外伤害为 0；标志物数量达到 3 时额外伤害变为 2；对全体敌人造成 2 或 4 点伤害。
+
+```text
+target = chosen
+if attack(chosen) <= 3:
+    destroy(target)
+```
+
+功能：把玩家选择的目标保存到 `target`，根据目标攻击力判断，满足条件时消灭该目标。
+
+```text
+selector = 'enemy_entities'
+choose(1, selector)
+destroy(chosen)
+```
+
+功能：用变量保存目标选择器字符串；让玩家从敌方实体中选择一个；消灭选择结果。
+
+```text
+times = 2
+repeat(times):
+    deal_damage(random_enemy, 1)
+```
+
+功能：变量决定循环次数；这里随机对敌人造成两次 1 点伤害。
+
+```text
+amount = attack(self) / 2
+heal(self, amount)
+```
+
+功能：变量可以保存查询结果和四则运算结果；治疗量等于自身攻击力的一半（整数除法）。
+
+### 变量可以保存的内容
+
+- 整数
+- 字符串
+- 布尔值
+- 目标句柄，如 `chosen`、`self`、`enemy_hero`
+- 目标数组，如 `all_enemies`
+- 查询结果，如 `attack(self)`、`health(chosen)`
+- 四则运算结果
+- 比较结果
+
+### 变量限制
+
+- 没有 `var x = ...` 声明关键字，直接写 `x = ...`
+- 不支持 `+=`、`-=`、`++`，统一写成 `x = x + 1`
+- 不支持数组下标访问，如 `targets[0]`
+- 不支持属性赋值，如 `self.attack = 3`
+- 变量不能跨卡牌、跨事件或跨回合保存
+- 每次 `run_on_play` 或事件响应开始时变量表会清空
+- 同一次能力结算内变量可以连续使用
+- `if` 内赋值的变量在 `if` 外仍然有效，当前没有块级变量作用域
+
+```text
+x = 1
+if attack(self) > 2:
+    x = 3
+deal_damage(chosen, x)
+```
+
+上面 `if` 内赋值的 `x` 在 `if` 外部仍然有效；使用时注意不要在不同分支里意外覆盖同名变量。
+
 ## 四、目标选择器
 
 | 选择器 | 含义 |
 |---|---|
 | `self` | 技能拥有者（实体自己） |
 | `event` | 触发本次事件的实体 |
-| `chosen` | 玩家本次选中的目标（**数组**；可以用 `choose` 选多个） || `chosen_if(<条件>)` | 选中目标中满足条件的（没有则本次原语跳过） |
+| `chosen` | 玩家本次选中的目标（**数组**；可以用 `choose` 选多个） |
+| `chosen_if(<条件>)` | 选中目标中满足条件的（没有则本次原语跳过） |
 | `hero` / `enemy_hero` | 我方 / 敌方英雄 |
 | `all_enemies` / `all_allies` | 所有敌方 / 友方实体 |
 | `other_allies` | 除技能拥有者外的友方实体 |
