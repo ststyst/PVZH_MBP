@@ -126,16 +126,6 @@ func _layout_runtime() -> void:
 	name_label.offset_top = 0.0
 	name_label.offset_right = view.x - 2.0
 	name_label.offset_bottom = 16.0
-	attack_label.offset_left = 2.0
-	attack_label.offset_top = view.y - 22.0
-	attack_label.offset_right = 38.0
-	attack_label.offset_bottom = view.y - 2.0
-	health_label.offset_left = view.x - 38.0
-	health_label.offset_top = view.y - 22.0
-	health_label.offset_right = view.x - 2.0
-	health_label.offset_bottom = view.y - 2.0
-	attack_icon_sprite.position = Vector2(20.0, view.y - 12.0)
-	health_icon_sprite.position = Vector2(view.x - 20.0, view.y - 12.0)
 
 
 ## 播放指定模式的具名动画，返回动画时长（找不到/无动画时返回 0）。
