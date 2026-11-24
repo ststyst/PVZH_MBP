@@ -12,7 +12,7 @@ const DEFINITIONS: Dictionary = {
 	"invincible": {
 		"label": "无敌",
 		"kind": "buff",
-		"description": "不会受到伤害，也不会被直接消灭；战斗回合中该列结算完成后解除。",
+		"description": "不会受到伤害；仍可被消灭效果选中并正常消灭。战斗回合中该列结算完成后解除。",
 		"clear_after_combat": true,
 	},
 	"spell_immune": {

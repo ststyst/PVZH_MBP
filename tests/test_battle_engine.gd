@@ -159,6 +159,18 @@ func test_environment_temporary_keyword_grants_are_removed_on_replace() -> void:
 	assert_eq(entity.keyword_value("deadly"), 1, "环境被覆盖后应只移除环境赋予的临时词缀，实际 %d buffs=%s" % [entity.keyword_value("deadly"), str(entity.buffs)])
 
 
+func test_invincible_can_be_destroyed() -> void:
+	var engine: BattleEngine = _started_engine()
+	var card: CardData = _make_test_card("pvzh:test_invincible_destroy", "")
+	card.health = 5
+	var entity: BattleEntity = engine.summon_card("p", card, 1, 0)
+	engine.apply_buff_handle(entity, "invincible", 1)
+	assert_true(entity.has_buff("invincible"))
+	engine.destroy_handle(entity)
+	engine._flush_deaths()
+	assert_false(entity.is_alive(), "无敌实体应能被消灭效果正常消灭")
+
+
 func test_entered_this_turn_trigger_only_first_turn() -> void:
 	var engine: BattleEngine = _started_engine()
 	var card: CardData = _make_test_card(

@@ -553,7 +553,7 @@ func advance_phase() -> void:
 		PHASE_HAND:
 			if active_side == SIDE_Z:
 				active_side = SIDE_P
-				_log("p 阵营实体牌阶段")
+				_log("p 阵营出牌阶段")
 			else:
 				phase = PHASE_SPELL
 				active_side = SIDE_Z
@@ -2129,8 +2129,10 @@ func give_keyword_to_hand_card(side: String, hand_index: int, keyword: String, v
 
 func destroy_handle(handle: Variant) -> void:
 	if handle is BattleEntity:
-		if handle.is_invincible() or handle.is_spell_immune():
+		if handle.is_spell_immune():
 			return
+		if handle.has_buff("invincible"):
+			handle.remove_buff("invincible")
 		handle.health = 0
 	elif handle is String and handle.begins_with("hero:"):
 		var state: BattlePlayerState = players.get(handle.substr(5), null)
