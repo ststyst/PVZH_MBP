@@ -2380,6 +2380,7 @@ func _execute_entity_attack(
 				return
 	var splash: int = attacker.keyword_value("overshoot")
 	if splash > 0:
+		# 溅射只命中相邻列的敌方实体，永远不命中英雄。
 		for column_offset: int in [-1, 1]:
 			var splash_column: int = attacker.column + column_offset
 			if splash_column < 0 or splash_column >= COLUMN_COUNT:

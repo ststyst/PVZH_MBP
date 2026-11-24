@@ -1147,8 +1147,10 @@ func test_frenzy_piercing_and_splash() -> void:
 	side_target.max_health = 5
 	side_target.health = 5
 	var splash_attacker: BattleEntity = splash_engine._entity_at(2, "p", 0)
+	var hero_health_before: int = int(splash_engine.players["z"].hero_health)
 	splash_engine._execute_entity_attack(splash_attacker, splash_engine.hero_handle("z"), 0)
 	assert_eq(side_target.health, 3, "溅射应伤害相邻列的实体")
+	assert_eq(int(splash_engine.players["z"].hero_health), hero_health_before - 1, "溅射不应额外伤害英雄")
 
 
 func test_spell_immune_frost_and_thorns() -> void:
