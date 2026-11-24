@@ -40,7 +40,7 @@ func setup(card: CardData, owned_count: int, status_text: String = "", show_owne
 	_apply_border_sprite(card.rarity)
 	_apply_art_sprite(card)
 	_apply_stats(card)
-	cost_label.text = str(card.cost)
+	cost_label.text = str(maxi(card.cost, 0))
 	name_label.text = card.display_name()
 	name_label.add_theme_color_override("font_color", _rarity_color(card.rarity))
 	meta_label.text = _build_meta_text(card)
@@ -56,6 +56,10 @@ func setup(card: CardData, owned_count: int, status_text: String = "", show_owne
 		owned_label.text = status_text
 		owned_label.add_theme_color_override("font_color", Color(0.72, 0.78, 0.90))
 	tooltip_text = "%s\n%s" % [card.display_name(), card.description]
+
+
+func set_cost(value: int) -> void:
+	cost_label.text = str(maxi(value, 0))
 
 
 func _build_meta_text(card: CardData) -> String:

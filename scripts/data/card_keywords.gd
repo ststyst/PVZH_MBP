@@ -120,6 +120,11 @@ const DEFINITIONS: Dictionary = {
 		"label": "组队",
 		"description": "可与已有友方实体同列；打出时可挤开原实体放入已有格子。",
 	},
+	"spell_phase_entity": {
+		"label": "锦囊阶段可打出",
+		"description": "允许在锦囊/环境阶段作为实体牌打出。",
+		"allowed_kinds": ["entity"],
+	},
 }
 
 

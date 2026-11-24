@@ -31,6 +31,19 @@ static func effect_resolution_limit(path: String = DEFAULT_PATH) -> int:
 	return 100
 
 
+## 敌方打出锦囊时，屏幕中央提示的持续时间（秒）；默认 1 秒。
+static func spell_toast_duration(path: String = DEFAULT_PATH) -> float:
+	var data: Dictionary = load_config(path)
+	var match_config: Variant = data.get("match", {})
+	if match_config is Dictionary:
+		var raw: Variant = (match_config as Dictionary).get("spell_toast_duration", 1.0)
+		if raw is int or raw is float:
+			return maxf(float(raw), 0.1)
+		if raw is String and raw.is_valid_float():
+			return maxf(raw.to_float(), 0.1)
+	return 1.0
+
+
 ## 不能被环境牌覆盖的环境 id；默认高地和水池。
 static func protected_environments(path: String = DEFAULT_PATH) -> Array[String]:
 	var data: Dictionary = load_config(path)

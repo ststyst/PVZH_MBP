@@ -159,6 +159,39 @@ func test_environment_temporary_keyword_grants_are_removed_on_replace() -> void:
 	assert_eq(entity.keyword_value("deadly"), 1, "环境被覆盖后应只移除环境赋予的临时词缀，实际 %d buffs=%s" % [entity.keyword_value("deadly"), str(entity.buffs)])
 
 
+func test_entered_this_turn_trigger_only_first_turn() -> void:
+	var engine: BattleEngine = _started_engine()
+	var card: CardData = _make_test_card(
+		"pvzh:test_entered_turn",
+		"when turn_end(entered_this_turn):\n    buff_stats(self, -1, 0)"
+	)
+	card.attack = 3
+	card.health = 3
+	var entity: BattleEntity = engine.summon_card("p", card, 1, 0)
+	engine._resolve_turn_end()
+	assert_eq(entity.attack, 2, "入场当回合结束应触发一次")
+	engine.turn += 1
+	engine._resolve_turn_end()
+	assert_eq(entity.attack, 2, "非入场回合不应再次触发")
+
+
+func test_environment_grants_follow_entity_movement() -> void:
+	var engine: BattleEngine = _started_engine()
+	var entity_card: CardData = _make_test_card("pvzh:test_env_move_entity", "")
+	entity_card.health = 3
+	var entity: BattleEntity = engine.summon_card("p", entity_card, 1, 0)
+	var env_card: CardData = _make_test_card(
+		"pvzh:test_env_move",
+		"environment_grant_keyword('deadly', 1, 'ally')"
+	)
+	env_card.kind = "environment"
+	env_card.english_name = "test_env_move"
+	assert_true(engine._place_environment("p", 1, env_card))
+	assert_true(entity.has_keyword("deadly"))
+	assert_true(engine.move_entity(entity, 2, 0))
+	assert_false(entity.has_keyword("deadly"), "离开环境列应移除临时词缀")
+
+
 func test_heal_all_spell_can_play_without_target() -> void:
 	var engine: BattleEngine = _started_engine()
 	var entity_card: CardData = _make_test_card("pvzh:test_heal_target", "")
@@ -1521,7 +1554,7 @@ func test_spell_damage() -> void:
 	var state: BattlePlayerState = engine.players["z"]
 	_set_hand(engine, "z", ["pvzh:fireball"])
 	state.energy = 10
-	engine.phase = BattleEngine.PHASE_HAND
+	engine.phase = BattleEngine.PHASE_SPELL
 	engine.active_side = "z"
 	var result: Dictionary = engine.play_card("z", 0, {"handle": engine.hero_handle("p")})
 	assert_true(bool(result.get("ok", false)), "火球术应能命中英雄：%s" % [result.get("message", "")])

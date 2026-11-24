@@ -15,6 +15,10 @@ var attack: int = 0
 var health: int = 0
 var max_health: int = 0
 var shield: int = 0
+## 场上实体的费用始终使用卡牌数据库中的原始费用，不随手牌减费变化
+var cost: int = 0
+## 入场回合（用于“仅入场当回合”能力）
+var entered_turn: int = 0
 var keywords: Array[String] = []
 var keyword_values: Dictionary = {}
 ## 内置 Buff/Debuff：buff_id -> 层数（默认 1）
@@ -38,6 +42,7 @@ func setup(source_card: CardData, owner_side: String, target_column: int, target
 	health = source_card.health
 	max_health = source_card.health
 	shield = source_card.shield
+	cost = maxi(source_card.cost, 0)
 	keywords = source_card.keywords.duplicate()
 	keyword_values = source_card.keyword_values.duplicate(true)
 	team_up = source_card.has_keyword("team_up")

@@ -79,7 +79,7 @@ deal_damage(chosen, damage)
 ```text
 bonus = 0
 if marker_count("充能") >= 3:
-    bonus = 2
+	bonus = 2
 deal_damage(all_enemies, 2 + bonus)
 ```
 
@@ -88,7 +88,7 @@ deal_damage(all_enemies, 2 + bonus)
 ```text
 target = chosen
 if attack(chosen) <= 3:
-    destroy(target)
+	destroy(target)
 ```
 
 功能：把玩家选择的目标保存到 `target`，根据目标攻击力判断，满足条件时消灭该目标。
@@ -104,7 +104,7 @@ destroy(chosen)
 ```text
 times = 2
 repeat(times):
-    deal_damage(random_enemy, 1)
+	deal_damage(random_enemy, 1)
 ```
 
 功能：变量决定循环次数；这里随机对敌人造成两次 1 点伤害。
@@ -141,7 +141,7 @@ heal(self, amount)
 ```text
 x = 1
 if attack(self) > 2:
-    x = 3
+	x = 3
 deal_damage(chosen, x)
 ```
 

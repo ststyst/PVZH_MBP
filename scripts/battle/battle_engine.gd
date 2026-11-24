@@ -17,6 +17,8 @@ signal display_state_changed(handle: Variant)
 signal bounce_fx(actor: BattleEntity, target: BattleEntity, hide_identity: bool)
 ## 墓碑离场费用广播（不包含实体具体信息）
 signal tombstone_cost_broadcast(side: String, amount: int)
+## 玩家打出锦囊（用于敌方锦囊提示）
+signal spell_played(side: String, card: CardData)
 
 const SIDE_P: String = "p"
 const SIDE_Z: String = "z"
@@ -59,6 +61,8 @@ var environment_cards: Dictionary = {}
 var environment_owners: Dictionary = {}
 ## 环境临时赋予的词缀：column -> [{entity_id, buff_id, layers}]
 var environment_keyword_grants: Dictionary = {}
+## 环境词缀赋予定义：column -> [{keyword, value, side_filter, owner_side}]
+var environment_keyword_defs: Dictionary = {}
 ## 不能被环境牌覆盖的环境 id
 var protected_environments: Array[String] = ["highground", "water"]
 ## 环境 id -> 实体词缀限制表达式
@@ -525,7 +529,7 @@ func _begin_first_turn() -> void:
 	_grant_initial_superpowers()
 	phase = PHASE_HAND
 	active_side = SIDE_Z
-	_log("第 1 回合：z 阵营出牌阶段")
+	_log("第 1 回合：z 阵营实体牌阶段")
 	changed.emit()
 
 
@@ -549,11 +553,11 @@ func advance_phase() -> void:
 		PHASE_HAND:
 			if active_side == SIDE_Z:
 				active_side = SIDE_P
-				_log("p 阵营出牌阶段")
+				_log("p 阵营实体牌阶段")
 			else:
 				phase = PHASE_SPELL
 				active_side = SIDE_Z
-				_log("z 阵营锦囊/环境阶段")
+				_log("z 阵营锦囊与环境阶段")
 				_reveal_tombstones()
 				if winner != "":
 					return
@@ -601,7 +605,7 @@ func _start_next_turn() -> void:
 			draw_cards(side, draw_count)
 	phase = PHASE_HAND
 	active_side = SIDE_Z
-	_log("第 %d 回合：z 阵营出牌阶段" % turn)
+	_log("第 %d 回合：z 阵营实体牌阶段" % turn)
 	changed.emit()
 
 
@@ -817,8 +821,10 @@ func play_card(side: String, hand_index: int, target: Dictionary = {}) -> Dictio
 	var effective_cost: int = effective_hand_cost(side, hand_index)
 	if effective_cost > state.energy:
 		return _fail("费用不足（需要 %d，当前 %d）。" % [effective_cost, state.energy])
-	if phase == PHASE_SPELL and not (card.is_spell() or card.is_environment()):
-		return _fail("锦囊/环境阶段只能打出锦囊牌或环境牌。")
+	if phase == PHASE_HAND and side == SIDE_Z and not card.is_entity():
+		return _fail("Z 方实体牌阶段只能打出实体牌。")
+	if phase == PHASE_SPELL and not (card.is_spell() or card.is_environment() or (card.is_entity() and card.has_keyword("spell_phase_entity"))):
+		return _fail("锦囊/环境阶段只能打出锦囊牌、环境牌，或特别允许的实体牌。")
 	var target_handles: Array = _target_handles(target)
 	if card.is_entity():
 		if phase != PHASE_HAND:
@@ -969,6 +975,7 @@ func _place_environment(side: String, column: int, card: CardData) -> bool:
 	if card == null or not card.is_environment() or not can_change_environment(column):
 		return false
 	_clear_environment_keyword_grants(column)
+	environment_keyword_defs.erase(column)
 	environments[column] = card.english_name.to_lower().replace(" ", "_")
 	environment_labels[column] = card.display_name()
 	environment_cards[column] = card.card_id
@@ -1012,6 +1019,9 @@ func grant_environment_keyword(
 	var filter: String = side_filter.strip_edges().to_lower()
 	var layers: int = maxi(value, 1)
 	var buff_id: String = "temp_%s" % normalized
+	var defs: Array = environment_keyword_defs.get(column, [])
+	defs.append({"keyword": normalized, "value": layers, "side_filter": filter, "owner_side": owner_side})
+	environment_keyword_defs[column] = defs
 	for entity: BattleEntity in entities.duplicate():
 		if not entity.is_alive() or entity.column != column:
 			continue
@@ -1024,6 +1034,39 @@ func grant_environment_keyword(
 		var grants: Array = environment_keyword_grants.get(column, [])
 		grants.append({"entity_id": entity.entity_id, "buff_id": buff_id, "layers": layers})
 		environment_keyword_grants[column] = grants
+
+
+func _apply_environment_grants_to_entity(entity: BattleEntity, column: int) -> void:
+	if entity == null or not entity.is_alive():
+		return
+	for definition: Dictionary in environment_keyword_defs.get(column, []):
+		var filter: String = str(definition.get("side_filter", "all"))
+		var owner: String = str(definition.get("owner_side", ""))
+		if filter == "ally" and entity.side != owner:
+			continue
+		if filter == "enemy" and entity.side == owner:
+			continue
+		var buff_id: String = "temp_%s" % str(definition.get("keyword", ""))
+		var layers: int = maxi(int(definition.get("value", 1)), 1)
+		if not apply_buff_handle(entity, buff_id, layers):
+			continue
+		var grants: Array = environment_keyword_grants.get(column, [])
+		grants.append({"entity_id": entity.entity_id, "buff_id": buff_id, "layers": layers})
+		environment_keyword_grants[column] = grants
+
+
+func _remove_entity_environment_grants(entity: BattleEntity, column: int) -> void:
+	if entity == null:
+		return
+	var grants: Array = environment_keyword_grants.get(column, [])
+	var kept: Array = []
+	for grant: Dictionary in grants:
+		if int(grant.get("entity_id", -1)) != entity.entity_id:
+			kept.append(grant)
+			continue
+		for _layer: int in range(maxi(int(grant.get("layers", 1)), 1)):
+			entity.remove_buff(str(grant.get("buff_id", "")))
+	environment_keyword_grants[column] = kept
 
 
 func grant_environment_keyword_persistent(
@@ -1107,6 +1150,8 @@ func _spend_and_remove(
 		instance.zone = "discard"
 		state.discard.append(instance)
 	_log("%s 打出 %s" % [state.side.to_upper(), card.display_name()])
+	if card.is_spell():
+		spell_played.emit(state.side, card)
 	_fire_zone_event(state.side, "hand_played", null)
 
 
@@ -1140,6 +1185,7 @@ func summon_card(side: String, card: CardData, column: int, slot: int, attack_bo
 	entity.entity_id = _next_entity_id
 	_next_entity_id += 1
 	entity.setup(card, side, column, slot)
+	entity.entered_turn = turn
 	if attack_bonus != 0:
 		entity.attack = maxi(entity.attack + attack_bonus, 0)
 	entities.append(entity)
@@ -1148,6 +1194,7 @@ func summon_card(side: String, card: CardData, column: int, slot: int, attack_bo
 		"组队" if slot == SLOT_TEAM_UP else "普通", card.display_name(),
 	])
 	_apply_enter_keywords(entity)
+	_apply_environment_grants_to_entity(entity, column)
 	_refresh_all_counter_bonuses()
 	_refresh_auras()
 	return entity
@@ -1287,8 +1334,11 @@ func move_entity(entity: BattleEntity, column: int, slot: int, fire_event: bool 
 			occupant.display_name(), column + 1,
 			"组队" if other_slot == SLOT_TEAM_UP else "普通",
 		])
+	var old_column: int = entity.column
 	entity.column = column
 	entity.slot = slot
+	_remove_entity_environment_grants(entity, old_column)
+	_apply_environment_grants_to_entity(entity, column)
 	_log("%s 移动到第 %d 列%s位" % [
 		entity.display_name(), column + 1,
 		"组队" if slot == SLOT_TEAM_UP else "普通",

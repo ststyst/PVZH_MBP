@@ -176,6 +176,8 @@ func describe_entity(handle) -> Dictionary:
 			"attack": entity.attack,
 			"health": entity.health,
 			"shield": entity.shield,
+			"turn": engine.turn,
+			"entered_this_turn": entity.entered_turn == engine.turn,
 			"column": entity.column - reference_column if reference_column >= 0 else entity.column + 1,
 			"column_abs": entity.column + 1,
 		}
@@ -189,6 +191,8 @@ func describe_entity(handle) -> Dictionary:
 			"attack": 0,
 			"health": state.hero_health if state != null else 0,
 			"shield": 0,
+			"turn": engine.turn,
+			"entered_this_turn": false,
 		}
 	return {}
 

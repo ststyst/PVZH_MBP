@@ -51,6 +51,7 @@ var _ai_accum: float = 0.0
 @onready var _special_play_button: Button = %SpecialPlayButton
 @onready var _special_hand_button: Button = %SpecialHandButton
 @onready var _card_info_dialog: CardInfoDialog = %CardInfoDialog
+@onready var _spell_toast: Label = %SpellToast
 @onready var _battle_background_image: TextureRect = %BattleBackgroundImage
 @onready var _board_art_area: Control = %BoardArtArea
 @onready var _enemy_hero_art: TextureRect = %EnemyHeroArtArea
@@ -67,6 +68,7 @@ var _hand_drag_active: bool = false
 var _hand_drag_started: bool = false
 var _hand_drag_start_position: Vector2 = Vector2.ZERO
 var _suppress_hand_click: bool = false
+var _spell_toast_remaining: float = 0.0
 var _entity_views: Dictionary = {}
 
 
@@ -174,6 +176,7 @@ func _ready() -> void:
 	engine.protected_environments = ServerConfig.protected_environments()
 	engine.environment_keyword_filters = ServerConfig.environment_keyword_filters()
 	engine.changed.connect(_on_engine_changed)
+	engine.spell_played.connect(_on_spell_played)
 	engine.game_finished.connect(_on_game_finished)
 	engine.animation_cue.connect(_on_animation_cue)
 	engine.setup(
@@ -411,8 +414,13 @@ func _on_hand_drag_drop(index: int, global_position: Vector2) -> void:
 	var card: CardData = engine.hand_card_display(player_side, index)
 	if card == null:
 		return
-	if engine.phase == BattleEngine.PHASE_SPELL and not (card.is_spell() or card.is_environment()):
-		_set_status("当前阶段不能打出实体牌。", true)
+	if engine.phase == BattleEngine.PHASE_HAND and engine.active_side == "z" and not card.is_entity():
+		_set_status("Z 方实体牌阶段只能打出实体牌。", true)
+		return
+	if engine.phase == BattleEngine.PHASE_SPELL and not (
+		card.is_spell() or card.is_environment() or (card.is_entity() and card.has_keyword("spell_phase_entity"))
+	):
+		_set_status("当前阶段不能打出这张牌。", true)
 		return
 	if engine.effective_hand_cost(player_side, index) > int(engine.players[player_side].energy):
 		_set_status("费用不足。", true)
@@ -531,8 +539,13 @@ func _on_hand_pressed(index: int) -> void:
 	var card: CardData = engine.hand_card_display(player_side, index)
 	if card == null:
 		return
-	if engine.phase == BattleEngine.PHASE_SPELL and not (card.is_spell() or card.is_environment()):
-		_set_status("锦囊/环境阶段不能打出实体牌。", true)
+	if engine.phase == BattleEngine.PHASE_HAND and engine.active_side == "z" and not card.is_entity():
+		_set_status("Z 方实体牌阶段只能打出实体牌。", true)
+		return
+	if engine.phase == BattleEngine.PHASE_SPELL and not (
+		card.is_spell() or card.is_environment() or (card.is_entity() and card.has_keyword("spell_phase_entity"))
+	):
+		_set_status("当前阶段不能打出这张牌。", true)
 		return
 	if engine.effective_hand_cost(player_side, index) > int(engine.players[player_side].energy):
 		_set_status("费用不足。", true)
@@ -588,6 +601,14 @@ func _on_hand_pressed(index: int) -> void:
 		_refresh_all()
 	else:
 		_play_pending({})
+
+
+func _on_spell_played(side: String, card: CardData) -> void:
+	if side == player_side or card == null:
+		return
+	_spell_toast.text = card.description
+	_spell_toast.visible = true
+	_spell_toast_remaining = ServerConfig.spell_toast_duration()
 
 
 func _on_slot_button_pressed(side: String, column: int, slot: int) -> void:
@@ -1111,10 +1132,15 @@ func _rebuild_hand() -> void:
 		tile.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 		current_column.add_child(tile)
 		tile.setup(card, 0, "", false, true)
+		tile.set_cost(engine.effective_hand_cost(player_side, index))
 		tile.pressed.connect(_on_hand_pressed.bind(index))
 		tile.gui_input.connect(_on_hand_tile_gui_input.bind(index))
 		var disabled: bool = not _can_player_act()
-		if engine.phase == BattleEngine.PHASE_SPELL and not (card.is_spell() or card.is_environment()):
+		if engine.phase == BattleEngine.PHASE_HAND and engine.active_side == "z" and not card.is_entity():
+			disabled = true
+		if engine.phase == BattleEngine.PHASE_SPELL and not (
+			card.is_spell() or card.is_environment() or (card.is_entity() and card.has_keyword("spell_phase_entity"))
+		):
 			disabled = true
 		if engine.effective_hand_cost(player_side, index) > int(state.energy):
 			disabled = true
@@ -1145,9 +1171,9 @@ func _phase_text() -> String:
 		BattleEngine.PHASE_MULLIGAN:
 			return "起手调度"
 		BattleEngine.PHASE_HAND:
-			return "z 出牌阶段" if engine.active_side == "z" else "p 出牌阶段"
+			return "z 实体牌阶段" if engine.active_side == "z" else "p 出牌阶段"
 		BattleEngine.PHASE_SPELL:
-			return "z 锦囊/环境阶段"
+			return "z 锦囊与环境阶段"
 		BattleEngine.PHASE_COMBAT:
 			return "对战结算"
 		BattleEngine.PHASE_TURN_END:
@@ -1196,6 +1222,10 @@ func _phase_key() -> String:
 
 
 func _process(delta: float) -> void:
+	if _spell_toast_remaining > 0.0:
+		_spell_toast_remaining -= delta
+		if _spell_toast_remaining <= 0.0:
+			_spell_toast.visible = false
 	_align_layout_to_art()
 	_update_long_press(delta)
 	if engine == null or not _started:
