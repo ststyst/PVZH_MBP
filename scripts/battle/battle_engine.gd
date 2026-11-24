@@ -1477,19 +1477,20 @@ func damage_handle(handle: Variant, amount: int, source_keywords: Array = [], fr
 		damage_hero(handle.substr(5), amount, source_keywords, source_entity, explicit_source if not explicit_source.is_empty() else ("锦囊" if from_spell else ""))
 
 
-func damage_entity(entity: BattleEntity, amount: int, source_keywords: Array = [], from_spell: bool = false, source_entity: BattleEntity = null, explicit_source: String = "") -> void:
+## 返回本次实际造成的有效伤害（扣完护盾/抗性后）；0 表示未造成有效伤害。
+func damage_entity(entity: BattleEntity, amount: int, source_keywords: Array = [], from_spell: bool = false, source_entity: BattleEntity = null, explicit_source: String = "") -> int:
 	if _battle_over():
-		return
+		return 0
 	if entity == null or not entity.alive:
-		return
+		return 0
 	if entity.has_buff("buried"):
-		return
+		return 0
 	if entity.is_invincible() or (from_spell and entity.is_spell_immune()):
 		_log("%s 免疫本次伤害" % entity.display_name())
-		return
+		return 0
 	if entity.keyword_value("invisible") > 0 and not source_keywords.has("bullseye"):
 		_log("%s 的隐形免疫了本次伤害" % entity.display_name())
-		return
+		return 0
 	var damage: int = amount
 	if not source_keywords.has("bullseye"):
 		damage = maxi(damage - entity.shield, 0)
@@ -1502,15 +1503,16 @@ func damage_entity(entity: BattleEntity, amount: int, source_keywords: Array = [
 		_damage_source_label(source_entity, source_keywords, from_spell) if explicit_source.is_empty() else explicit_source,
 		entity.health, entity.shield,
 	])
-	if damage > 0 or source_keywords.has("deadly"):
+	if damage > 0:
 		_fire_event("damaged", entity)
-	if entity.has_buff("hatred") and source_entity != null and source_entity.alive and source_entity.side != entity.side:
+	if damage > 0 and entity.has_buff("hatred") and source_entity != null and source_entity.alive and source_entity.side != entity.side:
 		destroy_handle(source_entity)
-	if damage > 0 or source_keywords.has("deadly"):
+	if damage > 0:
 		_fire_event("health_changed", entity)
 		display_state_changed.emit(entity)
 	if source_keywords.has("frost") and damage > 0:
 		apply_buff_handle(entity, "frozen", 1)
+	return damage
 
 
 func apply_buff_handle(entity: BattleEntity, buff_id: String, amount: int = 1) -> bool:
@@ -2358,10 +2360,10 @@ func _execute_entity_attack(
 	if attacker.has_keyword("strikethrough"):
 		for entity: BattleEntity in entities.duplicate():
 			if entity.alive and entity.side != attacker.side and entity.column == attack_column:
-				damage_entity(entity, attacker.attack, attacker.keywords, false, attacker)
+				var dealt: int = damage_entity(entity, attacker.attack, attacker.keywords, false, attacker)
 				if entity.alive:
 					_fire_event("attacked", entity)
-				if not entity.alive or entity.health <= 0:
+				if dealt > 0 and (not entity.alive or entity.health <= 0):
 					killed_enemy = true
 		damage_hero(opposite_side(attacker.side), attacker.attack, attacker.keywords, attacker)
 		if _battle_over():
@@ -2370,8 +2372,8 @@ func _execute_entity_attack(
 		if target is BattleEntity:
 			var target_entity: BattleEntity = target
 			if target_entity.alive:
-				damage_entity(target_entity, attacker.attack, attacker.keywords, false, attacker)
-				if target_entity.health <= 0:
+				var dealt: int = damage_entity(target_entity, attacker.attack, attacker.keywords, false, attacker)
+				if dealt > 0 and target_entity.health <= 0:
 					killed_enemy = true
 				_try_thorns(attacker, target_entity)
 		elif target is String and target.begins_with("hero:"):

@@ -159,6 +159,25 @@ func test_environment_temporary_keyword_grants_are_removed_on_replace() -> void:
 	assert_eq(entity.keyword_value("deadly"), 1, "环境被覆盖后应只移除环境赋予的临时词缀，实际 %d buffs=%s" % [entity.keyword_value("deadly"), str(entity.buffs)])
 
 
+func test_deadly_blocked_by_shield_triggers_no_events() -> void:
+	var engine: BattleEngine = _started_engine()
+	var target_card: CardData = _make_test_card("pvzh:test_deadly_shield_target", "")
+	target_card.health = 5
+	target_card.shield = 3
+	var target: BattleEntity = engine.summon_card("p", target_card, 0, 0)
+	var listener_card: CardData = _make_test_card(
+		"pvzh:test_deadly_shield_listener",
+		"when damaged:\n    gain_attack(1)\nwhen health_changed:\n    gain_attack(1)"
+	)
+	listener_card.attack = 0
+	listener_card.health = 5
+	var listener: BattleEntity = engine.summon_card("p", listener_card, 1, 0)
+	var effective: int = engine.damage_entity(target, 2, ["deadly"])
+	assert_eq(effective, 0, "致命被护盾完全挡下时有效伤害应为 0")
+	assert_eq(target.health, 5, "护盾完全挡下时不应扣生命")
+	assert_eq(listener.attack, 0, "无效伤害不应触发 damaged / health_changed")
+
+
 func test_invincible_can_be_destroyed() -> void:
 	var engine: BattleEngine = _started_engine()
 	var card: CardData = _make_test_card("pvzh:test_invincible_destroy", "")
