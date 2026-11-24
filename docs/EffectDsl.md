@@ -901,3 +901,44 @@ when evolved:
 2. 先结算底座的 `mounted` 能力
 3. 再判断进化筛选条件
 4. 满足时触发 `evolved`
+
+### 创造牌时内联施加词缀与数值
+
+`add_random_cards_to_hand` / `add_random_cards_to_deck` 支持在创建时对**每一张新创建的牌**施加同样的效果：
+
+```text
+add_random_cards_to_hand(hero, 2, "kind == 'entity'", 0, "taunt", 1, 2, 1, 0)
+```
+
+参数顺序：
+
+1. 目标阵营或英雄
+2. 数量
+3. 筛选条件
+4. 费用修正
+5. 词缀（空字符串表示不赋予）
+6. 攻击力修正
+7. 生命值修正
+8. 防御值修正
+9. 词缀数值（无数值词缀写 0）
+
+示例：
+
+```text
+# 创建 3 张 1 费实体，全部获得先攻 2、攻击 +1、生命 +2、防御 +1
+add_random_cards_to_hand(hero, 3, "kind == 'entity' and cost == 1", 0, "first_strike", 1, 2, 1, 2)
+
+# 创建 2 张锦囊并减 1 费，不赋予词缀
+add_random_cards_to_hand(hero, 2, "kind == 'spell'", -1)
+
+# 将随机一张牌放到牌库顶，并赋予嘲讽、攻击 +1、生命 +2、防御 +1
+put_card_on_deck_top(hero, "kind == 'entity'", "taunt", 1, 2, 1, 0)
+```
+
+规则：
+
+- 多张创建时，对每一张分别执行相同的词缀和数值修正
+- 数值修正写入卡牌实例的 `attack_bonus` / `health_bonus` / `shield_bonus`
+- 词缀写入卡牌实例，打出后转为实体词缀
+- 费用修正只影响手牌有效费用
+- 这些效果不会修改卡牌数据库中的原始卡牌

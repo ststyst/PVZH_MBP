@@ -120,7 +120,11 @@ func move_entity_to_chosen_position(_target) -> bool:
 
 
 ## 从卡牌数据库按筛选条件随机塞入牌库/手牌；target 为英雄或实体句柄。
-func add_random_cards(_zone: String, _target, _count: int, _filter_text: String, _cost_delta: int = 0) -> int:
+func add_random_cards(
+	_zone: String, _target, _count: int, _filter_text: String, _cost_delta: int = 0,
+	_keyword: String = "", _attack_bonus: int = 0, _health_bonus: int = 0, _shield_bonus: int = 0,
+	_keyword_value: int = 0
+) -> int:
 	push_warning("EffectContext.add_random_cards 未实现：需要战斗层提供")
 	return 0
 
@@ -161,7 +165,10 @@ func gain_max_health(_target, _delta: int) -> void:
 	push_warning("EffectContext.gain_max_health 未实现：需要战斗层提供")
 
 
-func put_random_card_on_deck_top(_target, _filter_text: String) -> bool:
+func put_random_card_on_deck_top(
+	_target, _filter_text: String, _keyword: String = "",
+	_attack_bonus: int = 0, _health_bonus: int = 0, _shield_bonus: int = 0, _keyword_value: int = 0
+) -> bool:
 	push_warning("EffectContext.put_random_card_on_deck_top 未实现：需要战斗层提供")
 	return false
 

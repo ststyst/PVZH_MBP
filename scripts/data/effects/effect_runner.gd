@@ -196,7 +196,24 @@ func _exec_primitive(statement: Dictionary) -> void:
 			if deck_targets.size() != 1:
 				_error("%s 需要单个英雄/阵营目标" % primitive_name, line)
 			elif primitive_name == "put_card_on_deck_top":
-				context.put_random_card_on_deck_top(deck_targets[0], deck_filter)
+				var put_keyword: String = ""
+				var put_attack: int = 0
+				var put_health: int = 0
+				var put_shield: int = 0
+				if arguments.size() > 2:
+					put_keyword = _as_string(_eval(arguments[2], {}))
+				if arguments.size() > 3:
+					put_attack = _as_int(_eval(arguments[3], {}))
+				if arguments.size() > 4:
+					put_health = _as_int(_eval(arguments[4], {}))
+				if arguments.size() > 5:
+					put_shield = _as_int(_eval(arguments[5], {}))
+				var put_keyword_value: int = 0
+				if arguments.size() > 6:
+					put_keyword_value = _as_int(_eval(arguments[6], {}))
+				context.put_random_card_on_deck_top(
+					deck_targets[0], deck_filter, put_keyword, put_attack, put_health, put_shield, put_keyword_value
+				)
 			else:
 				context.put_hand_card_on_deck_top(deck_targets[0], deck_filter)
 		"shuffle_buried_positions":
@@ -228,8 +245,26 @@ func _exec_primitive(statement: Dictionary) -> void:
 				var cost_delta: int = 0
 				if arguments.size() > 3:
 					cost_delta = _as_int(_eval(arguments[3], {}))
+				var keyword: String = ""
+				if arguments.size() > 4:
+					keyword = _as_string(_eval(arguments[4], {}))
+				var attack_bonus: int = 0
+				var health_bonus: int = 0
+				var shield_bonus: int = 0
+				if arguments.size() > 5:
+					attack_bonus = _as_int(_eval(arguments[5], {}))
+				if arguments.size() > 6:
+					health_bonus = _as_int(_eval(arguments[6], {}))
+				if arguments.size() > 7:
+					shield_bonus = _as_int(_eval(arguments[7], {}))
+				var keyword_value: int = 0
+				if arguments.size() > 8:
+					keyword_value = _as_int(_eval(arguments[8], {}))
 				var zone: String = "deck" if primitive_name == "add_random_cards_to_deck" else "hand"
-				context.add_random_cards(zone, card_targets[0], card_count, filter_text, cost_delta)
+				context.add_random_cards(
+					zone, card_targets[0], card_count, filter_text, cost_delta,
+					keyword, attack_bonus, health_bonus, shield_bonus, keyword_value
+				)
 		_:
 			_error("未知原语：%s" % primitive_name, line)
 

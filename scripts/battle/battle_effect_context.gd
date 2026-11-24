@@ -323,7 +323,11 @@ func move_entity_to_chosen_position(target) -> bool:
 	return engine.move_entity_handle(target, chosen_column, chosen_slot)
 
 
-func add_random_cards(zone: String, target, count: int, filter_text: String, cost_delta: int = 0) -> int:
+func add_random_cards(
+	zone: String, target, count: int, filter_text: String, cost_delta: int = 0,
+	keyword: String = "", attack_bonus: int = 0, health_bonus: int = 0, shield_bonus: int = 0,
+	keyword_value: int = 0
+) -> int:
 	var target_side: String = ""
 	if target is BattleEntity:
 		target_side = target.side
@@ -331,7 +335,10 @@ func add_random_cards(zone: String, target, count: int, filter_text: String, cos
 		target_side = target.substr(5)
 	if target_side.is_empty():
 		return 0
-	return engine.add_random_cards(target_side, zone, count, filter_text, cost_delta)
+	return engine.add_random_cards(
+		target_side, zone, count, filter_text, cost_delta,
+		keyword, attack_bonus, health_bonus, shield_bonus, keyword_value
+	)
 
 
 func entities_in_column(min_offset: int, max_offset: int, side_filter: String, min_attack: int = 0) -> Array:
@@ -457,9 +464,16 @@ func gain_max_health(target, delta: int) -> void:
 	engine.change_max_health_handle(target, delta)
 
 
-func put_random_card_on_deck_top(target, filter_text: String) -> bool:
+func put_random_card_on_deck_top(
+	target, filter_text: String, keyword: String = "",
+	attack_bonus: int = 0, health_bonus: int = 0, shield_bonus: int = 0, keyword_value: int = 0
+) -> bool:
 	var side: String = _side_of(target)
-	return false if side.is_empty() else engine.put_random_card_on_deck_top(side, filter_text)
+	if side.is_empty():
+		return false
+	return engine.put_random_card_on_deck_top(
+		side, filter_text, keyword, attack_bonus, health_bonus, shield_bonus, keyword_value
+	)
 
 
 func put_hand_card_on_deck_top(target, filter_text: String) -> bool:

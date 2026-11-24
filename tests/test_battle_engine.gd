@@ -309,6 +309,30 @@ func test_thorns_require_effective_damage() -> void:
 	assert_eq(attacker.health, attacker_health_before, "无敌免疫时应不触发反伤")
 
 
+func test_created_cards_apply_inline_keyword_and_stats() -> void:
+	var engine: BattleEngine = _started_engine()
+	engine.players["p"].hand.clear()
+	var added: int = engine.add_random_cards(
+		"p", "hand", 2, "cost == 1", 0, "taunt", 2, 3, 1
+	)
+	assert_eq(added, 2)
+	for instance: BattleCardInstance in engine.players["p"].hand:
+		assert_true(instance.has_keyword("taunt"))
+		assert_eq(instance.attack_bonus, 2)
+		assert_eq(instance.health_bonus, 3)
+		assert_eq(instance.shield_bonus, 1)
+
+
+func test_created_card_on_deck_top_gets_inline_effects() -> void:
+	var engine: BattleEngine = _started_engine()
+	assert_true(engine.put_random_card_on_deck_top("p", "cost == 1", "taunt", 1, 2, 3))
+	var instance: BattleCardInstance = engine.players["p"].deck[0]
+	assert_true(instance.has_keyword("taunt"))
+	assert_eq(instance.attack_bonus, 1)
+	assert_eq(instance.health_bonus, 2)
+	assert_eq(instance.shield_bonus, 3)
+
+
 func test_invincible_can_be_destroyed() -> void:
 	var engine: BattleEngine = _started_engine()
 	var card: CardData = _make_test_card("pvzh:test_invincible_destroy", "")

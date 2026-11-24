@@ -195,7 +195,15 @@ func add_card_to_deck(side: String, card_id: String) -> BattleCardInstance:
 
 
 ## 从卡牌数据库筛选卡牌，随机插入牌库或手牌的随机位置。
-func put_random_card_on_deck_top(side: String, filter_text: String) -> bool:
+func put_random_card_on_deck_top(
+	side: String,
+	filter_text: String,
+	keyword: String = "",
+	attack_bonus: int = 0,
+	health_bonus: int = 0,
+	shield_bonus: int = 0,
+	keyword_value: int = 0,
+) -> bool:
 	var state: BattlePlayerState = players.get(side, null)
 	if state == null or card_database == null:
 		return false
@@ -209,6 +217,11 @@ func put_random_card_on_deck_top(side: String, filter_text: String) -> bool:
 	if matches.is_empty():
 		return false
 	var instance: BattleCardInstance = _new_card_instance(matches[rng.randi_range(0, matches.size() - 1)], side, "deck")
+	instance.attack_bonus += attack_bonus
+	instance.health_bonus += health_bonus
+	instance.shield_bonus += shield_bonus
+	if not keyword.strip_edges().is_empty():
+		instance.grant_keyword(keyword, keyword_value)
 	state.deck.insert(0, instance)
 	changed.emit()
 	return true
@@ -255,7 +268,18 @@ func put_hand_card_on_deck_top(side: String, filter_text: String) -> bool:
 	return false
 
 
-func add_random_cards(side: String, zone: String, count: int, filter_text: String, cost_delta: int = 0) -> int:
+func add_random_cards(
+	side: String,
+	zone: String,
+	count: int,
+	filter_text: String,
+	cost_delta: int = 0,
+	keyword: String = "",
+	attack_bonus: int = 0,
+	health_bonus: int = 0,
+	shield_bonus: int = 0,
+	keyword_value: int = 0,
+) -> int:
 	var state: BattlePlayerState = players.get(side, null)
 	if state == null or count <= 0 or card_database == null:
 		return 0
@@ -279,6 +303,11 @@ func add_random_cards(side: String, zone: String, count: int, filter_text: Strin
 		var card_id: String = pool[rng.randi_range(0, pool.size() - 1)]
 		var instance: BattleCardInstance = _new_card_instance(card_id, side, zone)
 		instance.cost_delta += cost_delta
+		instance.attack_bonus += attack_bonus
+		instance.health_bonus += health_bonus
+		instance.shield_bonus += shield_bonus
+		if not keyword.strip_edges().is_empty():
+			instance.grant_keyword(keyword, keyword_value)
 		if zone == "hand":
 			state.hand.insert(rng.randi_range(0, state.hand.size()), instance)
 		else:
