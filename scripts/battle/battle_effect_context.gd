@@ -290,6 +290,15 @@ func environment_grant_keyword_persistent(keyword: String, value: int, side_filt
 	engine.grant_environment_keyword_persistent(base_column, caster_side, keyword, value, side_filter)
 
 
+func transform_targets(targets: Array, filter_text: String) -> void:
+	for handle: Variant in targets:
+		engine.transform_entity_handle(handle, filter_text)
+
+
+func transform_hand(side_filter: String, old_filter: String, new_filter: String) -> void:
+	engine.transform_hand(caster_side, side_filter, old_filter, new_filter)
+
+
 func destroy(target) -> void:
 	if target is BattleEntity and is_spell_source and target.is_spell_immune():
 		return

@@ -796,3 +796,59 @@ when ally_die(zone == 'deck'):
 - 可以同时声明两者
 - 手牌/牌库能力的伤害来源会记录为 `手牌：卡名` 或 `牌库：卡名`
 - `when hand_played`、`when ally_attack_gained` 等事件仍需要对应的 `in_hand()` 作用域
+
+### 职业类别与筛选
+
+全局配置 `config.csv` 使用 `type=class_category` 和 `members` 列定义职业类别：
+
+```text
+type,name,label_zh,members
+class_category,growth,成长系,"grow,bloom"
+```
+
+- 每个职业必须属于且只能属于一个职业类别
+- 未在 `members` 中出现的职业会自动归入 `uncategorized`（未分类）
+- 筛选条件支持：
+  ```text
+  category == 'growth'
+  class == 'grow'
+  ```
+
+### 变形
+
+```text
+transform(chosen, "cost == 2 and category == 'growth'")
+transform(all_enemies, "kind == 'entity' and cost <= 3")
+transform(random_enemy, "keyword == 'taunt'")
+```
+
+- 第一个参数是实体选择器
+- 第二个参数是卡牌筛选条件
+- 将目标实体原地移除，并按筛选条件随机召唤一个实体
+- 会触发 `transformed` 事件，事件目标为新实体
+
+### 手牌变形
+
+```text
+transform_hand('ally', "cost == 2", "kind == 'spell' and cost == 3")
+transform_hand('enemy', "kind == 'entity'", "category == 'growth'")
+```
+
+- 第一个参数：`ally` / `enemy` / `all`
+- 第二个参数：原手牌筛选条件
+- 第三个参数：新手牌筛选条件
+- 会触发 `hand_transformed` 事件
+
+### 混乱进化与混乱手牌
+
+- `chaos_evolution`：实体回合结束时，变形为费用 +1、职业类别相同的随机实体，并保留该词缀
+- `chaos_hand`：手牌回合开始时，变形为费用 +1、职业类别和类型相同的随机手牌，并保留该词缀
+
+相关事件：
+
+```text
+when transformed(side == 'ally'):
+    ...
+when hand_transformed:
+    ...
+```

@@ -149,6 +149,7 @@ static func compile_pack(
 		card.health = health
 		card.shield = shield
 		card.card_class = card_class
+		card.class_category = config.class_category_for(card_class)
 		card.rarity = rarity
 		card.keywords = keywords
 		card.keyword_values = keyword_values

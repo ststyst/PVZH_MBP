@@ -159,6 +159,78 @@ func test_environment_temporary_keyword_grants_are_removed_on_replace() -> void:
 	assert_eq(entity.keyword_value("deadly"), 1, "环境被覆盖后应只移除环境赋予的临时词缀，实际 %d buffs=%s" % [entity.keyword_value("deadly"), str(entity.buffs)])
 
 
+func test_transform_entity_and_hand_use_card_filters() -> void:
+	var engine: BattleEngine = _started_engine()
+	var original_card: CardData = _make_test_card("pvzh:test_transform_original", "")
+	original_card.cost = 1
+	original_card.class_category = "test_transform_category"
+	original_card.health = 3
+	var original: BattleEntity = engine.summon_card("p", original_card, 1, 0)
+	var target_card: CardData = _make_test_card("pvzh:test_transform_target", "")
+	target_card.english_name = "test_transform_target"
+	target_card.cost = 2
+	target_card.class_category = "test_transform_category"
+	target_card.health = 4
+	assert_true(engine.transform_entity_handle(original, "cost == 2 and category == 'test_transform_category'"))
+	var transformed: BattleEntity = engine._entity_at(1, "p", 0)
+	assert_true(transformed != null)
+	if transformed != null:
+		assert_eq(transformed.card.english_name, "test_transform_target")
+	var hand_instance: BattleCardInstance = BattleCardInstance.create(999, original_card.card_id, "p", "hand")
+	engine.players["p"].hand.clear()
+	engine.players["p"].add_to_hand(hand_instance)
+	assert_eq(engine.transform_hand("p", "ally", "cost == 1", "cost == 2 and category == 'test_transform_category'"), 1)
+	assert_eq(engine.players["p"].hand[0].card_id, target_card.card_id)
+
+
+func test_config_class_categories_are_exclusive() -> void:
+	var config: CardSetConfig = CardSetConfig.new()
+	var problems: Array[String] = config.load_file("res://data/cards/official/config.csv")
+	assert_true(problems.is_empty(), "官方配置应有完整职业类别：%s" % [problems])
+	assert_eq(config.class_category_for("grow"), "growth")
+	assert_eq(config.class_category_for("solar"), "light")
+	assert_eq(config.class_category_for("crazy"), "chaos")
+	var filter := CardFilter.new()
+	assert_true(filter.parse("category == 'neutral'"))
+	assert_true(filter.matches(cards.get_card("pvzh:gnoll")))
+
+
+func test_chaos_evolution_and_hand_transform() -> void:
+	var engine: BattleEngine = _started_engine()
+	var evolution_card: CardData = _make_test_card("pvzh:test_chaos_evolution", "")
+	evolution_card.cost = 1
+	evolution_card.class_category = "test_chaos_category"
+	evolution_card.health = 3
+	var evolved_target: CardData = _make_test_card("pvzh:test_chaos_evolved", "")
+	evolved_target.english_name = "test_chaos_evolved"
+	evolved_target.cost = 2
+	evolved_target.class_category = "test_chaos_category"
+	evolved_target.health = 4
+	var entity: BattleEntity = engine.summon_card("p", evolution_card, 1, 0)
+	entity.add_keyword("chaos_evolution")
+	engine._resolve_chaos_evolution(1)
+	var evolved: BattleEntity = engine._entity_at(1, "p", 0)
+	assert_true(evolved != null)
+	if evolved != null:
+		assert_eq(evolved.card.english_name, "test_chaos_evolved")
+		assert_true(evolved.has_keyword("chaos_evolution"))
+	var hand_card: CardData = _make_test_card("pvzh:test_chaos_hand", "")
+	hand_card.cost = 3
+	hand_card.class_category = "test_chaos_hand_category"
+	hand_card.kind = "spell"
+	var hand_target: CardData = _make_test_card("pvzh:test_chaos_hand_target", "")
+	hand_target.cost = 4
+	hand_target.class_category = "test_chaos_hand_category"
+	hand_target.kind = "spell"
+	var instance: BattleCardInstance = BattleCardInstance.create(1000, hand_card.card_id, "p", "hand")
+	instance.grant_keyword("chaos_hand", 0)
+	engine.players["p"].hand.clear()
+	engine.players["p"].add_to_hand(instance)
+	engine._resolve_chaos_hand()
+	assert_eq(engine.players["p"].hand[0].card_id, hand_target.card_id)
+	assert_true(engine.players["p"].hand[0].has_keyword("chaos_hand"))
+
+
 func test_deadly_blocked_by_shield_triggers_no_events() -> void:
 	var engine: BattleEngine = _started_engine()
 	var target_card: CardData = _make_test_card("pvzh:test_deadly_shield_target", "")

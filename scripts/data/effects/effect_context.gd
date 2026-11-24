@@ -91,6 +91,14 @@ func environment_grant_keyword_persistent(_keyword: String, _value: int, _side_f
 	push_warning("EffectContext.environment_grant_keyword_persistent 未实现：需要战斗层提供")
 
 
+func transform_targets(_targets: Array, _filter_text: String) -> void:
+	push_warning("EffectContext.transform_targets 未实现：需要战斗层提供")
+
+
+func transform_hand(_side_filter: String, _old_filter: String, _new_filter: String) -> void:
+	push_warning("EffectContext.transform_hand 未实现：需要战斗层提供")
+
+
 func destroy(_target) -> void:
 	push_warning("EffectContext.destroy 未实现：需要战斗层提供")
 

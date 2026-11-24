@@ -1,4 +1,4 @@
-type,name,label_zh
+type,name,label_zh,members
 rarity,normal,普通
 rarity,rare,稀有
 rarity,super rare,超稀有
@@ -23,3 +23,9 @@ tribe,robot,机器人
 tribe,universe,宇宙
 tribe,fruit,水果
 tribe,superpower,超能力
+class_category,growth,成长系,"grow,bloom"
+class_category,light,光能系,"solar,guardian"
+class_category,clever,智谋系,"smarty,brainy"
+class_category,wild,野性系,"sneaky,beastly,hearty"
+class_category,chaos,混乱系,"crazy"
+class_category,neutral,中立系,"neutral"

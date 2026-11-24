@@ -33,6 +33,8 @@ var health: int = 0
 var shield: int = 0
 
 var card_class: String = ""
+## 职业类别（由全局 class_category 配置推导）
+var class_category: String = ""
 var rarity: String = ""
 
 ## 已通过校验的词缀 id（未知词缀在加载时被忽略）
@@ -82,6 +84,7 @@ func copy_card() -> CardData:
 	copy.health = health
 	copy.shield = shield
 	copy.card_class = card_class
+	copy.class_category = class_category
 	copy.rarity = rarity
 	copy.keywords = keywords.duplicate()
 	copy.keyword_values = keyword_values.duplicate(true)
@@ -197,6 +200,7 @@ func to_pack_dict() -> Dictionary:
 		"health": health,
 		"shield": shield,
 		"card_class": card_class,
+		"class_category": class_category,
 		"rarity": rarity,
 		"keywords": keywords.duplicate(),
 		"keyword_values": keyword_values.duplicate(true),
@@ -230,6 +234,7 @@ static func from_pack_dict(data: Dictionary, card_namespace: String = "") -> Car
 	card.health = int(data.get("health", 0))
 	card.shield = int(data.get("shield", 0))
 	card.card_class = str(data.get("card_class", "neutral"))
+	card.class_category = str(data.get("class_category", ""))
 	card.rarity = str(data.get("rarity", "unknown"))
 	card.deck_includable = bool(data.get("deck_includable", true))
 	card.ability = str(data.get("ability", ""))

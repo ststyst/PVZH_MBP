@@ -125,6 +125,16 @@ const DEFINITIONS: Dictionary = {
 		"description": "允许在锦囊/环境阶段作为实体牌打出。",
 		"allowed_kinds": ["entity"],
 	},
+	"chaos_evolution": {
+		"label": "混乱进化",
+		"description": "回合结束时变形为费用 +1 且职业类别相同的随机实体，并获得混乱进化。",
+		"allowed_kinds": ["entity"],
+	},
+	"chaos_hand": {
+		"label": "混乱手牌",
+		"description": "手牌中回合开始时变形为费用 +1、职业类别和类型相同的随机手牌，并获得混乱手牌。",
+		"allowed_kinds": ["entity", "spell", "environment"],
+	},
 }
 
 

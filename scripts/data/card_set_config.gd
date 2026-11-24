@@ -6,6 +6,11 @@ extends RefCounted
 var rarities: Array[String] = []
 var classes: Array[String] = []
 var tribes: Array[String] = []
+## 职业类别：category_id -> [class_id...]；一个职业只能属于一个类别
+var class_categories: Dictionary = {}
+var class_category_labels: Dictionary = {}
+## class_id -> category_id
+var class_to_category: Dictionary = {}
 ## 被视为“中立”的职业：牌组中不受英雄职业限制
 var neutral_classes: Array[String] = []
 
@@ -57,6 +62,9 @@ func load_file(path: String) -> Array[String]:
 				_add_entry(rarities, rarity_labels, entry_name, entry_label)
 			"class":
 				_add_entry(classes, class_labels, entry_name, entry_label)
+			"class_category":
+				var raw_members: String = _cell(row, header, "members")
+				_add_class_category(entry_name, entry_label, raw_members, problems)
 			"tribe":
 				_add_entry(tribes, tribe_labels, entry_name, entry_label)
 			"neutral_class":
@@ -67,6 +75,19 @@ func load_file(path: String) -> Array[String]:
 	for neutral_id: String in neutral_classes:
 		if not classes.has(neutral_id):
 			problems.append("中立职业不在职业列表中：%s" % neutral_id)
+	# 每个职业必须且只能属于一个职业类别；未知类别归入“未分类”
+	var uncategorized: Array[String] = []
+	for class_id: String in classes:
+		if not class_to_category.has(class_id):
+			uncategorized.append(class_id)
+	if not uncategorized.is_empty():
+		var fallback: String = "uncategorized"
+		if not class_categories.has(fallback):
+			class_categories[fallback] = []
+			class_category_labels[fallback] = "未分类"
+		for class_id: String in uncategorized:
+			(class_categories[fallback] as Array).append(class_id)
+			class_to_category[class_id] = fallback
 	return problems
 
 
@@ -104,6 +125,49 @@ func has_class(class_id: String) -> bool:
 	return classes.has(class_id.strip_edges().to_lower())
 
 
+func has_class_category(category_id: String) -> bool:
+	return class_categories.has(category_id.strip_edges().to_lower())
+
+
+func class_category_for(class_id: String) -> String:
+	return str(class_to_category.get(class_id.strip_edges().to_lower(), ""))
+
+
+func class_category_label(category_id: String) -> String:
+	return str(class_category_labels.get(category_id.strip_edges().to_lower(), category_id))
+
+
+func _add_class_category(
+	category_id: String,
+	label: String,
+	members_text: String,
+	problems: Array[String],
+) -> void:
+	var category: String = category_id.strip_edges().to_lower()
+	if category.is_empty():
+		return
+	if class_categories.has(category):
+		problems.append("职业类别重复：%s" % category)
+		return
+	var members: Array[String] = []
+	for raw_member: String in members_text.split(","):
+		var member: String = raw_member.strip_edges().to_lower()
+		if member.is_empty():
+			continue
+		if not classes.has(member):
+			problems.append("职业类别 %s 包含未注册职业：%s" % [category, member])
+			continue
+		var existing: String = str(class_to_category.get(member, ""))
+		if not existing.is_empty() and existing != category:
+			problems.append("职业同时属于多个类别：%s（%s / %s）" % [member, existing, category])
+			continue
+		if not members.has(member):
+			members.append(member)
+			class_to_category[member] = category
+	class_categories[category] = members
+	class_category_labels[category] = label.strip_edges() if not label.strip_edges().is_empty() else category
+
+
 func has_tribe(tribe_id: String) -> bool:
 	return tribes.has(tribe_id.strip_edges().to_lower())
 
@@ -132,6 +196,9 @@ func to_dict() -> Dictionary:
 	return {
 		"rarities": rarities.duplicate(),
 		"classes": classes.duplicate(),
+		"class_categories": class_categories.duplicate(true),
+		"class_category_labels": class_category_labels.duplicate(),
+		"class_to_category": class_to_category.duplicate(),
 		"tribes": tribes.duplicate(),
 		"neutral_classes": neutral_classes.duplicate(),
 		"rarity_labels": rarity_labels.duplicate(),
@@ -155,6 +222,9 @@ static func from_dict(data: Dictionary) -> CardSetConfig:
 	if raw_tribes is Array:
 		for entry: Variant in raw_tribes:
 			config.tribes.append(str(entry))
+	config.class_categories = data.get("class_categories", {}).duplicate(true)
+	config.class_category_labels = data.get("class_category_labels", {}).duplicate()
+	config.class_to_category = data.get("class_to_category", {}).duplicate()
 	var raw_neutral_classes: Variant = data.get("neutral_classes", [])
 	if raw_neutral_classes is Array:
 		for entry: Variant in raw_neutral_classes:

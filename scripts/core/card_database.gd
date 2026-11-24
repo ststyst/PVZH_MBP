@@ -257,6 +257,7 @@ func _load_row(
 	card.health = _parse_int(row, header, "health", english_name)
 	card.shield = _parse_int(row, header, "shield", english_name)
 	card.card_class = card_class
+	card.class_category = config.class_category_for(card_class) if config != null else ""
 	card.rarity = rarity
 	card.deck_includable = _parse_deck_includable(row, header, english_name, row_number)
 	card.ability = _cell(row, header, "ability").strip_edges()

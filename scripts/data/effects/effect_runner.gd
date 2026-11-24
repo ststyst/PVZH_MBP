@@ -103,6 +103,17 @@ func _exec_primitive(statement: Dictionary) -> void:
 				_as_int(_eval(arguments[1], {})),
 				_as_string(_eval(arguments[2], {}))
 			)
+		"transform":
+			context.transform_targets(
+				_resolve_argument_target(arguments[0]),
+				_as_string(_eval(arguments[1], {}))
+			)
+		"transform_hand":
+			context.transform_hand(
+				_as_string(_eval(arguments[0], {})),
+				_as_string(_eval(arguments[1], {})),
+				_as_string(_eval(arguments[2], {}))
+			)
 		"choose":
 			var choose_count: int = maxi(_as_int(_eval(arguments[0], {})), 0)
 			var choose_selector: String = _as_string(_eval(arguments[1], {}))
@@ -263,6 +274,8 @@ func _matches_trigger(trigger: Dictionary, event_handle) -> bool:
 	var predicate: Variant = trigger.get("predicate")
 	if predicate == null:
 		# 无过滤条件：普通实体默认只响应自己；环境/底座监听其所在列/挂载。
+		if event_handle == null:
+			return true
 		return _is_self(event_handle) or (context != null and context.get_zone() in ["environment", "base", "hand", "deck"])
 	if context == null:
 		return false

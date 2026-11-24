@@ -102,6 +102,8 @@ func set_keyword_value(keyword: String, value: int) -> void:
 func apply_instance_keywords(instance: BattleCardInstance) -> void:
 	if instance == null:
 		return
+	for keyword: Variant in instance.keywords:
+		add_keyword(str(keyword), int(instance.keyword_values.get(str(keyword), 0)))
 	for keyword: Variant in instance.keyword_values.keys():
 		add_keyword(str(keyword), int(instance.keyword_values[keyword]))
 

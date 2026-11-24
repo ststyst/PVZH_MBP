@@ -525,6 +525,7 @@ func _begin_first_turn() -> void:
 	_resolve_turn_start()
 	if winner != "":
 		return
+	_resolve_chaos_hand()
 	# 起手调度全部完成、四张起手牌已经确定后，才发放随机超能力。
 	_grant_initial_superpowers()
 	phase = PHASE_HAND
@@ -600,6 +601,7 @@ func _start_next_turn() -> void:
 	_resolve_turn_start()
 	if winner != "":
 		return
+	_resolve_chaos_hand()
 	# 第一回合不触发；从第二回合起，在回合开始效果全部结算后、z 出牌阶段前抽牌。
 	for side: String in [SIDE_P, SIDE_Z]:
 		var draw_count: int = mode.turn_draw_for_faction(side)
@@ -1419,6 +1421,117 @@ func side_of_handle(handle: Variant) -> String:
 
 
 # ----- 伤害 / 治疗 / 原语 -----
+
+func transform_entity_handle(handle: Variant, filter_text: String, grant_keyword: String = "") -> bool:
+	if not handle is BattleEntity:
+		return false
+	var old_entity: BattleEntity = handle
+	if not old_entity.alive:
+		return false
+	var new_card: CardData = _random_entity_card(filter_text)
+	if new_card == null:
+		return false
+	var side: String = old_entity.side
+	var column: int = old_entity.column
+	var slot: int = old_entity.slot
+	_log("%s 开始变形" % old_entity.display_name())
+	remove_entity_handle(old_entity)
+	var new_entity: BattleEntity = summon_card(side, new_card, column, slot)
+	if not grant_keyword.is_empty():
+		give_keyword_handle(new_entity, grant_keyword, 0)
+	_fire_event("enter", new_entity)
+	_fire_event("transformed", new_entity)
+	changed.emit()
+	return true
+
+
+func transform_hand(
+	caster_side: String,
+	side_filter: String,
+	old_filter_text: String,
+	new_filter_text: String,
+	grant_keyword: String = "",
+) -> int:
+	var sides: Array[String] = []
+	match side_filter.strip_edges().to_lower():
+		"ally":
+			sides = [caster_side]
+		"enemy":
+			sides = [opposite_side(caster_side)]
+		"all", "":
+			sides = [SIDE_P, SIDE_Z]
+		_:
+			return 0
+	var old_filter := CardFilter.new()
+	if not old_filter_text.strip_edges().is_empty() and not old_filter.parse(old_filter_text):
+		return 0
+	var changed_count: int = 0
+	for side: String in sides:
+		var state: BattlePlayerState = players.get(side, null)
+		if state == null:
+			continue
+		for instance: BattleCardInstance in state.hand.duplicate():
+			var current: CardData = get_card(instance.card_id)
+			if current == null or (not old_filter_text.strip_edges().is_empty() and not old_filter.matches(current)):
+				continue
+			var replacement: CardData = _random_card_for_filter(new_filter_text)
+			if replacement == null:
+				continue
+			_apply_hand_transform(instance, replacement, grant_keyword)
+			changed_count += 1
+			_log("%s 的手牌 %s 变形为 %s" % [side.to_upper(), current.display_name(), replacement.display_name()])
+			_fire_event("hand_transformed", null)
+	changed.emit()
+	return changed_count
+
+
+func _apply_hand_transform(instance: BattleCardInstance, replacement: CardData, grant_keyword: String) -> void:
+	instance.card_id = replacement.card_id
+	instance.attack_bonus = 0
+	instance.health_bonus = 0
+	instance.shield_bonus = 0
+	instance.cost_delta = 0
+	instance.keywords.clear()
+	instance.keyword_values.clear()
+	if not grant_keyword.is_empty():
+		instance.grant_keyword(grant_keyword, 0)
+
+
+func _random_entity_card(filter_text: String) -> CardData:
+	var found: Array[CardData] = []
+	var filter := CardFilter.new()
+	var has_filter: bool = not filter_text.strip_edges().is_empty()
+	if has_filter and not filter.parse(filter_text):
+		return null
+	for card_id: Variant in card_database.cards.keys():
+		var card: CardData = get_card(str(card_id))
+		if card == null or not card.is_entity():
+			continue
+		if has_filter and not filter.matches(card):
+			continue
+		found.append(card)
+	if found.is_empty():
+		return null
+	return found[rng.randi_range(0, found.size() - 1)]
+
+
+func _random_card_for_filter(filter_text: String) -> CardData:
+	var found: Array[CardData] = []
+	var filter := CardFilter.new()
+	var has_filter: bool = not filter_text.strip_edges().is_empty()
+	if has_filter and not filter.parse(filter_text):
+		return null
+	for card_id: Variant in card_database.cards.keys():
+		var card: CardData = get_card(str(card_id))
+		if card == null:
+			continue
+		if has_filter and not filter.matches(card):
+			continue
+		found.append(card)
+	if found.is_empty():
+		return null
+	return found[rng.randi_range(0, found.size() - 1)]
+
 
 func remove_entity_handle(handle: Variant) -> bool:
 	if not handle is BattleEntity:
@@ -2420,6 +2533,42 @@ func _try_thorns(attacker: BattleEntity, target: BattleEntity, effective_damage:
 	damage_entity(attacker, thorns, thorns_keywords, false, target)
 
 
+func _resolve_chaos_hand() -> void:
+	for side: String in [SIDE_P, SIDE_Z]:
+		var state: BattlePlayerState = players.get(side, null)
+		if state == null:
+			continue
+		for instance: BattleCardInstance in state.hand.duplicate():
+			if not instance.has_keyword("chaos_hand"):
+				continue
+			var current: CardData = get_card(instance.card_id)
+			if current == null:
+				continue
+			var filter_text: String = "cost == %d and category == '%s' and kind == '%s'" % [
+				current.cost + 1, current.class_category, current.kind,
+			]
+			var replacement: CardData = _random_card_for_filter(filter_text)
+			if replacement == null:
+				continue
+			_apply_hand_transform(instance, replacement, "chaos_hand")
+			_log("%s 的混乱手牌 %s 变形为 %s" % [side.to_upper(), current.display_name(), replacement.display_name()])
+			_fire_event("hand_transformed", null)
+	changed.emit()
+
+
+func _resolve_chaos_evolution(column: int) -> void:
+	for entity: BattleEntity in alive_entities(column, SIDE_Z).duplicate() + alive_entities(column, SIDE_P).duplicate():
+		if not entity.alive or not entity.has_keyword("chaos_evolution"):
+			continue
+		var current: CardData = entity.card
+		if current == null:
+			continue
+		var filter_text: String = "cost == %d and category == '%s' and kind == 'entity'" % [
+			current.cost + 1, current.class_category,
+		]
+		transform_entity_handle(entity, filter_text, "chaos_evolution")
+
+
 func _resolve_turn_start() -> void:
 	for column: int in range(COLUMN_COUNT):
 		if winner != "":
@@ -2440,6 +2589,7 @@ func _resolve_turn_end() -> void:
 		for side: String in [SIDE_Z, SIDE_P]:
 			for entity: BattleEntity in alive_entities(column, side).duplicate():
 				_fire_event("turn_end", entity)
+		_resolve_chaos_evolution(column)
 		_fire_environment_turn_event(column, "turn_end")
 		_flush_column_deaths(column)
 	for entity: BattleEntity in entities:

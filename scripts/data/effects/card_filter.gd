@@ -97,6 +97,8 @@ func _match_condition(node: Dictionary, card: CardData) -> bool:
 			actual = card.rarity.to_lower()
 		"class":
 			actual = card.card_class.to_lower()
+		"category", "class_category":
+			actual = card.class_category.to_lower()
 		"keyword":
 			var has_keyword: bool = card.keywords.has(value)
 			return has_keyword if op == "==" or op == "=" else not has_keyword
@@ -266,6 +268,8 @@ func _normalize_field(field: String) -> String:
 			return "rarity"
 		"class", "class_name":
 			return "class"
+		"category", "class_category", "职业类别":
+			return "category"
 		"keyword", "keywords", "trait":
 			return "keyword"
 		"tribe", "tribes":
