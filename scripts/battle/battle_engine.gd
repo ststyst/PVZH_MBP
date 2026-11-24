@@ -2375,7 +2375,8 @@ func _execute_entity_attack(
 				var dealt: int = damage_entity(target_entity, attacker.attack, attacker.keywords, false, attacker)
 				if dealt > 0 and target_entity.health <= 0:
 					killed_enemy = true
-				_try_thorns(attacker, target_entity)
+				if dealt > 0:
+					_try_thorns(attacker, target_entity, dealt)
 		elif target is String and target.begins_with("hero:"):
 			damage_hero(target.substr(5), attacker.attack, attacker.keywords, attacker)
 			if _battle_over():
@@ -2403,7 +2404,9 @@ func _execute_entity_attack(
 		_flush_column_deaths(attacker.column)
 
 
-func _try_thorns(attacker: BattleEntity, target: BattleEntity) -> void:
+func _try_thorns(attacker: BattleEntity, target: BattleEntity, effective_damage: int) -> void:
+	if effective_damage <= 0:
+		return
 	if target == null or not target.alive:
 		return
 	var thorns: int = target.keyword_value("thorns")
@@ -2411,7 +2414,10 @@ func _try_thorns(attacker: BattleEntity, target: BattleEntity) -> void:
 		return
 	if attacker == null or not attacker.alive or attacker.side == target.side:
 		return
-	damage_entity(attacker, thorns, ["thorns"], false, target)
+	var thorns_keywords: Array = target.keywords.duplicate()
+	if not thorns_keywords.has("thorns"):
+		thorns_keywords.append("thorns")
+	damage_entity(attacker, thorns, thorns_keywords, false, target)
 
 
 func _resolve_turn_start() -> void:

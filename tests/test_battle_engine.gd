@@ -178,6 +178,27 @@ func test_deadly_blocked_by_shield_triggers_no_events() -> void:
 	assert_eq(listener.attack, 0, "无效伤害不应触发 damaged / health_changed")
 
 
+func test_thorns_require_effective_damage() -> void:
+	var engine: BattleEngine = _started_engine()
+	var attacker_card: CardData = _make_test_card("pvzh:test_thorns_zero_attacker", "")
+	attacker_card.attack = 1
+	attacker_card.health = 5
+	var attacker: BattleEntity = engine.summon_card("p", attacker_card, 0, 0)
+	var target_card: CardData = _make_test_card("pvzh:test_thorns_zero_target", "")
+	target_card.health = 5
+	target_card.shield = 3
+	target_card.keywords.append("thorns")
+	target_card.keyword_values["thorns"] = 2
+	var target: BattleEntity = engine.summon_card("z", target_card, 0, 0)
+	var attacker_health_before: int = attacker.health
+	engine._execute_entity_attack(attacker, target, 0)
+	assert_eq(attacker.health, attacker_health_before, "护盾完全挡下时不应触发反伤")
+	engine.apply_buff_handle(target, "invincible", 1)
+	target.shield = 0
+	engine._execute_entity_attack(attacker, target, 0)
+	assert_eq(attacker.health, attacker_health_before, "无敌免疫时应不触发反伤")
+
+
 func test_invincible_can_be_destroyed() -> void:
 	var engine: BattleEngine = _started_engine()
 	var card: CardData = _make_test_card("pvzh:test_invincible_destroy", "")
