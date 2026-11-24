@@ -529,6 +529,8 @@ func _begin_first_turn() -> void:
 	_grant_initial_superpowers()
 	phase = PHASE_HAND
 	active_side = SIDE_Z
+	if not _special_pending_sides.is_empty() and _maybe_begin_special_turn(PHASE_HAND):
+		return
 	_log("第 1 回合：z 阵营实体牌阶段")
 	changed.emit()
 
@@ -605,6 +607,8 @@ func _start_next_turn() -> void:
 			draw_cards(side, draw_count)
 	phase = PHASE_HAND
 	active_side = SIDE_Z
+	if not _special_pending_sides.is_empty() and _maybe_begin_special_turn(PHASE_HAND):
+		return
 	_log("第 %d 回合：z 阵营实体牌阶段" % turn)
 	changed.emit()
 
