@@ -195,6 +195,44 @@ func test_config_class_categories_are_exclusive() -> void:
 	assert_true(filter.matches(cards.get_card("pvzh:gnoll")))
 
 
+func test_life_force_uses_health_for_attack_damage() -> void:
+	var engine: BattleEngine = _started_engine()
+	var attacker_card: CardData = _make_test_card("pvzh:test_life_force_attacker", "")
+	attacker_card.attack = 1
+	attacker_card.health = 6
+	var target_card: CardData = _make_test_card("pvzh:test_life_force_target", "")
+	target_card.health = 10
+	var attacker: BattleEntity = engine.summon_card("p", attacker_card, 0, 0)
+	var target: BattleEntity = engine.summon_card("z", target_card, 0, 0)
+	engine.apply_buff_handle(attacker, "life_force", 1)
+	engine._execute_entity_attack(attacker, target, 0)
+	assert_eq(target.health, 4, "生命力量应使用当前生命值 6 而不是攻击力 1")
+
+
+func test_environment_stats_follow_column() -> void:
+	var engine: BattleEngine = _started_engine()
+	var entity_card: CardData = _make_test_card("pvzh:test_env_stats_entity", "")
+	entity_card.attack = 1
+	entity_card.health = 3
+	var entity: BattleEntity = engine.summon_card("p", entity_card, 1, 0)
+	var env_card: CardData = _make_test_card(
+		"pvzh:test_env_stats",
+		"environment_grant_stats(2, 1, 1, 'ally')"
+	)
+	env_card.kind = "environment"
+	env_card.english_name = "test_env_stats"
+	assert_true(engine._place_environment("p", 1, env_card))
+	assert_eq(entity.attack, 3)
+	assert_eq(entity.max_health, 4)
+	assert_eq(entity.health, 4)
+	assert_eq(entity.shield, 1)
+	assert_true(engine.move_entity(entity, 2, 0))
+	assert_eq(entity.attack, 1)
+	assert_eq(entity.max_health, 3)
+	assert_eq(entity.health, 3)
+	assert_eq(entity.shield, 0)
+
+
 func test_chaos_evolution_and_hand_transform() -> void:
 	var engine: BattleEngine = _started_engine()
 	var evolution_card: CardData = _make_test_card("pvzh:test_chaos_evolution", "")

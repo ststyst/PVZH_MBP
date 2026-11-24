@@ -852,3 +852,52 @@ when transformed(side == 'ally'):
 when hand_transformed:
     ...
 ```
+
+### 生命力量
+
+```text
+apply_buff(self, "life_force")
+```
+
+- 具备 `life_force` 的实体攻击时，主攻击、穿透、溅射使用**当前生命值**作为伤害数值，而不是攻击力
+- 攻击前的攻击力检查、双重打击的第二次攻击检查也使用生命值
+- 先攻仍然使用先攻词缀自身的数值
+- 其他词缀照常生效：致命、寒霜、必中、穿透、溅射等
+
+### 环境临时数值
+
+```text
+environment_grant_stats(2, 1, 1, 'ally')
+environment_grant_stats(-1, 0, 0, 'enemy')
+```
+
+参数：
+
+1. 攻击力变化
+2. 生命值变化
+3. 防御值变化
+4. `ally` / `enemy` / `all`
+
+- 只对当前环境所在列的实体生效
+- 实体移动离开该列时移除
+- 实体进入该列时按环境条件重新应用
+- 环境被覆盖时移除旧环境赋予的数值
+
+### 底座与进化顺序
+
+```text
+base()
+when mounted:
+    apply_buff(mounted, "frozen")
+
+evolve("name == 'gnoll'")
+when evolved:
+    ...
+```
+
+进化实体放置在底座上时：
+
+1. 新实体先入场
+2. 先结算底座的 `mounted` 能力
+3. 再判断进化筛选条件
+4. 满足时触发 `evolved`

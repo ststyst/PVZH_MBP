@@ -77,6 +77,7 @@ const PRIMITIVES: Dictionary = {
 	"give_keyword": {"min": 2, "max": 3},
 	"environment_grant_keyword": {"min": 3, "max": 3},
 	"environment_grant_keyword_persistent": {"min": 3, "max": 3},
+	"environment_grant_stats": {"min": 4, "max": 4},
 	"transform": {"min": 2, "max": 2},
 	"transform_hand": {"min": 3, "max": 3},
 	"destroy": {"min": 1, "max": 1},

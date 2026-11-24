@@ -27,6 +27,12 @@ const DEFINITIONS: Dictionary = {
 		"description": "受到实体伤害时，消灭伤害来源。",
 		"clear_after_combat": false,
 	},
+	"life_force": {
+		"label": "生命力量",
+		"kind": "buff",
+		"description": "攻击时使用当前生命值作为伤害数值，而不是攻击力。",
+		"clear_after_combat": false,
+	},
 	"buried": {
 		"label": "埋入墓碑",
 		"kind": "buff",

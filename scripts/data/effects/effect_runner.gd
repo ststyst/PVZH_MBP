@@ -114,6 +114,13 @@ func _exec_primitive(statement: Dictionary) -> void:
 				_as_string(_eval(arguments[1], {})),
 				_as_string(_eval(arguments[2], {}))
 			)
+		"environment_grant_stats":
+			context.environment_grant_stats(
+				_as_int(_eval(arguments[0], {})),
+				_as_int(_eval(arguments[1], {})),
+				_as_int(_eval(arguments[2], {})),
+				_as_string(_eval(arguments[3], {}))
+			)
 		"choose":
 			var choose_count: int = maxi(_as_int(_eval(arguments[0], {})), 0)
 			var choose_selector: String = _as_string(_eval(arguments[1], {}))

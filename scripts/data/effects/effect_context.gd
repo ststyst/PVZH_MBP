@@ -99,6 +99,10 @@ func transform_hand(_side_filter: String, _old_filter: String, _new_filter: Stri
 	push_warning("EffectContext.transform_hand 未实现：需要战斗层提供")
 
 
+func environment_grant_stats(_attack: int, _health: int, _shield: int, _side_filter: String) -> void:
+	push_warning("EffectContext.environment_grant_stats 未实现：需要战斗层提供")
+
+
 func destroy(_target) -> void:
 	push_warning("EffectContext.destroy 未实现：需要战斗层提供")
 
