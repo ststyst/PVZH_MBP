@@ -87,6 +87,17 @@ func _exec_primitive(statement: Dictionary) -> void:
 			if arguments.size() > 1:
 				draw_cost_delta = _as_int(_eval(arguments[1], {}))
 			context.draw_cards(draw_count, draw_cost_delta)
+		"draw_matching_cards":
+			var search_targets: Array = _resolve_argument_target(arguments[0])
+			if search_targets.size() != 1:
+				_error("draw_matching_cards 需要单个英雄/阵营目标", line)
+			else:
+				var search_count: int = maxi(_as_int(_eval(arguments[1], {})), 0)
+				var search_filter: String = _as_string(_eval(arguments[2], {}))
+				var search_cost: int = 0
+				if arguments.size() > 3:
+					search_cost = _as_int(_eval(arguments[3], {}))
+				context.draw_matching_cards(search_targets[0], search_count, search_filter, search_cost)
 		"gain_energy":
 			context.gain_energy(_as_int(_eval(arguments[0], {})))
 		"deal_damage", "heal", "gain_shield", "buff_stats", "give_keyword", "destroy":

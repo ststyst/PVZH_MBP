@@ -39,6 +39,7 @@ const EVENTS: Array[String] = [
 	"ally_attack_gained",
 	"transformed",
 	"hand_transformed",
+	"drawn",
 ]
 const SELECTORS: Array[String] = [
 	"self",
@@ -69,6 +70,7 @@ const SELECTORS: Array[String] = [
 const PRIMITIVES: Dictionary = {
 	"summon": {"min": 1, "max": 3},
 	"draw_cards": {"min": 1, "max": 2},
+	"draw_matching_cards": {"min": 3, "max": 4},
 	"deal_damage": {"min": 2, "max": 2},
 	"heal": {"min": 2, "max": 2},
 	"gain_shield": {"min": 2, "max": 2},

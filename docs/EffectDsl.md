@@ -1071,3 +1071,77 @@ add_random_cards_to_hand(hero, 2, "kind == 'entity'", 0, "", 1, 2, 0)
 - 创建后再对某一张新牌单独赋不同效果
 
 需要这些效果时，应拆分创建与后续处理，或扩展新的原语。
+
+### 牌库搜寻抽牌
+
+```text
+draw_matching_cards(hero, 2, "kind == 'spell' and cost <= 3")
+draw_matching_cards(enemy_hero, 1, "class == 'guardian'", -1)
+```
+
+参数：
+
+1. 目标英雄/阵营
+2. 数量
+3. 筛选条件
+4. 可选费用修正
+
+行为：
+
+- 从当前牌库中随机寻找符合筛选条件的牌
+- 不创建新牌，只移动已有牌
+- 抽到的牌进入手牌
+- 每张都触发 `drawn` 事件
+- 牌库为空时视为抽牌失败，增加 1 层疲劳
+- 牌库有牌但没有符合条件的牌时不会增加疲劳
+
+### 疲劳标志物
+
+牌库为空仍要抽牌时：
+
+```text
+add_marker('fatigue', 1)
+```
+
+回合开始时：
+
+- 拥有 `fatigue` 标志物的英雄受到等同标志物数量的伤害
+- 伤害来源显示为“疲劳”
+- 伤害类型为普通非攻击、非锦囊伤害
+- 会正常经过英雄护盾、充能护盾和免伤机制
+
+标志物目前存储在玩家英雄上，不支持实体标志物。
+
+### 标志物伪代码能力
+
+```text
+add_marker('fatigue', 1)
+remove_marker('fatigue', 1)
+marker_count('fatigue')
+```
+
+- 标志物名字是任意字符串，不需要预先注册
+- 数量允许为负
+- `add_marker` / `remove_marker` 默认作用于施放者所在阵营的英雄
+- `marker_count` 查询施放者阵营英雄的标志物
+- 可用于条件、循环和伤害数值
+
+示例：
+
+```text
+when turn_end:
+    if marker_count('fatigue') >= 3:
+        add_marker('wounded', 1)
+```
+
+### 抽牌事件
+
+```text
+when drawn(side == 'ally'):
+    ...
+```
+
+- `draw_cards` 和 `draw_matching_cards` 都会触发
+- 事件目标是抽牌阵营的英雄
+- 可以使用 `side == 'ally'` / `side == 'enemy'`
+- 手牌/牌库中带 `in_hand()` / `in_deck()` 作用域的能力也可以响应

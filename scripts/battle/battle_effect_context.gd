@@ -242,6 +242,13 @@ func draw_cards(count: int, cost_delta: int = 0) -> int:
 	return engine.draw_cards(caster_side, count, cost_delta)
 
 
+func draw_matching_cards(target, count: int, filter_text: String, cost_delta: int = 0) -> int:
+	var side: String = _side_of(target)
+	if side.is_empty():
+		return 0
+	return engine.draw_matching_cards(side, count, filter_text, cost_delta)
+
+
 func deal_damage(target, amount: int) -> void:
 	var source_entity: BattleEntity = _self_handle if _self_handle is BattleEntity else null
 	var source_label: String = ""

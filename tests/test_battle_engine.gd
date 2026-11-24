@@ -269,6 +269,33 @@ func test_chaos_evolution_and_hand_transform() -> void:
 	assert_true(engine.players["p"].hand[0].has_keyword("chaos_hand"))
 
 
+func test_draw_matching_cards_fatigue_and_draw_event() -> void:
+	var engine: BattleEngine = _started_engine()
+	var listener_card: CardData = _make_test_card(
+		"pvzh:test_draw_listener",
+		"when drawn(side == 'ally'):\n    add_marker('drawn_event', 1)"
+	)
+	listener_card.health = 5
+	engine.summon_card("p", listener_card, 0, 0)
+	for side: String in ["p", "z"]:
+		engine.players[side].hero_health = 30
+		engine.players[side].charge_shield_durability = 0
+	var state: BattlePlayerState = engine.players["p"]
+	state.deck.clear()
+	state.hand.clear()
+	state.add_to_deck(BattleCardInstance.create(1, "pvzh:gnoll", "p", "deck"))
+	state.add_to_deck(BattleCardInstance.create(2, "pvzh:fireball", "p", "deck"))
+	assert_eq(engine.draw_matching_cards("p", 1, "kind == 'entity'"), 1)
+	assert_eq(state.hand.size(), 1)
+	assert_eq(state.hand[0].card_id, "pvzh:gnoll")
+	assert_eq(state.marker_count("drawn_event"), 1, "搜寻抽牌应触发 drawn 事件")
+	state.deck.clear()
+	engine.draw_cards("p", 1)
+	assert_eq(state.marker_count(BattleEngine.MARKER_FATIGUE), 1)
+	engine._resolve_fatigue()
+	assert_eq(state.hero_health, 29, "1 层疲劳应在回合开始造成 1 点伤害")
+
+
 func test_deadly_blocked_by_shield_triggers_no_events() -> void:
 	var engine: BattleEngine = _started_engine()
 	var target_card: CardData = _make_test_card("pvzh:test_deadly_shield_target", "")

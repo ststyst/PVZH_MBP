@@ -25,6 +25,8 @@ const SIDE_Z: String = "z"
 const COLUMN_COUNT: int = 5
 const SLOT_NORMAL: int = 0
 const SLOT_TEAM_UP: int = 1
+## 英雄特殊标志物：疲劳（每回合开始按数量受到伤害）
+const MARKER_FATIGUE: String = "fatigue"
 
 const PHASE_MULLIGAN: String = "mulligan"
 const PHASE_HAND: String = "hand"
@@ -557,6 +559,9 @@ func _begin_first_turn() -> void:
 	_resolve_turn_start()
 	if winner != "":
 		return
+	_resolve_fatigue()
+	if winner != "":
+		return
 	_resolve_chaos_hand()
 	# 起手调度全部完成、四张起手牌已经确定后，才发放随机超能力。
 	_grant_initial_superpowers()
@@ -633,6 +638,9 @@ func _start_next_turn() -> void:
 	_resolve_turn_start()
 	if winner != "":
 		return
+	_resolve_fatigue()
+	if winner != "":
+		return
 	_resolve_chaos_hand()
 	# 第一回合不触发；从第二回合起，在回合开始效果全部结算后、z 出牌阶段前抽牌。
 	for side: String in [SIDE_P, SIDE_Z]:
@@ -668,13 +676,57 @@ func draw_cards(side: String, count: int, cost_delta: int = 0) -> int:
 			_log("%s 手牌已满（%d），取消抽牌" % [side.to_upper(), mode.hand_limit])
 			break
 		if state.deck.is_empty():
-			_log("%s 牌库已空，无法抽牌" % side.to_upper())
+			state.add_marker(MARKER_FATIGUE, 1)
+			_log("%s 牌库已空，抽牌失败并获得疲劳（%d）" % [
+				side.to_upper(), state.marker_count(MARKER_FATIGUE),
+			])
+			_fire_event("drawn", hero_handle(side))
 			break
 		var instance: BattleCardInstance = state.deck.back()
 		_move_top_deck_to_hand(state)
 		if instance != null:
 			instance.cost_delta += cost_delta
 		drawn += 1
+		_fire_event("drawn", hero_handle(side))
+	return drawn
+
+
+## 从当前牌库中随机搜寻符合筛选条件的牌并抽到手牌；每张都触发 drawn。
+func draw_matching_cards(side: String, count: int, filter_text: String, cost_delta: int = 0) -> int:
+	var state: BattlePlayerState = players.get(side, null)
+	if state == null or count <= 0:
+		return 0
+	if state.deck.is_empty():
+		state.add_marker(MARKER_FATIGUE, 1)
+		_log("%s 牌库已空，搜寻抽牌失败并获得疲劳（%d）" % [
+			side.to_upper(), state.marker_count(MARKER_FATIGUE),
+		])
+		_fire_event("drawn", hero_handle(side))
+		return 0
+	var filter := CardFilter.new()
+	if not filter_text.strip_edges().is_empty() and not filter.parse(filter_text):
+		return 0
+	var candidates: Array[BattleCardInstance] = []
+	for instance: BattleCardInstance in state.deck:
+		var card: CardData = get_card(instance.card_id)
+		if card != null and (filter_text.strip_edges().is_empty() or filter.matches(card)):
+			candidates.append(instance)
+	var drawn: int = 0
+	while drawn < count and not candidates.is_empty():
+		if state.hand.size() >= mode.hand_limit:
+			_log("%s 手牌已满，停止搜寻抽牌" % side.to_upper())
+			break
+		var picked: int = rng.randi_range(0, candidates.size() - 1)
+		var instance: BattleCardInstance = candidates[picked]
+		candidates.remove_at(picked)
+		state.deck.erase(instance)
+		state.add_to_hand(instance)
+		instance.cost_delta += cost_delta
+		drawn += 1
+		_fire_event("drawn", hero_handle(side))
+	if drawn > 0:
+		_log("%s 从牌库搜寻抽到 %d 张牌。" % [side.to_upper(), drawn])
+		changed.emit()
 	return drawn
 
 
@@ -2401,7 +2453,7 @@ func _end_effect_resolution() -> void:
 	_effect_limit_hit = false
 
 
-func _fire_event(event_name: String, event_entity: BattleEntity, chosen_targets: Array = []) -> void:
+func _fire_event(event_name: String, event_entity: Variant, chosen_targets: Array = []) -> void:
 	if _battle_over():
 		return
 	if _effect_limit_hit:
@@ -2411,7 +2463,7 @@ func _fire_event(event_name: String, event_entity: BattleEntity, chosen_targets:
 		_effect_limit_hit = true
 		_log("本次结算达到连锁上限（%d），强制结束后续连锁。" % effect_resolution_limit)
 		return
-	if event_name == "enter" and event_entity != null:
+	if event_name == "enter" and event_entity is BattleEntity:
 		_trigger_hunt(event_entity)
 	for listener: BattleEntity in entities.duplicate():
 		if listener.card == null or listener.card.ability_script == null:
@@ -2440,7 +2492,7 @@ func _fire_event(event_name: String, event_entity: BattleEntity, chosen_targets:
 	_refresh_all_counter_bonuses()
 
 
-func _fire_environment_event(event_name: String, event_entity: BattleEntity, only_column: int = -1) -> void:
+func _fire_environment_event(event_name: String, event_entity: Variant, only_column: int = -1) -> void:
 	for column: int in range(COLUMN_COUNT):
 		if only_column >= 0 and column != only_column:
 			continue
@@ -2452,7 +2504,7 @@ func _fire_environment_event(event_name: String, event_entity: BattleEntity, onl
 			continue
 		if not card.ability_script.has_event(event_name):
 			continue
-		if event_entity != null and event_entity.column != column:
+		if event_entity is BattleEntity and event_entity.column != column:
 			continue
 		var owner: String = str(environment_owners.get(column, ""))
 		var context := EnvironmentEffectContext.new(self, owner, column)
@@ -2701,6 +2753,20 @@ func _resolve_chaos_evolution(column: int) -> void:
 		transform_entity_handle(entity, filter_text, "chaos_evolution")
 
 
+func _resolve_fatigue() -> void:
+	for side: String in [SIDE_P, SIDE_Z]:
+		var state: BattlePlayerState = players.get(side, null)
+		if state == null:
+			continue
+		var stacks: int = state.marker_count(MARKER_FATIGUE)
+		if stacks <= 0:
+			continue
+		_log("%s 受到疲劳伤害 %d 点" % [side.to_upper(), stacks])
+		damage_hero(side, stacks, ["fatigue"], null, "疲劳")
+		if winner != "":
+			return
+
+
 func _resolve_turn_start() -> void:
 	for column: int in range(COLUMN_COUNT):
 		if winner != "":
@@ -2819,10 +2885,17 @@ func surrender(side: String) -> void:
 	changed.emit()
 
 
-func _trigger_scoped_zone_effects(event_name: String, event_entity: BattleEntity) -> void:
+func _trigger_scoped_zone_effects(event_name: String, event_entity: Variant) -> void:
 	if event_entity == null:
 		return
-	var state: BattlePlayerState = players.get(event_entity.side, null)
+	var event_side: String = ""
+	if event_entity is BattleEntity:
+		event_side = event_entity.side
+	elif event_entity is String and event_entity.begins_with("hero:"):
+		event_side = event_entity.substr(5)
+	else:
+		return
+	var state: BattlePlayerState = players.get(event_side, null)
 	if state == null:
 		return
 	for zone: String in ["hand", "deck"]:
@@ -2837,7 +2910,7 @@ func _trigger_scoped_zone_effects(event_name: String, event_entity: BattleEntity
 				continue
 			if zone == "deck" and not card.ability_script.in_deck_scope:
 				continue
-			var context := ZoneCardEffectContext.new(self, event_entity.side, zone, instance)
+			var context := ZoneCardEffectContext.new(self, event_side, zone, instance)
 			context.set_source_name(card.display_name())
 			context.set_self_target(instance)
 			context.set_event_target(event_entity)

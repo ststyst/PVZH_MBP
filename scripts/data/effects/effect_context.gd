@@ -59,6 +59,11 @@ func draw_cards(_count: int, _cost_delta: int = 0) -> int:
 	return 0
 
 
+func draw_matching_cards(_target, _count: int, _filter_text: String, _cost_delta: int = 0) -> int:
+	push_warning("EffectContext.draw_matching_cards 未实现：需要战斗层提供")
+	return 0
+
+
 func deal_damage(_target, _amount: int) -> void:
 	push_warning("EffectContext.deal_damage 未实现：需要战斗层提供")
 
