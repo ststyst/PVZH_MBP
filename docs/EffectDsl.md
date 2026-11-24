@@ -942,3 +942,132 @@ put_card_on_deck_top(hero, "kind == 'entity'", "taunt", 1, 2, 1, 0)
 - 词缀写入卡牌实例，打出后转为实体词缀
 - 费用修正只影响手牌有效费用
 - 这些效果不会修改卡牌数据库中的原始卡牌
+
+### 随机插入牌库
+
+如果要从卡牌数据库创造牌并随机插入牌库，使用：
+
+```text
+add_random_cards_to_deck(hero, 3, "kind == 'entity'")
+```
+
+效果：
+
+- 从卡牌数据库中选择 3 张符合条件的牌
+- 每张创建为独立卡牌实例
+- 随机插入牌库的随机位置
+- 允许重复
+- 不赋予词缀、不加数值、不改费用
+
+带费用修正：
+
+```text
+add_random_cards_to_deck(hero, 3, "kind == 'spell'", -1)
+```
+
+带词缀和数值：
+
+```text
+add_random_cards_to_deck(
+    hero,
+    3,
+    "kind == 'entity'",
+    0,
+    "taunt",
+    1,
+    2,
+    1,
+    0
+)
+```
+
+以上表示：创造 3 张实体，全部随机插入牌库，全部获得嘲讽、攻击 +1、生命 +2、防御 +1。
+
+### 放到牌库顶
+
+```text
+put_card_on_deck_top(hero, "kind == 'entity'")
+```
+
+- 随机创造 1 张符合条件的牌
+- 放到牌库顶
+- 不是随机插入
+- 不赋予词缀、不加数值、不改费用
+
+### 创造牌参数省略规则
+
+`add_random_cards_to_hand` / `add_random_cards_to_deck`：
+
+```text
+(target, count, filter)
+(target, count, filter, cost_delta)
+(target, count, filter, cost_delta, keyword)
+(target, count, filter, cost_delta, keyword, attack, health, shield)
+(target, count, filter, cost_delta, keyword, attack, health, shield, keyword_value)
+```
+
+`put_card_on_deck_top`：
+
+```text
+(target, filter)
+(target, filter, keyword)
+(target, filter, keyword, attack, health, shield)
+(target, filter, keyword, attack, health, shield, keyword_value)
+```
+
+省略可选参数时默认：
+
+```text
+费用修正 = 0
+词缀 = 空
+攻击修正 = 0
+生命修正 = 0
+防御修正 = 0
+词缀数值 = 0
+```
+
+### 无词缀写法
+
+```text
+# 只创造，不加效果
+add_random_cards_to_hand(hero, 2, "kind == 'spell'")
+add_random_cards_to_deck(hero, 2, "kind == 'entity'")
+put_card_on_deck_top(hero, "kind == 'entity'")
+
+# 只改费用，不加词缀
+add_random_cards_to_hand(hero, 2, "kind == 'spell'", -1)
+
+# 不加词缀，但加数值
+add_random_cards_to_hand(hero, 2, "kind == 'entity'", 0, "", 1, 2, 0)
+```
+
+### 创造牌与抽牌的区别
+
+- `draw_cards(count)`：从当前牌库顶抽已有牌，不创建新牌
+- `add_random_cards_to_hand`：从卡牌数据库创造新牌，随机插入手牌
+- `add_random_cards_to_deck`：从卡牌数据库创造新牌，随机插入牌库
+- `put_card_on_deck_top`：从卡牌数据库创造新牌，放到牌库顶
+- `summon`：从卡牌数据库召唤实体，不走手牌/牌库
+- `transform` / `transform_hand`：把已有实体或手牌替换为随机卡牌，不是新增复制
+
+### 创造牌可施加的效果
+
+当前创建原语可内联施加：
+
+- 费用修正
+- 一个词缀及其数值
+- 攻击力修正
+- 生命值修正
+- 防御值修正
+
+这些效果对该次创造出的每一张牌都生效。
+
+当前创建原语不能内联施加：
+
+- 多个不同词缀
+- 任意 Buff
+- 卡牌专属的复杂效果
+- 直接指定“第 N 张新牌”
+- 创建后再对某一张新牌单独赋不同效果
+
+需要这些效果时，应拆分创建与后续处理，或扩展新的原语。
