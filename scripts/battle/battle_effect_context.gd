@@ -14,6 +14,7 @@ var is_spell_source: bool = false
 var _self_handle: Variant = null
 var _event_handle: Variant = null
 var source_name: String = ""
+var damage_targets: Array = []
 
 
 func _init(battle_engine: BattleEngine, side: String) -> void:
@@ -31,6 +32,10 @@ func set_event_target(handle) -> void:
 
 func set_source_name(name: String) -> void:
 	source_name = name
+
+
+func set_damage_targets(targets: Array) -> void:
+	damage_targets = targets.duplicate()
 
 
 func set_chosen_target(handle) -> void:
@@ -77,6 +82,8 @@ func resolve_selector(selector: String) -> Array:
 			return [] if _event_handle == null else [_event_handle]
 		"chosen":
 			return chosen_targets.duplicate()
+		"damage_targets":
+			return damage_targets.duplicate()
 		"hero":
 			return [engine.hero_handle(caster_side)]
 		"enemy_hero":

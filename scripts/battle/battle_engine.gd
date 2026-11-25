@@ -82,6 +82,8 @@ var _special_resume_phase: String = ""
 var _special_resume_active_side: String = ""
 var _special_turn_end_resolved: bool = false
 var _special_resolving: bool = false
+## 当前结算链中，实体造成有效伤害的目标：entity_id -> [target handles]
+var _pending_damage_dealt: Dictionary = {}
 var _effect_resolution_count: int = 0
 var _effect_limit_hit: bool = false
 ## 本次战斗轮中已经触发过先攻的实体 id，保证整轮只触发一次
@@ -1011,6 +1013,7 @@ func play_card(side: String, hand_index: int, target: Dictionary = {}) -> Dictio
 				base_context.set_event_target(evolved_entity)
 				base_context.set_base_column(column)
 				evolved_card.ability_script.run_event(base_context, "mounted", evolved_entity)
+				_flush_damage_dealt()
 			if evolved_entity.alive and evolved_card != null and card.ability_script != null:
 				var filter := CardFilter.new()
 				if filter.parse(card.ability_script.evolve_filter_text) and filter.matches(evolved_card):
@@ -1042,6 +1045,7 @@ func play_card(side: String, hand_index: int, target: Dictionary = {}) -> Dictio
 				context.set_event_target(mounted_entity)
 				context.set_base_column(base_column)
 				base_card.ability_script.run_event(context, "mounted", mounted_entity)
+				_flush_damage_dealt()
 			return _finish_card_play(card)
 		var entity: BattleEntity = summon_card(
 			side, card, column, slot, instance.attack_bonus
@@ -1315,6 +1319,7 @@ func _run_script(card: CardData, side: String, chosen: Variant, position: Dictio
 	var errors: Array[String] = card.ability_script.run_on_play(context)
 	for message: String in errors:
 		_log("效果错误（%s）：%s" % [card.display_name(), message])
+	_flush_damage_dealt()
 
 
 # ----- 场地 -----
@@ -1881,6 +1886,7 @@ func damage_entity(entity: BattleEntity, amount: int, source_keywords: Array = [
 		damage = maxi(damage - entity.shield, 0)
 	if damage > 0:
 		entity.health -= damage
+		_record_damage_dealt(source_entity, entity)
 	if source_keywords.has("deadly") and damage > 0:
 		entity.health = 0
 	_log("%s 受到 %d 点伤害（来源：%s；生命 %d，护盾 %d）" % [
@@ -2242,6 +2248,7 @@ func damage_hero(side: String, amount: int, source_keywords: Array = [], source_
 			_trigger_superpower_offer(side)
 			return
 	state.hero_health -= damage
+	_record_damage_dealt(source_entity, hero_handle(side))
 	_check_game_over()
 	hero_damaged.emit(side, damage, source_keywords.duplicate())
 	_log("%s 英雄受到 %d 点伤害（来源：%s；生命 %d，护盾 %d）" % [
@@ -2543,6 +2550,7 @@ func gain_energy(side: String, amount: int) -> void:
 func _begin_effect_resolution() -> void:
 	_effect_resolution_count = 0
 	_effect_limit_hit = false
+	_pending_damage_dealt.clear()
 
 
 func _end_effect_resolution() -> void:
@@ -2550,7 +2558,31 @@ func _end_effect_resolution() -> void:
 	_effect_limit_hit = false
 
 
-func _fire_event(event_name: String, event_entity: Variant, chosen_targets: Array = []) -> void:
+func _record_damage_dealt(source: BattleEntity, target: Variant) -> void:
+	if source == null or not source.alive or target == null:
+		return
+	if target == source:
+		return
+	var key: int = source.entity_id
+	var targets: Array = _pending_damage_dealt.get(key, [])
+	if not targets.has(target):
+		targets.append(target)
+	_pending_damage_dealt[key] = targets
+
+
+func _flush_damage_dealt() -> void:
+	if _pending_damage_dealt.is_empty():
+		return
+	var pending: Dictionary = _pending_damage_dealt.duplicate()
+	_pending_damage_dealt.clear()
+	for key: Variant in pending.keys():
+		var source: BattleEntity = find_entity_by_id(int(key))
+		var targets: Array = pending[key]
+		if source != null and source.alive and not targets.is_empty():
+			_fire_event("damage_dealt", source, [], targets)
+
+
+func _fire_event(event_name: String, event_entity: Variant, chosen_targets: Array = [], damage_targets_for_event: Array = []) -> void:
 	if _battle_over():
 		return
 	if _effect_limit_hit:
@@ -2575,6 +2607,7 @@ func _fire_event(event_name: String, event_entity: Variant, chosen_targets: Arra
 		context.set_event_target(event_entity)
 		context.set_source_keywords(listener.keywords)
 		context.set_base_column(listener.column)
+		context.set_damage_targets(damage_targets_for_event)
 		if not chosen_targets.is_empty():
 			context.set_chosen_targets(chosen_targets)
 		var errors: Array[String] = listener.card.ability_script.run_event(context, event_name, event_entity)
@@ -2587,6 +2620,7 @@ func _fire_event(event_name: String, event_entity: Variant, chosen_targets: Arra
 	if event_name != "turn_start" and event_name != "turn_end":
 		_fire_environment_event(event_name, event_entity)
 	_refresh_all_counter_bonuses()
+	_flush_damage_dealt()
 
 
 func _fire_environment_event(event_name: String, event_entity: Variant, only_column: int = -1) -> void:
@@ -2798,6 +2832,7 @@ func _execute_entity_attack(
 		_flush_column_deaths(attacker.column)
 	if attacker != null and attacker.alive and not _battle_over():
 		_fire_event("after_attack", attacker)
+	_flush_damage_dealt()
 
 
 func _try_thorns(attacker: BattleEntity, target: BattleEntity, effective_damage: int) -> void:

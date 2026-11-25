@@ -330,6 +330,25 @@ func test_keyword_and_tribe_filters_use_membership() -> void:
 	assert_true(filter.matches(card))
 
 
+func test_damage_dealt_event_receives_target_array() -> void:
+	var engine: BattleEngine = _started_engine()
+	var source_card: CardData = _make_test_card(
+		"pvzh:test_damage_dealt_source",
+		"when enter:\n    deal_damage(all_enemies, 2)\nwhen damage_dealt:\n    heal(damage_targets, 1)"
+	)
+	source_card.health = 5
+	var source: BattleEntity = engine.summon_card("p", source_card, 2, 0)
+	var first_card: CardData = _make_test_card("pvzh:test_damage_dealt_first", "")
+	first_card.health = 5
+	var second_card: CardData = _make_test_card("pvzh:test_damage_dealt_second", "")
+	second_card.health = 5
+	var first: BattleEntity = engine.summon_card("z", first_card, 0, 0)
+	var second: BattleEntity = engine.summon_card("z", second_card, 1, 0)
+	engine._fire_event("enter", source)
+	assert_eq(first.health, 4, "复数伤害目标应通过 damage_targets 数组回调")
+	assert_eq(second.health, 4)
+
+
 func test_after_attack_event_fires_after_attack_action() -> void:
 	var engine: BattleEngine = _started_engine()
 	var attacker_card: CardData = _make_test_card(

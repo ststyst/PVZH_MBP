@@ -41,11 +41,13 @@ const EVENTS: Array[String] = [
 	"hand_transformed",
 	"drawn",
 	"after_attack",
+	"damage_dealt",
 ]
 const SELECTORS: Array[String] = [
 	"self",
 	"event",
 	"chosen",
+	"damage_targets",
 	"hero",
 	"enemy_hero",
 	"all_enemies",

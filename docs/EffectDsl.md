@@ -1218,3 +1218,62 @@ when after_attack:
 - 穿透：同一次穿透攻击只触发一次
 - 强制攻击 / 额外攻击：每次攻击动作触发
 - 先攻：先攻伤害包含在该攻击动作中；如果先攻直接结束对局，则不会再触发完成事件
+
+### 造成有效伤害事件
+
+`damage_dealt` 在实体对另一个实体或英雄造成有效伤害后触发：
+
+```text
+when damage_dealt:
+    ...
+```
+
+- 事件实体是伤害来源
+- 只有有效伤害 `> 0` 才触发
+- 攻击、特殊能力伤害都会触发
+- 反伤、充能免伤、被完全格挡的伤害不会触发
+- 不需要选择目标；伤害目标通过 `damage_targets` 数组访问
+
+```text
+when damage_dealt:
+    heal(damage_targets, 1)
+```
+
+`damage_targets` 数组元素可能是：
+
+- `BattleEntity`
+- 英雄句柄，例如 `hero:p`、`hero:z`
+
+### 多目标伤害的数组回调
+
+如果一次能力对多个实体/英雄造成有效伤害：
+
+```text
+when enter:
+    deal_damage(all_enemies, 2)
+
+when damage_dealt:
+    deal_damage_each(damage_targets, 1)
+```
+
+一次结算中所有有效目标会汇总到 `damage_targets`，然后触发一次 `damage_dealt`。
+
+支持把 `damage_targets` 直接传给可接受目标数组的原语，例如：
+
+```text
+heal(damage_targets, 1)
+buff_stats(damage_targets, 1, 1)
+deal_damage_each(damage_targets, 1)
+```
+
+注意：
+
+- 当前没有通用的 `for each` 语法
+- 对数组逐个执行原语依赖原语自身的目标数组展开
+- `damage_dealt` 内部再次造成伤害会继续产生新的 `damage_dealt`，受到连锁上限保护
+
+### 与 `damaged` 的区别
+
+- `damaged`：受到伤害的实体触发，事件目标是受伤者
+- `damage_dealt`：造成伤害的来源实体触发，事件目标是来源
+- `damage_dealt` 通过 `damage_targets` 获取本次造成有效伤害的目标数组
