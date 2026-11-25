@@ -636,6 +636,66 @@ func test_lowest_with_keyword_predicate() -> void:
 		assert_eq(str(context.calls[0].get("target", "")), "a", "无嘲讽的 b 即使费用更低也被排除")
 
 
+# ===== entities_matching：用卡牌筛选语法筛选在场实体 =====
+
+
+func test_entities_matching_default_scope_is_all_entities() -> void:
+	context.selector_results["all_entities"] = ["soldier", "zombie"]
+	context.filter_facts["soldier"] = {"class": "soldier", "cost": 2, "deck_includable": true}
+	context.filter_facts["zombie"] = {"class": "zombie", "cost": 5, "deck_includable": true}
+	_run("deal_damage(entities_matching(\"class == 'soldier' and cost <= 3\"), 2)")
+	assert_eq(context.calls.size(), 1, "只应命中符合筛选的士兵")
+	if not context.calls.is_empty():
+		assert_eq(str(context.calls[0].get("target", "")), "soldier")
+
+
+func test_entities_matching_scoped_by_selector() -> void:
+	context.selector_results["enemy_entities"] = ["e1", "e2"]
+	context.filter_facts["e1"] = {"tribes": ["pea"], "keywords": ["taunt"], "deck_includable": true}
+	context.filter_facts["e2"] = {"tribes": ["zombie"], "keywords": [], "deck_includable": true}
+	_run(
+		"give_keyword(entities_matching(enemy_entities, \"tribe == 'pea' and keyword == 'taunt'\"), 'armored')"
+	)
+	assert_eq(context.calls.size(), 1)
+	if not context.calls.is_empty():
+		assert_eq(str(context.calls[0].get("target", "")), "e1")
+
+
+func test_entities_matching_implicit_deck_includable() -> void:
+	context.selector_results["all_entities"] = ["token"]
+	context.filter_facts["token"] = {"kind": "entity", "deck_includable": false}
+	_run("destroy(entities_matching(\"kind == 'entity'\"))")
+	assert_eq(context.calls.size(), 0, "未显式写 deck_includable 时默认排除不可编入牌组的实体")
+
+
+func test_entities_matching_invalid_filter_is_error() -> void:
+	context.selector_results["all_entities"] = ["e1"]
+	context.filter_facts["e1"] = {"deck_includable": true}
+	var errors: Array[String] = _run("destroy(entities_matching(\"class ==\"))")
+	assert_gt(errors.size(), 0, "筛选条件语法错误应记录运行错误")
+
+
+func test_entities_matching_empty_scope_is_noop() -> void:
+	context.selector_results["all_entities"] = []
+	var errors: Array[String] = _run("deal_damage(entities_matching(\"kind == 'entity'\"), 1)")
+	assert_eq(errors.size(), 0, "空范围不应报错")
+	assert_eq(context.calls.size(), 0, "空范围不应产生原语调用")
+
+
+func test_entities_matching_composes_with_highest() -> void:
+	context.selector_results["all_enemies"] = ["a", "b"]
+	context.filter_facts["a"] = {"class": "soldier", "deck_includable": true}
+	context.filter_facts["b"] = {"class": "zombie", "deck_includable": true}
+	context.entity_facts["a"] = {"attack": 3}
+	context.entity_facts["b"] = {"attack": 9}
+	_run(
+		"deal_damage(highest(entities_matching(all_enemies, \"class == 'soldier'\"), 'attack'), 2)"
+	)
+	assert_eq(context.calls.size(), 1)
+	if not context.calls.is_empty():
+		assert_eq(str(context.calls[0].get("target", "")), "a", "最高者只能从筛选后的士兵里挑")
+
+
 func test_declaration_primitives_are_noop_at_runtime() -> void:
 	var errors: Array[String] = _run(
 		"evolve(\"name == 'gnoll'\")\n"

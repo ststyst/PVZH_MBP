@@ -44,11 +44,34 @@ func parse(text: String) -> bool:
 func matches(card: CardData) -> bool:
 	if card == null:
 		return false
-	if not ast.is_empty() and not _eval(ast, card):
+	return matches_values(_values_of_card(card))
+
+
+## 用“卡牌字段快照”判定。战斗层借此按在场实体的**当前状态**筛选
+## （例如被 Buff 临时赋予的词缀、结算后的当前费用），而不只是数据库原值。
+func matches_values(values: Dictionary) -> bool:
+	if not errors.is_empty():
 		return false
-	if not has_deck_includable_condition and not card.deck_includable:
+	if not ast.is_empty() and not _eval_values(ast, values):
+		return false
+	if not has_deck_includable_condition and not bool(values.get("deck_includable", false)):
 		return false
 	return true
+
+
+## 把卡牌对象转成筛选用的字段快照。
+static func _values_of_card(card: CardData) -> Dictionary:
+	return {
+		"name": card.english_name,
+		"kind": card.kind,
+		"rarity": card.rarity,
+		"class": card.card_class,
+		"category": card.class_category,
+		"keywords": card.keywords,
+		"tribes": card.tribes,
+		"deck_includable": card.deck_includable,
+		"cost": card.cost,
+	}
 
 
 func _mark_fields(node: Dictionary) -> void:
@@ -66,50 +89,59 @@ func _mark_fields(node: Dictionary) -> void:
 				name_only = str(node.get("value", ""))
 
 
-func _eval(node: Dictionary, card: CardData) -> bool:
+func _eval_values(node: Dictionary, values: Dictionary) -> bool:
 	match str(node.get("type", "")):
 		"and":
-			return _eval(node.get("left", {}), card) and _eval(node.get("right", {}), card)
+			return _eval_values(node.get("left", {}), values) and _eval_values(node.get("right", {}), values)
 		"or":
-			return _eval(node.get("left", {}), card) or _eval(node.get("right", {}), card)
+			return _eval_values(node.get("left", {}), values) or _eval_values(node.get("right", {}), values)
 		"not":
-			return not _eval(node.get("body", {}), card)
+			return not _eval_values(node.get("body", {}), values)
 		"cond":
-			return _match_condition(node, card)
+			return _match_condition_values(node, values)
 	return false
 
 
-func _match_condition(node: Dictionary, card: CardData) -> bool:
+func _match_condition_values(node: Dictionary, values: Dictionary) -> bool:
 	var field: String = str(node.get("field", ""))
 	var op: String = str(node.get("op", "=="))
 	var value: String = str(node.get("value", "")).to_lower()
-	var actual: String = ""
+	var equal_op: bool = op == "==" or op == "="
 	match field:
 		"name":
-			actual = card.english_name.to_lower()
+			var actual_name: String = str(values.get("name", "")).to_lower()
+			return actual_name == value if equal_op else actual_name != value
 		"kind":
-			var kind_match: bool = card.kind.to_lower() == value
-			var english_match: bool = card.english_name.to_lower() == value
-			if op == "==" or op == "=":
+			var kind_match: bool = str(values.get("kind", "")).to_lower() == value
+			var english_match: bool = str(values.get("name", "")).to_lower() == value
+			if equal_op:
 				return kind_match or english_match
 			return not kind_match and not english_match
 		"rarity":
-			actual = card.rarity.to_lower()
+			var actual_rarity: String = str(values.get("rarity", "")).to_lower()
+			return actual_rarity == value if equal_op else actual_rarity != value
 		"class":
-			actual = card.card_class.to_lower()
+			var actual_class: String = str(values.get("class", "")).to_lower()
+			return actual_class == value if equal_op else actual_class != value
 		"category", "class_category":
-			actual = card.class_category.to_lower()
+			var actual_category: String = str(values.get("category", "")).to_lower()
+			return actual_category == value if equal_op else actual_category != value
 		"keyword":
-			var has_keyword: bool = card.keywords.has(value)
-			return has_keyword if op == "==" or op == "=" else not has_keyword
+			var keyword_list: Array = values.get("keywords", [])
+			var has_keyword: bool = keyword_list.has(value)
+			return has_keyword if equal_op else not has_keyword
 		"tribe":
-			var has_tribe: bool = card.tribes.has(value)
-			return has_tribe if op == "==" or op == "=" else not has_tribe
+			var tribe_list: Array = values.get("tribes", [])
+			var has_tribe: bool = tribe_list.has(value)
+			return has_tribe if equal_op else not has_tribe
 		"deck_includable":
 			var wanted: bool = value == "true" or value == "1"
-			return card.deck_includable == wanted if op == "==" or op == "=" else card.deck_includable != wanted
+			var actual_includable: bool = bool(values.get("deck_includable", false))
+			if equal_op:
+				return actual_includable == wanted
+			return actual_includable != wanted
 		"cost":
-			var actual_cost: int = card.cost
+			var actual_cost: int = int(values.get("cost", 0))
 			var wanted_cost: int = int(value)
 			match op:
 				"<":
@@ -126,7 +158,7 @@ func _match_condition(node: Dictionary, card: CardData) -> bool:
 					return actual_cost == wanted_cost
 		_:
 			return false
-	return actual == value if op == "==" or op == "=" else actual != value
+	return false
 
 
 # ----- 词法/语法 -----

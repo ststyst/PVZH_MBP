@@ -64,7 +64,7 @@
 - 变量：`x = 2 + 3 * 2`（后续语句可用 `x`）
 - 四则运算：`+ - * /`（整数运算，除数为 0 会记录运行错误）
 - 比较：`== != < <= > >=`；逻辑：`and` `or` `not`
-- 查询函数：`attack(target)`、`health(target)`、`max_health(target)`、`shield(target)`、`defense(target)`、`cost(target)`、`highest(目标集合, 数值名[, 条件])`、`lowest(目标集合, 数值名[, 条件])`、`min(a,b)`、`max(a,b)`、`has_tribe("pea")`、`has_tribe("pea", target)`、`has_keyword("taunt")`、`has_keyword("taunt", target)`、`keyword_value("first_strike", target)`、`has_buff("frozen", target)`、`marker_count("名字")`（`marker_count` 用于玩家特殊标志物数量）
+- 查询函数：`attack(target)`、`health(target)`、`max_health(target)`、`shield(target)`、`defense(target)`、`cost(target)`、`highest(目标集合, 数值名[, 条件])`、`lowest(目标集合, 数值名[, 条件])`、`entities_matching(筛选)`、`entities_matching(范围, 筛选)`、`min(a,b)`、`max(a,b)`、`has_tribe("pea")`、`has_tribe("pea", target)`、`has_keyword("taunt")`、`has_keyword("taunt", target)`、`keyword_value("first_strike", target)`、`has_buff("frozen", target)`、`marker_count("名字")`（`marker_count` 用于玩家特殊标志物数量）
 - 单参数形式读“当前作用域目标”（事件触发者 / `for_each` 当前目标），双参数形式显式指定实体；`defense` 与 `shield` 等价
 - 字符串可用单引号或双引号：`side == 'enemy'` / `side == "enemy"`
 
@@ -733,6 +733,41 @@ apply_buff(lowest(all_allies, 'cost', has_keyword('taunt')), 'frozen')
 - 只按数值挑选，**不检查**锦囊免疫 / 隐形等目标限制；具体原语仍按自身规则过滤（例如锦囊伤害仍会跳过锦囊免疫目标）。
 - 读到的都是**当前值**（已结算 Buff、光环、环境修正），不是卡牌数据库里的原始数值。
 
+### 用卡牌筛选语法筛选在场实体（`entities_matching`）
+
+`entities_matching` 把**卡牌数据库的筛选语法**直接用到在场实体上：
+
+```text
+# 全场：职业为士兵且当前费用 <= 3 的在场实体
+destroy(entities_matching("class == 'soldier' and cost <= 3"))
+
+# 限定范围：只在我方实体里挑豆族
+heal(entities_matching(all_allies, "tribe == 'pea'"), 2)
+
+# 敌方里所有带嘲讽的
+deal_damage(entities_matching(enemy_entities, "keyword == 'taunt'"), 1)
+```
+
+- 形式：`entities_matching(<筛选>)` / `entities_matching(<范围>, <筛选>)`
+- 单参数：在**全部在场实体**（双方、存活）里筛；双参数：在给定范围里筛（选择器 / `entities_in_column(...)` / `random_targets(...)` / 循环变量 / 其它数组结果）。
+- 筛选字段与卡牌数据库一致：
+
+| 字段 | 说明 |
+|---|---|
+| `name` | 英文名（别名 `english` / `card_name`） |
+| `kind` | 类型；也可直接写英文名（`kind == 'snowpea'`） |
+| `rarity` | 稀有度 |
+| `class` | 职业 |
+| `category` / `class_category` | 职业类别 |
+| `keyword` | 词缀，**包含**语义 |
+| `tribe` | 流派，**包含**语义 |
+| `deck_includable` | 是否可编入牌组；未显式写出时**默认要求 true** |
+| `cost` / `费用` | 当前费用，支持 `< <= > >= == !=` |
+
+- 支持 `and` / `or` / `not` 与括号（也认 `&&` / `||` / `!`）。
+- 判定用**当前状态**：Buff / 环境临时赋予的词缀同样参与匹配，`cost` 是当前费用。
+- 筛选语法写错会在运行时记录错误并返回空数组（后续原语不执行）；空结果本身不报错。
+
 ### 生命值与防御
 
 - 实体 `shield` 是固定减伤，不会像英雄护盾一样被消耗；必中伤害无视该减伤
@@ -778,6 +813,51 @@ when position_changed:
 注意：打出组队实体时把原实体挤到同列另一格，属于“放置规则”，**不会触发** `position_changed`；只有卡牌效果调用 `move_entity` 才会让**被移动的实体**触发。因移动造成的挤压同样不会触发被挤开实体的 `position_changed`。
 
 特殊标志物名字是任意英文字符串，不注册种类，数量允许负数。
+
+### 循环 / 极值 / 实体筛选组合示例
+
+```text
+# 1) 对每个敌方实体按自己的当前数值分流（for_each + if/elif/else）
+when enter:
+    for_each(all_enemies) as e:
+        if health <= 2:
+            destroy(e)
+        elif has_keyword('taunt'):
+            deal_damage(e, 1)
+        else:
+            gain_energy(1)
+
+# 2) 只处理筛选后的敌方实体（卡牌筛选语法 + 循环）
+when enter:
+    for_each(entities_matching(enemy_entities, "class == 'soldier'")) as e:
+        buff_stats(e, 0, 1)
+
+# 3) 挑当前攻击力最高的敌方，吃 3 点伤害
+when enter:
+    deal_damage(highest(all_enemies, 'attack'), 3)
+
+# 4) 先收窄再挑：当前生命 >= 5 的敌方里防御最高的，冻住
+when enter:
+    apply_buff(highest(all_enemies, 'defense', health >= 5), 'frozen')
+
+# 5) 我方费用最高的、还没有组队的实体获得组队
+when turn_end:
+    give_keyword(highest(all_allies, 'cost', not has_keyword('team_up')), 'team_up')
+
+# 6) 遍历本次造成有效伤害的所有目标（事件回调数组作为循环源）
+when damage_dealt:
+    for_each(damage_targets) as hurt:
+        if attack(hurt) > 4:
+            gain_energy(1)
+
+# 7) 筛选 + 极值：只在我方豆族里找当前生命最低的，治疗 3 点
+when turn_end:
+    heal(lowest(entities_matching(all_allies, "tribe == 'pea'"), 'health'), 3)
+
+# 8) 多职业类别 / 词缀组合筛选
+when enter:
+    destroy(entities_matching(enemy_entities, "category == 'growth' and keyword == 'team_up' and cost <= 4"))
+```
 
 ## 八、书写规则
 

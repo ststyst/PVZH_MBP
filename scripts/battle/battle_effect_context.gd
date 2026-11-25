@@ -216,6 +216,28 @@ func describe_entity(handle) -> Dictionary:
 	return {}
 
 
+## 卡牌筛选表达式（CardFilter.matches_values）用的字段快照。
+## 按在场实体的**当前状态**取值：词缀含 Buff/环境临时赋予的，费用用 entity.cost。
+func filter_values(handle) -> Dictionary:
+	if not handle is BattleEntity:
+		return {}
+	var entity: BattleEntity = handle
+	var card: CardData = entity.card
+	if card == null:
+		return {}
+	return {
+		"name": card.english_name,
+		"kind": card.kind,
+		"rarity": card.rarity,
+		"class": card.card_class,
+		"category": card.class_category,
+		"keywords": entity.keywords.duplicate(),
+		"tribes": card.tribes.duplicate(),
+		"deck_includable": card.deck_includable,
+		"cost": entity.cost,
+	}
+
+
 func summon(card_name: String, column: Variant = null, max_column: Variant = null) -> Array:
 	var card: CardData = engine.get_card_by_english(card_name)
 	if card == null or not card.is_entity():

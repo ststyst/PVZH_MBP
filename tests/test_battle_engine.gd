@@ -2178,3 +2178,39 @@ func test_team_up_placement_rule() -> void:
 	assert_false(bool(second_normal.get("ok", true)), "两个普通实体不能同列")
 	var second_team: Dictionary = engine.play_card("p", 1, {"column": 0, "slot": 1})
 	assert_true(bool(second_team.get("ok", false)), "组队实体可与普通实体同列")
+
+
+func test_entities_matching_uses_current_board_state() -> void:
+	var engine: BattleEngine = _started_engine()
+	var soldier_card: CardData = _make_test_card("pvzh:test_match_soldier", "")
+	soldier_card.card_class = "soldier"
+	soldier_card.cost = 2
+	soldier_card.health = 4
+	var zombie_card: CardData = _make_test_card("pvzh:test_match_zombie", "")
+	zombie_card.card_class = "zombie"
+	zombie_card.cost = 5
+	zombie_card.health = 4
+	var taunted_card: CardData = _make_test_card("pvzh:test_match_taunted", "")
+	taunted_card.card_class = "zombie"
+	taunted_card.cost = 1
+	taunted_card.health = 4
+	var soldier: BattleEntity = engine.summon_card("z", soldier_card, 1, 0)
+	var zombie: BattleEntity = engine.summon_card("z", zombie_card, 2, 0)
+	var taunted: BattleEntity = engine.summon_card("z", taunted_card, 3, 0)
+	taunted.add_keyword("taunt")
+	var spell: CardData = _make_test_card(
+		"pvzh:test_match_spell",
+		"destroy(entities_matching(\"class == 'soldier' and cost <= 3\"))\n"
+		+ "destroy(entities_matching(\"keyword == 'taunt'\"))"
+	)
+	spell.kind = "spell"
+	spell.cost = 1
+	_set_hand(engine, "p", [spell.card_id])
+	engine.players["p"].energy = 10
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "p"
+	assert_true(bool(engine.play_card("p", 0, {}).get("ok", false)))
+	engine._flush_deaths()
+	assert_false(soldier.is_alive(), "符合 class + cost 的士兵应被消灭")
+	assert_false(taunted.is_alive(), "运行期获得的嘲讽词缀也应参与筛选")
+	assert_true(zombie.is_alive(), "不符合条件的僵尸应存活")

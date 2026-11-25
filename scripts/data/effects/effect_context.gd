@@ -50,6 +50,13 @@ func describe_entity(_handle) -> Dictionary:
 	return {}
 
 
+## 返回用于卡牌筛选表达式（CardFilter.matches_values）判定的字段快照：
+## name / kind / rarity / class / category / keywords / tribes / deck_includable / cost。
+## 战斗层应返回该句柄的**当前状态**；无法判定的句柄返回空字典。
+func filter_values(_handle) -> Dictionary:
+	return {}
+
+
 # ----- 原语（以单个实体句柄为参数） -----
 
 func summon(_card_name: String, _column: Variant = null, _max_column: Variant = null) -> Array:

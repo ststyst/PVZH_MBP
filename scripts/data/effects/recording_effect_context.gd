@@ -26,6 +26,8 @@ var selector_results: Dictionary = {}
 var query_results: Dictionary = {}
 ## 句柄 -> 事实（side/class/tribes/keywords/attack/health/shield/cost/…）
 var entity_facts: Dictionary = {}
+## 句柄 -> 卡牌筛选字段快照（name/kind/rarity/class/category/keywords/tribes/deck_includable/cost）
+var filter_facts: Dictionary = {}
 
 var self_target: Variant = null
 var event_target: Variant = null
@@ -54,6 +56,7 @@ func reset() -> void:
 	selector_results.clear()
 	query_results.clear()
 	entity_facts.clear()
+	filter_facts.clear()
 	self_target = null
 	event_target = null
 	chosen_targets.clear()
@@ -113,6 +116,10 @@ func resolve_selector(selector: String) -> Array:
 
 func describe_entity(handle) -> Dictionary:
 	return entity_facts.get(handle, {})
+
+
+func filter_values(handle) -> Dictionary:
+	return filter_facts.get(handle, {})
 
 
 func can_target(target) -> bool:

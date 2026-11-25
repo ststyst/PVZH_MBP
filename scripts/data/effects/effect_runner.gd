@@ -480,6 +480,8 @@ func _eval_call(expression: Dictionary, facts: Dictionary) -> Variant:
 			return _eval_keyword_value(arguments, facts, expression)
 		"highest", "lowest":
 			return _eval_extreme_targets(function_name, arguments, facts, expression)
+		"entities_matching":
+			return _eval_entities_matching(arguments, facts, expression)
 		"min":
 			return mini(_as_int(_eval(arguments[0], facts)), _as_int(_eval(arguments[1], facts)))
 		"max":
@@ -552,6 +554,41 @@ func _eval_keyword_value(arguments: Array, facts: Dictionary, expression: Dictio
 	if keyword_values is Dictionary:
 		return _as_int(keyword_values.get(keyword_name, 0))
 	return 0
+
+
+## entities_matching(筛选)          → 在全部在场实体里筛
+## entities_matching(范围, 筛选)    → 在指定范围（选择器 / 查询结果 / 数组 / 循环变量）里筛
+## 筛选语法与卡牌数据库一致（CardFilter：name/kind/rarity/class/category/
+## keyword/tribe/deck_includable/cost，支持 and/or/not 与括号），
+## 但判定用的是在场实体的**当前状态**（含 Buff 临时词缀、当前费用）。
+func _eval_entities_matching(arguments: Array, facts: Dictionary, expression: Dictionary) -> Array:
+	var line: int = _line_of(expression)
+	var scope: Array = []
+	var filter_text: String = ""
+	if arguments.size() == 1:
+		scope = context.resolve_selector("all_entities") if context != null else []
+		filter_text = _as_string(_eval(arguments[0], facts))
+	else:
+		scope = _resolve_argument_target(arguments[0], facts)
+		filter_text = _as_string(_eval(arguments[1], facts))
+	filter_text = filter_text.strip_edges()
+	if filter_text.is_empty():
+		_error("entities_matching 需要非空的筛选条件", line)
+		return []
+	var filter := CardFilter.new()
+	if not filter.parse(filter_text):
+		_error("entities_matching 筛选条件错误：%s" % "；".join(filter.errors), line)
+		return []
+	var matched: Array = []
+	for handle: Variant in scope:
+		if handle == null:
+			continue
+		var values: Dictionary = context.filter_values(handle) if context != null else {}
+		if values.is_empty():
+			continue
+		if filter.matches_values(values):
+			matched.append(handle)
+	return matched
 
 
 ## highest / lowest：在一个目标集合里按某个数值挑出最高/最低的实体。

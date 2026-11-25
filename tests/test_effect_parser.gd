@@ -214,3 +214,17 @@ func test_highest_and_lowest_parse() -> void:
 func test_highest_requires_two_args() -> void:
 	var script: CardEffectScript = _parse("deal_damage(highest(all_enemies), 3)")
 	assert_true(script.has_errors(), "highest 需要目标集合与数值两个参数")
+
+
+func test_entities_matching_parses() -> void:
+	var one: CardEffectScript = _parse("deal_damage(entities_matching(\"class == 'soldier'\"), 2)")
+	assert_false(one.has_errors(), "单参数 entities_matching 应可解析：%s" % [one.errors])
+	var two: CardEffectScript = _parse(
+		"destroy(entities_matching(all_enemies, \"kind == 'entity'\"))"
+	)
+	assert_false(two.has_errors(), "双参数 entities_matching 应可解析：%s" % [two.errors])
+
+
+func test_entities_matching_rejects_three_args() -> void:
+	var script: CardEffectScript = _parse("destroy(entities_matching(a, b, c))")
+	assert_true(script.has_errors(), "entities_matching 只接受 1–2 个参数")
