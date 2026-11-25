@@ -253,3 +253,319 @@ func test_conditional_target_uses_cost() -> void:
 	assert_eq(context.calls.size(), 1, "只有费用 >= 3 的目标被选中")
 	if not context.calls.is_empty():
 		assert_eq(str(context.calls[0].get("target", "")), "pricey")
+
+
+# ===== 盲区补测：此前没有任何单元测试的原语 =====
+
+
+func test_transform_targets_records_filter() -> void:
+	context.selector_results["chosen"] = ["e1", "e2"]
+	_run("transform(chosen, \"kind == 'entity' and cost <= 3\")")
+	assert_eq(context.calls.size(), 1)
+	if context.calls.is_empty():
+		return
+	assert_eq(str(context.calls[0].get("op", "")), "transform_targets")
+	assert_eq(str(context.calls[0].get("filter", "")), "kind == 'entity' and cost <= 3")
+	assert_eq((context.calls[0].get("targets", []) as Array).size(), 2, "变形目标是数组")
+
+
+func test_transform_hand_records_three_filters() -> void:
+	_run("transform_hand('enemy', \"kind == 'entity'\", \"kind == 'spell'\")")
+	assert_eq(context.calls.size(), 1)
+	if context.calls.is_empty():
+		return
+	assert_eq(str(context.calls[0].get("op", "")), "transform_hand")
+	assert_eq(str(context.calls[0].get("side", "")), "enemy")
+	assert_eq(str(context.calls[0].get("old_filter", "")), "kind == 'entity'")
+	assert_eq(str(context.calls[0].get("new_filter", "")), "kind == 'spell'")
+
+
+func test_gain_shield_records_amount() -> void:
+	context.selector_results["chosen"] = ["e1"]
+	_run("gain_shield(chosen, 3)")
+	assert_eq(context.calls.size(), 1)
+	if not context.calls.is_empty():
+		assert_eq(str(context.calls[0].get("op", "")), "gain_shield")
+		assert_eq(int(context.calls[0].get("amount", 0)), 3)
+
+
+func test_force_attack_and_remove_entity() -> void:
+	context.selector_results["chosen"] = ["e1"]
+	_run("force_attack(chosen)\nremove_entity(chosen)")
+	assert_eq(context.calls.size(), 2)
+	if context.calls.size() == 2:
+		assert_eq(str(context.calls[0].get("op", "")), "force_attack")
+		assert_eq(str(context.calls[1].get("op", "")), "remove_entity")
+
+
+func test_apply_and_remove_buff() -> void:
+	context.selector_results["chosen"] = ["e1"]
+	_run(
+		"apply_buff(chosen, 'frozen')\n"
+		+ "apply_buff(chosen, 'invincible', 2)\n"
+		+ "remove_buff(chosen, 'frozen')"
+	)
+	assert_eq(context.calls.size(), 3)
+	if context.calls.size() == 3:
+		assert_eq(str(context.calls[0].get("buff", "")), "frozen")
+		assert_eq(int(context.calls[0].get("amount", 0)), 1, "省略层数默认 1")
+		assert_eq(int(context.calls[1].get("amount", 0)), 2)
+		assert_eq(str(context.calls[2].get("op", "")), "remove_buff")
+
+
+func test_markers_add_remove_and_query() -> void:
+	_run("add_marker('fatigue', 2)\nremove_marker('fatigue', 1)")
+	assert_eq(context.calls.size(), 2)
+	assert_eq(int(context.markers.get("fatigue", 0)), 1, "标志物数量应可增减")
+	context.calls.clear()
+	_run("if marker_count('fatigue') >= 1:\n    gain_energy(1)")
+	assert_eq(context.calls.size(), 1, "标志物数量应能驱动条件分支")
+
+
+func test_gain_max_health_per_target() -> void:
+	context.selector_results["all_allies"] = ["a1", "a2"]
+	_run("gain_max_health(all_allies, 2)")
+	assert_eq(context.calls.size(), 2, "多目标逐个加生命上限")
+	if context.calls.size() == 2:
+		assert_eq(int(context.calls[0].get("delta", 0)), 2)
+		assert_eq(str(context.calls[1].get("target", "")), "a2")
+
+
+func test_put_card_on_deck_top_full_args() -> void:
+	context.selector_results["hero"] = ["hero:p"]
+	_run("put_card_on_deck_top(hero, \"kind == 'entity'\", 'taunt', 1, 2, 1, 3)")
+	assert_eq(context.calls.size(), 1)
+	if context.calls.is_empty():
+		return
+	var call: Dictionary = context.calls[0]
+	assert_eq(str(call.get("op", "")), "put_card_on_deck_top")
+	assert_eq(str(call.get("filter", "")), "kind == 'entity'")
+	assert_eq(str(call.get("keyword", "")), "taunt")
+	assert_eq(int(call.get("attack_bonus", 0)), 1)
+	assert_eq(int(call.get("health_bonus", 0)), 2)
+	assert_eq(int(call.get("shield_bonus", 0)), 1)
+	assert_eq(int(call.get("keyword_value", 0)), 3)
+
+
+func test_put_hand_card_on_deck_top() -> void:
+	context.selector_results["hero"] = ["hero:p"]
+	_run("put_hand_card_on_deck_top(hero, \"cost <= 2\")")
+	assert_eq(context.calls.size(), 1)
+	if not context.calls.is_empty():
+		assert_eq(str(context.calls[0].get("op", "")), "put_hand_card_on_deck_top")
+		assert_eq(str(context.calls[0].get("filter", "")), "cost <= 2")
+
+
+func test_shuffle_buried_positions() -> void:
+	context.selector_results["hero"] = ["hero:z"]
+	_run("shuffle_buried_positions(hero)")
+	assert_eq(context.calls.size(), 1)
+	if not context.calls.is_empty():
+		assert_eq(str(context.calls[0].get("op", "")), "shuffle_buried_positions")
+		assert_eq(str(context.calls[0].get("target", "")), "hero:z")
+
+
+func test_environment_grant_keyword_persistent() -> void:
+	_run("environment_grant_keyword_persistent('amphibious', 0, 'ally')")
+	assert_eq(context.calls.size(), 1)
+	if not context.calls.is_empty():
+		assert_eq(str(context.calls[0].get("op", "")), "environment_grant_keyword_persistent")
+		assert_eq(str(context.calls[0].get("keyword", "")), "amphibious")
+		assert_eq(str(context.calls[0].get("side", "")), "ally")
+
+
+func test_environment_grant_keyword_and_stats() -> void:
+	_run("environment_grant_keyword('taunt', 0, 'enemy')\nenvironment_grant_stats(1, 0, 0, 'ally')")
+	assert_eq(context.calls.size(), 2)
+	if context.calls.size() == 2:
+		assert_eq(str(context.calls[0].get("op", "")), "environment_grant_keyword")
+		assert_eq(str(context.calls[0].get("side", "")), "enemy")
+		assert_eq(int(context.calls[1].get("attack", 0)), 1)
+		assert_eq(str(context.calls[1].get("side", "")), "ally")
+
+
+func test_summon_variants() -> void:
+	_run("summon('snowpea')\nsummon('snowpea', 2)\nsummon('snowpea', -1, 1)")
+	assert_eq(context.calls.size(), 3)
+	if context.calls.size() == 3:
+		assert_true(context.calls[0].get("column") == null, "单参数召唤不指定列")
+		assert_eq(int(context.calls[1].get("column", 0)), 2)
+		assert_eq(int(context.calls[2].get("max_column", 0)), 1)
+
+
+func test_draw_matching_cards() -> void:
+	context.selector_results["hero"] = ["hero:p"]
+	_run("draw_matching_cards(hero, 2, \"kind == 'spell'\", -1)")
+	assert_eq(context.calls.size(), 1)
+	if not context.calls.is_empty():
+		var call: Dictionary = context.calls[0]
+		assert_eq(str(call.get("op", "")), "draw_matching_cards")
+		assert_eq(int(call.get("count", 0)), 2)
+		assert_eq(str(call.get("filter", "")), "kind == 'spell'")
+		assert_eq(int(call.get("cost_delta", 0)), -1)
+
+
+func test_damage_column_relative_variants() -> void:
+	context.entity_facts["self_handle"] = {"column": 2}
+	_run("damage_column_relative(2, 'front')\ndamage_column_relative(3, 'back', 1)")
+	assert_eq(context.calls.size(), 2)
+	if context.calls.size() == 2:
+		assert_eq(int(context.calls[0].get("amount", 0)), 2)
+		assert_eq(str(context.calls[0].get("direction", "")), "front")
+		assert_eq(int(context.calls[0].get("column_offset", -1)), 0, "省略偏移默认 0")
+		assert_eq(int(context.calls[1].get("column_offset", 0)), 1)
+
+
+func test_add_random_cards_inline_bonuses() -> void:
+	context.selector_results["hero"] = ["hero:p"]
+	_run(
+		"add_random_cards_to_deck(hero, 2, \"kind == 'entity'\", -1, 'taunt', 1, 2, 1, 3)\n"
+		+ "add_random_cards_to_hand(hero, 1, \"kind == 'spell'\")"
+	)
+	assert_eq(context.calls.size(), 2)
+	if context.calls.size() < 2:
+		return
+	var deck_call: Dictionary = context.calls[0]
+	assert_eq(str(deck_call.get("zone", "")), "deck")
+	assert_eq(str(deck_call.get("keyword", "")), "taunt")
+	assert_eq(int(deck_call.get("attack_bonus", 0)), 1)
+	assert_eq(int(deck_call.get("health_bonus", 0)), 2)
+	assert_eq(int(deck_call.get("shield_bonus", 0)), 1)
+	assert_eq(int(deck_call.get("keyword_value", 0)), 3)
+	assert_eq(str(context.calls[1].get("zone", "")), "hand", "第二个原语进手牌")
+
+
+func test_damage_targets_array_callback() -> void:
+	context.selector_results["damage_targets"] = ["hurt_1", "hero:z"]
+	_run("deal_damage_each(damage_targets, 1, 2)")
+	assert_eq(context.calls.size(), 2, "数组回调按目标个数逐个结算")
+	if context.calls.size() == 2:
+		assert_eq(int(context.calls[0].get("amount", 0)), 1)
+		assert_eq(int(context.calls[1].get("amount", 0)), 2)
+	context.calls.clear()
+	_run("for_each(damage_targets) as hurt: deal_damage(hurt, 1)")
+	assert_eq(context.calls.size(), 2, "for_each 也应能遍历伤害目标数组")
+	if context.calls.size() == 2:
+		assert_eq(str(context.calls[1].get("target", "")), "hero:z")
+
+
+func test_after_attack_and_damage_dealt_events() -> void:
+	var attack_done: CardEffectScript = CardEffectScript.parse("when after_attack: gain_energy(1)")
+	assert_false(attack_done.has_errors(), "after_attack 事件应可解析：%s" % [attack_done.errors])
+	attack_done.run_event(context, "after_attack", "self_handle")
+	assert_eq(context.calls.size(), 1, "攻击完成事件应触发")
+	if not context.calls.is_empty():
+		assert_eq(str(context.calls[0].get("op", "")), "gain_energy")
+
+	context.calls.clear()
+	var dealt: CardEffectScript = CardEffectScript.parse("when damage_dealt: draw_cards(1)")
+	assert_false(dealt.has_errors(), "damage_dealt 事件应可解析：%s" % [dealt.errors])
+	dealt.run_event(context, "damage_dealt", "self_handle")
+	assert_eq(context.calls.size(), 1, "造成有效伤害事件应触发")
+	if not context.calls.is_empty():
+		assert_eq(str(context.calls[0].get("op", "")), "draw_cards")
+
+
+func test_move_entity_variants() -> void:
+	context.selector_results["chosen"] = ["e1"]
+	_run("move_entity(chosen)")
+	assert_eq(context.calls.size(), 1)
+	if not context.calls.is_empty():
+		assert_eq(str(context.calls[0].get("op", "")), "move_entity_to_chosen_position")
+	context.calls.clear()
+	_run("move_entity(chosen, 2, 1)")
+	assert_eq(context.calls.size(), 1)
+	if not context.calls.is_empty():
+		assert_eq(int(context.calls[0].get("column", 0)), 2)
+		assert_eq(int(context.calls[0].get("slot", 0)), 1)
+
+
+func test_move_entity_failure_is_recorded() -> void:
+	context.selector_results["chosen"] = ["e1"]
+	context.move_succeeds = false
+	var errors: Array[String] = _run("move_entity(chosen)")
+	assert_gt(errors.size(), 0, "移动失败应记录运行错误")
+
+
+func test_gain_attack_and_reduce_cost() -> void:
+	_run("gain_attack(2)\nreduce_cost(1)")
+	assert_eq(context.calls.size(), 2)
+	if context.calls.size() == 2:
+		assert_eq(int(context.calls[0].get("amount", 0)), 2)
+		assert_eq(int(context.calls[1].get("amount", 0)), 1)
+
+
+func test_place_environment() -> void:
+	_run("place_environment(0, 'water')")
+	assert_eq(context.calls.size(), 1)
+	if not context.calls.is_empty():
+		assert_eq(str(context.calls[0].get("op", "")), "place_environment")
+		assert_eq(str(context.calls[0].get("card", "")), "water")
+
+
+func test_choose_column_is_declaration_only() -> void:
+	var script: CardEffectScript = CardEffectScript.parse(
+		"choose_column()\nplace_environment(0, 'water')"
+	)
+	assert_false(script.has_errors(), "choose_column 应可解析：%s" % [script.errors])
+	assert_true(script.column_requirement(), "choose_column 应被识别为需要选列")
+	script.run_on_play(context)
+	assert_eq(context.calls.size(), 1, "choose_column 本身不产生原语调用")
+
+
+func test_untargetable_target_is_skipped() -> void:
+	context.selector_results["all_enemies"] = ["hidden", "visible"]
+	context.blocked_targets = ["hidden"]
+	_run("deal_damage(all_enemies, 2)")
+	assert_eq(context.calls.size(), 1, "can_target 为 false 的目标应被跳过")
+	if not context.calls.is_empty():
+		assert_eq(str(context.calls[0].get("target", "")), "visible")
+
+
+func test_destroy_bypasses_can_target() -> void:
+	context.selector_results["all_enemies"] = ["hidden"]
+	context.blocked_targets = ["hidden"]
+	_run("destroy(all_enemies)")
+	assert_eq(context.calls.size(), 1, "消灭不检查 can_target")
+
+
+func test_declaration_primitives_are_noop_at_runtime() -> void:
+	var errors: Array[String] = _run(
+		"evolve(\"name == 'gnoll'\")\n"
+		+ "base()\n"
+		+ "aura_buff(self, 'taunt', 0, 0, false)\n"
+		+ "aura_hand_cost('ally', \"kind == 'spell'\", -1)\n"
+		+ "aura_spell_cost('enemy', 1)\n"
+		+ "double_death_effects()\n"
+		+ "in_hand()\n"
+		+ "in_deck()"
+	)
+	assert_eq(errors.size(), 0, "声明类原语不应产生运行错误：%s" % [errors])
+	assert_eq(context.calls.size(), 0, "声明类原语在运行时是空操作")
+
+
+func test_query_functions_delegate_to_context() -> void:
+	context.query_results["entities_in_column"] = ["e1", "e2"]
+	context.query_results["random_targets"] = ["r1"]
+	context.query_results["count_buff_in_columns"] = 2
+	context.query_results["buried_in_columns"] = ["b1"]
+	_run("for_each(entities_in_column(-1, 1, 'enemy', 2)) as e: deal_damage(e, 1)")
+	assert_eq(context.calls.size(), 2, "entities_in_column 结果应可循环")
+	if context.calls.size() == 2:
+		assert_eq(str(context.calls[1].get("target", "")), "e2")
+
+	context.calls.clear()
+	_run("for_each(random_targets(2, 'all_enemies')) as r: heal(r, 1)")
+	assert_eq(context.calls.size(), 1, "random_targets 结果应可循环")
+	if not context.calls.is_empty():
+		assert_eq(str(context.calls[0].get("target", "")), "r1")
+
+	context.calls.clear()
+	_run("if count_buff_in_columns('ally', 0, 4, 'frozen') == 2:\n    gain_energy(1)")
+	assert_eq(context.calls.size(), 1, "count_buff_in_columns 应可驱动条件")
+
+	context.calls.clear()
+	_run("for_each(buried_in_columns('ally', 0, 4)) as b: destroy(b)")
+	assert_eq(context.calls.size(), 1, "buried_in_columns 结果应可循环")
+	if not context.calls.is_empty():
+		assert_eq(str(context.calls[0].get("target", "")), "b1")
