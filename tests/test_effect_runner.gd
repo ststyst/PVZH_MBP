@@ -529,6 +529,113 @@ func test_destroy_bypasses_can_target() -> void:
 	assert_eq(context.calls.size(), 1, "消灭不检查 can_target")
 
 
+# ===== highest / lowest：按当前数值挑选目标 =====
+
+
+func test_highest_by_attack_picks_single() -> void:
+	context.selector_results["all_enemies"] = ["e1", "e2", "e3"]
+	context.entity_facts["e1"] = {"attack": 3}
+	context.entity_facts["e2"] = {"attack": 7}
+	context.entity_facts["e3"] = {"attack": 5}
+	_run("deal_damage(highest(all_enemies, 'attack'), 2)")
+	assert_eq(context.calls.size(), 1, "只应命中攻击力最高的那个")
+	if not context.calls.is_empty():
+		assert_eq(str(context.calls[0].get("target", "")), "e2")
+		assert_eq(int(context.calls[0].get("amount", 0)), 2)
+
+
+func test_lowest_by_health_picks_single() -> void:
+	context.selector_results["all_allies"] = ["a1", "a2", "a3"]
+	context.entity_facts["a1"] = {"health": 4}
+	context.entity_facts["a2"] = {"health": 1}
+	context.entity_facts["a3"] = {"health": 6}
+	_run("buff_stats(lowest(all_allies, 'health'), 2, 2)")
+	assert_eq(context.calls.size(), 1, "只应命中当前生命最低的友方")
+	if not context.calls.is_empty():
+		assert_eq(str(context.calls[0].get("target", "")), "a2")
+
+
+func test_highest_ties_include_all() -> void:
+	context.selector_results["all_enemies"] = ["a", "b", "c"]
+	context.entity_facts["a"] = {"attack": 5}
+	context.entity_facts["b"] = {"attack": 5}
+	context.entity_facts["c"] = {"attack": 1}
+	_run("deal_damage(highest(all_enemies, 'attack'), 2)")
+	assert_eq(context.calls.size(), 2, "并列最高的实体都应被命中")
+	if context.calls.size() == 2:
+		assert_eq(str(context.calls[0].get("target", "")), "a")
+		assert_eq(str(context.calls[1].get("target", "")), "b")
+
+
+func test_highest_by_defense_and_lowest_by_cost() -> void:
+	context.selector_results["all_enemies"] = ["e1", "e2", "e3"]
+	context.entity_facts["e1"] = {"shield": 0, "cost": 1}
+	context.entity_facts["e2"] = {"shield": 4, "cost": 5}
+	context.entity_facts["e3"] = {"shield": 2, "cost": 2}
+	_run(
+		"give_keyword(highest(all_enemies, 'defense'), 'taunt')\n"
+		+ "give_keyword(lowest(all_enemies, 'cost'), 'armored')"
+	)
+	assert_eq(context.calls.size(), 2)
+	if context.calls.size() == 2:
+		assert_eq(str(context.calls[0].get("target", "")), "e2", "防御最高应命中 e2")
+		assert_eq(str(context.calls[1].get("target", "")), "e1", "费用最低应命中 e1")
+
+
+func test_highest_unknown_stat_is_error() -> void:
+	context.selector_results["all_enemies"] = ["e1"]
+	var errors: Array[String] = _run("deal_damage(highest(all_enemies, 'luck'), 1)")
+	assert_gt(errors.size(), 0, "未知数值应记录运行错误")
+
+
+func test_highest_empty_scope_is_noop() -> void:
+	context.selector_results["all_enemies"] = []
+	var errors: Array[String] = _run("deal_damage(highest(all_enemies, 'attack'), 1)")
+	assert_eq(errors.size(), 0, "空目标集合不应报错")
+	assert_eq(context.calls.size(), 0, "空目标集合不应产生原语调用")
+
+
+func test_highest_composes_with_for_each() -> void:
+	context.selector_results["all_enemies"] = ["e1", "e2"]
+	context.entity_facts["e1"] = {"attack": 9}
+	context.entity_facts["e2"] = {"attack": 1}
+	_run("for_each(highest(all_enemies, 'attack')) as e: gain_energy(1)")
+	assert_eq(context.calls.size(), 1, "for_each 应能遍历 highest 的结果")
+
+
+func test_highest_over_query_results() -> void:
+	context.query_results["entities_in_column"] = ["c1", "c2", "c3"]
+	context.entity_facts["c1"] = {"health": 2}
+	context.entity_facts["c2"] = {"health": 8}
+	context.entity_facts["c3"] = {"health": 5}
+	_run("destroy(highest(entities_in_column(-1, 1, 'enemy'), 'health'))")
+	assert_eq(context.calls.size(), 1)
+	if not context.calls.is_empty():
+		assert_eq(str(context.calls[0].get("target", "")), "c2", "查询结果也应可作为挑选范围")
+
+
+func test_highest_with_predicate_narrows_scope() -> void:
+	context.selector_results["all_enemies"] = ["small", "tank", "fast"]
+	context.entity_facts["small"] = {"attack": 9, "health": 2}
+	context.entity_facts["tank"] = {"attack": 4, "health": 9}
+	context.entity_facts["fast"] = {"attack": 6, "health": 7}
+	_run("deal_damage(highest(all_enemies, 'attack', health >= 5), 1)")
+	assert_eq(context.calls.size(), 1, "只有血量 >= 5 的候选参与比较")
+	if not context.calls.is_empty():
+		assert_eq(str(context.calls[0].get("target", "")), "fast")
+
+
+func test_lowest_with_keyword_predicate() -> void:
+	context.selector_results["all_allies"] = ["a", "b", "c"]
+	context.entity_facts["a"] = {"cost": 1, "keywords": ["taunt"]}
+	context.entity_facts["b"] = {"cost": 3, "keywords": []}
+	context.entity_facts["c"] = {"cost": 2, "keywords": ["taunt"]}
+	_run("apply_buff(lowest(all_allies, 'cost', has_keyword('taunt')), 'frozen')")
+	assert_eq(context.calls.size(), 1)
+	if not context.calls.is_empty():
+		assert_eq(str(context.calls[0].get("target", "")), "a", "无嘲讽的 b 即使费用更低也被排除")
+
+
 func test_declaration_primitives_are_noop_at_runtime() -> void:
 	var errors: Array[String] = _run(
 		"evolve(\"name == 'gnoll'\")\n"

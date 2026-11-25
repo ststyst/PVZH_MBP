@@ -64,7 +64,7 @@
 - 变量：`x = 2 + 3 * 2`（后续语句可用 `x`）
 - 四则运算：`+ - * /`（整数运算，除数为 0 会记录运行错误）
 - 比较：`== != < <= > >=`；逻辑：`and` `or` `not`
-- 查询函数：`attack(target)`、`health(target)`、`max_health(target)`、`shield(target)`、`defense(target)`、`cost(target)`、`min(a,b)`、`max(a,b)`、`has_tribe("pea")`、`has_tribe("pea", target)`、`has_keyword("taunt")`、`has_keyword("taunt", target)`、`keyword_value("first_strike", target)`、`has_buff("frozen", target)`、`marker_count("名字")`（`marker_count` 用于玩家特殊标志物数量）
+- 查询函数：`attack(target)`、`health(target)`、`max_health(target)`、`shield(target)`、`defense(target)`、`cost(target)`、`highest(目标集合, 数值名[, 条件])`、`lowest(目标集合, 数值名[, 条件])`、`min(a,b)`、`max(a,b)`、`has_tribe("pea")`、`has_tribe("pea", target)`、`has_keyword("taunt")`、`has_keyword("taunt", target)`、`keyword_value("first_strike", target)`、`has_buff("frozen", target)`、`marker_count("名字")`（`marker_count` 用于玩家特殊标志物数量）
 - 单参数形式读“当前作用域目标”（事件触发者 / `for_each` 当前目标），双参数形式显式指定实体；`defense` 与 `shield` 等价
 - 字符串可用单引号或双引号：`side == 'enemy'` / `side == "enemy"`
 
@@ -696,6 +696,42 @@ heal(all_allies_and_hero, 5)
 - `all_heroes_and_entities`
 
 `random_targets(count, selector)` 会从候选中随机取最多 count 个目标；`deal_damage_each(targets, 1, 2, 4)` 按顺序分配不同伤害。
+
+### 按数值挑选目标（`highest` / `lowest`）
+
+在任意目标集合里挑出**当前数值**最高或最低的实体，把结果当普通目标传给任意原语：
+
+```text
+deal_damage(highest(all_enemies, 'attack'), 3)
+destroy(lowest(all_allies, 'health'))
+apply_buff(lowest(enemy_entities, 'defense'), 'frozen')
+give_keyword(highest(all_allies, 'cost'), 'team_up')
+for_each(highest(all_enemies, 'health')) as e: gain_energy(1)
+```
+
+- 形式：`highest(<目标集合>, <数值名>[, <条件>])` / `lowest(<目标集合>, <数值名>[, <条件>])`
+- 第三个参数可选：**逐目标条件**。只有满足条件的候选才参与比较，条件里可以直接读该目标自己的事实变量（`attack` / `health` / `shield` / `cost` / `class` / `tribes` / `keywords` …）与查询函数：
+
+```text
+deal_damage(highest(all_enemies, 'attack', health >= 5), 3)
+apply_buff(lowest(all_allies, 'cost', has_keyword('taunt')), 'frozen')
+```
+
+- `<目标集合>`：任何能得到句柄数组的表达式——选择器（`all_enemies` / `all_allies` / `enemy_entities` …）、`entities_in_column(...)`、`random_targets(...)`、`damage_targets`、循环变量等。
+- `<数值名>`（大小写不敏感，中英文都可用）：
+
+| 数值名 | 含义 |
+|---|---|
+| `attack` / `攻击` | 当前攻击力 |
+| `health` / `生命` | 当前生命值 |
+| `max_health` / `生命上限` | 生命上限 |
+| `shield` / `defense` / `防御` | 当前防御值（两者等价） |
+| `cost` / `费用` | 当前费用 |
+
+- 结果是**数组**：并列极值的实体会全部返回，所以多目标原语会逐个生效；只接受单个目标的原语（`apply_buff` / `remove_buff` / `force_attack` / `move_entity` / `remove_entity` 等）在并列时会记录运行错误。
+- 空集合返回空数组：不执行、不报错。
+- 只按数值挑选，**不检查**锦囊免疫 / 隐形等目标限制；具体原语仍按自身规则过滤（例如锦囊伤害仍会跳过锦囊免疫目标）。
+- 读到的都是**当前值**（已结算 Buff、光环、环境修正），不是卡牌数据库里的原始数值。
 
 ### 生命值与防御
 

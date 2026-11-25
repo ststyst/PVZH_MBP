@@ -201,3 +201,16 @@ func test_for_each_rejects_selector_name() -> void:
 func test_for_each_requires_parentheses() -> void:
 	var script: CardEffectScript = _parse("for_each all_enemies: deal_damage(it, 1)")
 	assert_true(script.has_errors(), "for_each 的目标必须写在括号里")
+
+
+func test_highest_and_lowest_parse() -> void:
+	var highest_script: CardEffectScript = _parse("deal_damage(highest(all_enemies, 'attack'), 3)")
+	assert_false(highest_script.has_errors(), "highest 应可解析：%s" % [highest_script.errors])
+	assert_eq(highest_script.on_play.size(), 1)
+	var lowest_script: CardEffectScript = _parse("destroy(lowest(all_allies, 'cost'))")
+	assert_false(lowest_script.has_errors(), "lowest 应可解析：%s" % [lowest_script.errors])
+
+
+func test_highest_requires_two_args() -> void:
+	var script: CardEffectScript = _parse("deal_damage(highest(all_enemies), 3)")
+	assert_true(script.has_errors(), "highest 需要目标集合与数值两个参数")

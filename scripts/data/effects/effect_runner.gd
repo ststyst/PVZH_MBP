@@ -478,6 +478,8 @@ func _eval_call(expression: Dictionary, facts: Dictionary) -> Variant:
 			return _eval_membership(function_name, arguments, facts, expression)
 		"keyword_value":
 			return _eval_keyword_value(arguments, facts, expression)
+		"highest", "lowest":
+			return _eval_extreme_targets(function_name, arguments, facts, expression)
 		"min":
 			return mini(_as_int(_eval(arguments[0], facts)), _as_int(_eval(arguments[1], facts)))
 		"max":
@@ -550,6 +552,68 @@ func _eval_keyword_value(arguments: Array, facts: Dictionary, expression: Dictio
 	if keyword_values is Dictionary:
 		return _as_int(keyword_values.get(keyword_name, 0))
 	return 0
+
+
+## highest / lowest：在一个目标集合里按某个数值挑出最高/最低的实体。
+## 可选第三个参数是**逐目标条件**：只有满足条件的候选才参与比较
+## （条件里可读该目标自己的 attack/health/defense/cost/side/class/tribes/keywords 等事实）。
+## 并列极值的实体会**全部**返回（结果是数组，可直接传给任何目标原语）。
+## 只按数值挑选，不检查锦囊免疫等目标限制；具体原语仍会按自身规则过滤。
+func _eval_extreme_targets(
+	function_name: String, arguments: Array, facts: Dictionary, expression: Dictionary
+) -> Array:
+	var line: int = _line_of(expression)
+	var handles: Array = _resolve_argument_target(arguments[0], facts)
+	var stat_text: String = _as_string(_eval(arguments[1], facts))
+	var stat_key: String = _normalize_stat_key(stat_text)
+	if stat_key.is_empty():
+		_error(
+			"%s 不支持的数值：%s（可用 attack / health / max_health / defense / shield / cost）"
+			% [function_name, stat_text],
+			line
+		)
+		return []
+	var predicate: Variant = null
+	if arguments.size() > 2:
+		predicate = arguments[2]
+	var wants_lowest: bool = function_name == "lowest"
+	var best_value: int = 0
+	var best_handles: Array = []
+	for handle: Variant in handles:
+		if handle == null:
+			continue
+		var handle_facts: Dictionary = _entity_facts(handle)
+		if predicate != null and not _truthy(_eval(predicate, handle_facts)):
+			continue
+		var value: int = _as_int(handle_facts.get(stat_key, 0))
+		if best_handles.is_empty():
+			best_value = value
+			best_handles.append(handle)
+			continue
+		if value == best_value:
+			best_handles.append(handle)
+			continue
+		var should_replace: bool = value < best_value if wants_lowest else value > best_value
+		if should_replace:
+			best_value = value
+			best_handles = [handle]
+	return best_handles
+
+
+func _normalize_stat_key(stat_text: String) -> String:
+	var key: String = stat_text.strip_edges().to_lower()
+	match key:
+		"attack", "atk", "攻击", "攻击力":
+			return "attack"
+		"health", "hp", "生命", "生命值", "当前生命":
+			return "health"
+		"max_health", "maxhp", "生命上限":
+			return "max_health"
+		"shield", "defense", "defence", "防御", "防御力", "护盾", "护甲":
+			return "shield"
+		"cost", "费用":
+			return "cost"
+	return ""
 
 
 func _eval_binary(expression: Dictionary, facts: Dictionary) -> Variant:

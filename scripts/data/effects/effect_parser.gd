@@ -147,6 +147,8 @@ const QUERIES: Dictionary = {
 	"has_keyword": {"min": 1, "max": 2},
 	"keyword_value": {"min": 1, "max": 2},
 	"has_buff": {"min": 1, "max": 2},
+	"highest": {"min": 2, "max": 3},
+	"lowest": {"min": 2, "max": 3},
 	"min": {"min": 2, "max": 2},
 	"max": {"min": 2, "max": 2},
 	"marker_count": {"min": 1, "max": 1},
