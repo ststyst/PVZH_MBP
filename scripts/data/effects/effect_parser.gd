@@ -31,6 +31,7 @@ const EVENTS: Array[String] = [
 	"attack_changed",
 	"health_changed",
 	"damaged",
+	"hero_damaged",
 	"turn_start",
 	"turn_end",
 	"ally_die",
@@ -53,6 +54,7 @@ const EVENTS: Array[String] = [
 const SELECTORS: Array[String] = [
 	"self",
 	"event",
+	"damage_source",
 	"chosen",
 	"damage_targets",
 	"hero",
@@ -150,6 +152,7 @@ const QUERIES: Dictionary = {
 	"highest": {"min": 2, "max": 3},
 	"lowest": {"min": 2, "max": 3},
 	"entities_matching": {"min": 1, "max": 2},
+	"is_entity": {"min": 1, "max": 1},
 	"min": {"min": 2, "max": 2},
 	"max": {"min": 2, "max": 2},
 	"marker_count": {"min": 1, "max": 1},

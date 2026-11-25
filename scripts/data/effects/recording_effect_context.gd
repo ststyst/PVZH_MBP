@@ -34,6 +34,12 @@ var event_target: Variant = null
 var chosen_targets: Array = []
 var zone: String = ""
 
+## damaged / hero_damaged 事件作用域里的伤害来源与数值。
+var damage_source: Variant = null
+var damage_amount: int = 0
+## is_entity(damage_source) 判定用：哪些句柄算“实体”。
+var entity_handles: Array = []
+
 ## 原语成功/失败开关，供用例断言失败分支。
 var move_succeeds: bool = true
 var choose_succeeds: bool = true
@@ -61,6 +67,9 @@ func reset() -> void:
 	event_target = null
 	chosen_targets.clear()
 	zone = ""
+	damage_source = null
+	damage_amount = 0
+	entity_handles.clear()
 	markers.clear()
 	blocked_targets.clear()
 	move_succeeds = true
@@ -103,6 +112,26 @@ func get_zone() -> String:
 	return zone
 
 
+func set_damage_source(handle) -> void:
+	damage_source = handle
+
+
+func get_damage_source() -> Variant:
+	return damage_source
+
+
+func set_damage_amount(amount: int) -> void:
+	damage_amount = amount
+
+
+func get_damage_amount() -> int:
+	return damage_amount
+
+
+func is_entity_handle(handle) -> bool:
+	return entity_handles.has(handle)
+
+
 func resolve_selector(selector: String) -> Array:
 	if selector == "self":
 		return [] if self_target == null else [self_target]
@@ -110,6 +139,8 @@ func resolve_selector(selector: String) -> Array:
 		return [] if event_target == null else [event_target]
 	if selector == "chosen" and not selector_results.has("chosen") and not chosen_targets.is_empty():
 		return chosen_targets.duplicate()
+	if selector == "damage_source":
+		return [] if damage_source == null else [damage_source]
 	var handles: Variant = selector_results.get(selector, [])
 	return handles if handles is Array else []
 

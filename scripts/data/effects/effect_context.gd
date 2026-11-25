@@ -57,6 +57,32 @@ func filter_values(_handle) -> Dictionary:
 	return {}
 
 
+# ----- 伤害类事件的上下文事实 -----
+# damaged / hero_damaged 事件派发期间，战斗层会临时写入伤害来源与数值；
+# 事件结束后恢复。没有来源（锦囊/环境/无来源效果伤害）时来源为 null。
+
+func set_damage_source(_handle) -> void:
+	pass
+
+
+func get_damage_source() -> Variant:
+	return null
+
+
+func set_damage_amount(_amount: int) -> void:
+	pass
+
+
+func get_damage_amount() -> int:
+	return 0
+
+
+## 句柄是否指向一个“实体”（战斗层的 BattleEntity）；
+## 英雄句柄、卡牌实例与 null 都返回 false。
+func is_entity_handle(_handle) -> bool:
+	return false
+
+
 # ----- 原语（以单个实体句柄为参数） -----
 
 func summon(_card_name: String, _column: Variant = null, _max_column: Variant = null) -> Array:

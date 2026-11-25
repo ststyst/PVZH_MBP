@@ -499,6 +499,10 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 - `hero_ward` 英雄壁垒：`damage_hero` 在护盾吸收之后把本次伤害压到「英雄生命 - 1」，
   因此不会触发基于致命伤害的充能与致命保护；英雄已在 1 点时伤害归零
 - `BattleEngine.has_side_keyword(side, keyword)` 判断某阵营是否有在场实体拥有该词缀（持续效果用）
+- 伤害类事件上下文：`EffectContext.set_damage_source/get_damage_source`、`set_damage_amount/get_damage_amount`、
+  `is_entity_handle(handle)`；战斗层在发 `damaged` / `hero_damaged` 时写入并还原
+- `damage_source` 选择器与 `is_entity()` 查询：让 `damaged` 能反制伤害来源，且无来源时安全
+- `hero_damaged`：英雄受到有效伤害时触发，事件目标是英雄句柄；环境牌不监听该事件
 - 充能护盾在真实受击后结算；满充能触发免疫、耐久 -1，并给该英雄发放随机超能力进入特殊回合
 - 必中（`bullseye`）伤害不增加充能护盾充能
 - `CardEffectScript.target_requirement()` 返回入场/锦囊 `choose(count, selector)` 的目标需求

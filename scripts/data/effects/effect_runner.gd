@@ -50,15 +50,32 @@ func run_program_event(program: Dictionary, event_name: String, event_handle) ->
 	_variables.clear()
 	_facts.clear()
 	var triggers: Array = program.get("events", [])
+	var event_facts: Dictionary = _event_facts(event_handle)
 	for trigger: Dictionary in triggers:
 		if str(trigger.get("event", "")) != event_name:
 			continue
-		if not _matches_trigger(trigger, event_handle):
+		if not _matches_trigger(trigger, event_handle, event_facts):
 			continue
 		context.set_event_target(event_handle)
-		_exec_block(trigger.get("body", []))
+		_exec_block(trigger.get("body", []), event_facts)
 		context.set_event_target(null)
 	return errors
+
+
+## 事件作用域事实：事件目标的事实 + zone + 伤害事件相关字段。
+## 这些变量在事件过滤条件和事件块里都可直接读取。
+func _event_facts(event_handle) -> Dictionary:
+	var facts: Dictionary = _default_facts()
+	if context != null:
+		var described: Dictionary = context.describe_entity(event_handle) if event_handle != null else {}
+		for key: Variant in described.keys():
+			facts[str(key)] = described[key]
+		if not described.has("defense"):
+			facts["defense"] = int(facts.get("shield", 0))
+		facts["zone"] = context.get_zone()
+		facts["damage_amount"] = context.get_damage_amount()
+		facts["damage_source_is_entity"] = context.is_entity_handle(context.get_damage_source())
+	return facts
 
 
 # ----- 语句 -----
@@ -117,9 +134,14 @@ func _exec_for_each(statement: Dictionary) -> void:
 		_variables.erase(loop_name)
 
 
+## 事实缺省值（深拷贝，避免循环之间互相污染）。
+func _default_facts() -> Dictionary:
+	return DEFAULT_FACTS.duplicate(true)
+
+
 ## 目标事实 = 缺省值 + 战斗层 describe_entity 的结果；defense 是 shield 的别名。
 func _entity_facts(handle) -> Dictionary:
-	var facts: Dictionary = DEFAULT_FACTS.duplicate(true)
+	var facts: Dictionary = _default_facts()
 	var described: Dictionary = {}
 	if context != null:
 		described = context.describe_entity(handle)
@@ -404,7 +426,7 @@ func _exec_target_primitive(primitive_name: String, arguments: Array, line: int)
 
 # ----- 事件 -----
 
-func _matches_trigger(trigger: Dictionary, event_handle) -> bool:
+func _matches_trigger(trigger: Dictionary, event_handle, facts: Dictionary) -> bool:
 	var predicate: Variant = trigger.get("predicate")
 	if predicate == null:
 		# 无过滤条件：普通实体默认只响应自己；环境/底座监听其所在列/挂载。
@@ -413,8 +435,6 @@ func _matches_trigger(trigger: Dictionary, event_handle) -> bool:
 		return _is_self(event_handle) or (context != null and context.get_zone() in ["environment", "base", "hand", "deck"])
 	if context == null:
 		return false
-	var facts: Dictionary = _entity_facts(event_handle)
-	facts["zone"] = context.get_zone()
 	return _truthy(_eval(predicate, facts))
 
 
@@ -476,6 +496,11 @@ func _eval_call(expression: Dictionary, facts: Dictionary) -> Variant:
 			return _as_int(entity_facts.get(stat_key, 0))
 		"has_tribe", "has_keyword", "has_buff":
 			return _eval_membership(function_name, arguments, facts, expression)
+		"is_entity":
+			var entity_candidates: Array = _resolve_argument_target(arguments[0], facts)
+			if entity_candidates.size() != 1:
+				return false
+			return context != null and context.is_entity_handle(entity_candidates[0])
 		"keyword_value":
 			return _eval_keyword_value(arguments, facts, expression)
 		"highest", "lowest":

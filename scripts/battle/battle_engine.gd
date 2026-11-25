@@ -84,6 +84,10 @@ var _special_turn_end_resolved: bool = false
 var _special_resolving: bool = false
 ## 当前结算链中，实体造成有效伤害的目标：entity_id -> [target handles]
 var _pending_damage_dealt: Dictionary = {}
+## damaged / hero_damaged 事件派发期间的伤害来源与有效伤害数值
+## （事件作用域事实，派发结束后恢复）。
+var _current_damage_source: Variant = null
+var _current_damage_amount: int = 0
 var _effect_resolution_count: int = 0
 var _effect_limit_hit: bool = false
 ## 本次战斗轮中已经触发过先攻的实体 id，保证整轮只触发一次
@@ -1895,7 +1899,13 @@ func damage_entity(entity: BattleEntity, amount: int, source_keywords: Array = [
 		entity.health, entity.shield,
 	])
 	if damage > 0:
+		var previous_source: Variant = _current_damage_source
+		var previous_amount: int = _current_damage_amount
+		_current_damage_source = source_entity
+		_current_damage_amount = damage
 		_fire_event("damaged", entity)
+		_current_damage_source = previous_source
+		_current_damage_amount = previous_amount
 	if damage > 0 and entity.has_buff("hatred") and source_entity != null and source_entity.alive and source_entity.side != entity.side:
 		destroy_handle(source_entity)
 	if damage > 0:
@@ -2283,6 +2293,15 @@ func damage_hero(side: String, amount: int, source_keywords: Array = [], source_
 			return
 	state.hero_health -= damage
 	_record_damage_dealt(source_entity, hero_handle(side))
+	# hero_damaged：事件目标是受伤的英雄句柄；携带伤害来源与数值。
+	# 与 damaged 不同，英雄没有自己的技能，监听方必须写过滤条件（如 side == 'ally'）。
+	var previous_hero_source: Variant = _current_damage_source
+	var previous_hero_amount: int = _current_damage_amount
+	_current_damage_source = source_entity
+	_current_damage_amount = damage
+	_fire_event("hero_damaged", hero_handle(side))
+	_current_damage_source = previous_hero_source
+	_current_damage_amount = previous_hero_amount
 	_check_game_over()
 	hero_damaged.emit(side, damage, source_keywords.duplicate())
 	_log("%s 英雄受到 %d 点伤害（来源：%s；生命 %d，护盾 %d）" % [
@@ -2645,6 +2664,8 @@ func _fire_event(event_name: String, event_entity: Variant, chosen_targets: Arra
 		context.set_damage_targets(damage_targets_for_event)
 		if not chosen_targets.is_empty():
 			context.set_chosen_targets(chosen_targets)
+		context.set_damage_source(_current_damage_source)
+		context.set_damage_amount(_current_damage_amount)
 		var errors: Array[String] = listener.card.ability_script.run_event(context, event_name, event_entity)
 		for message: String in errors:
 			_log("效果错误（%s）：%s" % [listener.display_name(), message])
@@ -2652,7 +2673,8 @@ func _fire_event(event_name: String, event_entity: Variant, chosen_targets: Arra
 			_emit_animation_cue("ability", listener, event_entity)
 	if event_name != "die" and event_entity != null:
 		_trigger_scoped_zone_effects(event_name, event_entity)
-	if event_name != "turn_start" and event_name != "turn_end":
+	# 英雄没有所在列，环境牌不监听 hero_damaged（否则会按列重复触发 5 次）。
+	if event_name != "turn_start" and event_name != "turn_end" and event_name != "hero_damaged":
 		_fire_environment_event(event_name, event_entity)
 	_refresh_all_counter_bonuses()
 	_flush_damage_dealt()
@@ -2677,6 +2699,8 @@ func _fire_environment_event(event_name: String, event_entity: Variant, only_col
 		context.set_source_name(card.display_name())
 		if event_entity != null:
 			context.set_event_target(event_entity)
+		context.set_damage_source(_current_damage_source)
+		context.set_damage_amount(_current_damage_amount)
 		var errors: Array[String] = card.ability_script.run_event(context, event_name, event_entity)
 		for message: String in errors:
 			_log("环境效果错误（第 %d 列）：%s" % [column + 1, message])
@@ -3084,6 +3108,8 @@ func _trigger_scoped_zone_effects(event_name: String, event_entity: Variant) -> 
 			context.set_source_name(card.display_name())
 			context.set_self_target(instance)
 			context.set_event_target(event_entity)
+			context.set_damage_source(_current_damage_source)
+			context.set_damage_amount(_current_damage_amount)
 			var errors: Array[String] = card.ability_script.run_event(context, event_name, event_entity)
 			for message: String in errors:
 				_log("区域效果错误（%s·%s）：%s" % [card.display_name(), zone, message])

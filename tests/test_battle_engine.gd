@@ -2437,3 +2437,95 @@ func test_damaged_and_damage_dealt_are_separate_triggers() -> void:
 	assert_true(engine.force_entity_attack(attacker2), "该列没有敌方实体，应攻击英雄")
 	assert_eq(p_state.marker_count("source_trigger"), 2, "打英雄同样触发 damage_dealt")
 	assert_eq(z_state.marker_count("target_trigger"), 1, "英雄受伤不会触发 damaged")
+
+
+func test_damaged_exposes_entity_source() -> void:
+	var engine: BattleEngine = _started_engine()
+	var receiver_card: CardData = _make_test_card(
+		"pvzh:test_damaged_source_receiver",
+		"when damaged:\n    if is_entity(damage_source):\n        apply_buff(damage_source, 'hatred')"
+	)
+	receiver_card.health = 8
+	var receiver: BattleEntity = engine.summon_card("z", receiver_card, 1, 0)
+	var attacker_card: CardData = _make_test_card("pvzh:test_damaged_source_dealer", "")
+	attacker_card.attack = 2
+	attacker_card.health = 5
+	var attacker: BattleEntity = engine.summon_card("p", attacker_card, 1, 0)
+	assert_true(engine.force_entity_attack(attacker))
+	assert_true(receiver.alive, "目标应存活以便观察效果")
+	assert_true(attacker.has_buff("hatred"), "受伤方应能通过 damage_source 给来源施加 Buff")
+
+
+func test_damaged_source_is_null_for_spell_damage() -> void:
+	var engine: BattleEngine = _started_engine()
+	var receiver_card: CardData = _make_test_card(
+		"pvzh:test_damaged_null_receiver",
+		"when damaged:\n    if is_entity(damage_source):\n        add_marker('got_source', 1)"
+	)
+	receiver_card.health = 8
+	var receiver: BattleEntity = engine.summon_card("z", receiver_card, 1, 0)
+	var spell: CardData = _make_test_card("pvzh:test_damaged_null_spell", "deal_damage(enemy_entities, 2)")
+	spell.kind = "spell"
+	spell.cost = 1
+	_set_hand(engine, "p", [spell.card_id])
+	engine.players["p"].energy = 10
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "p"
+	assert_true(bool(engine.play_card("p", 0, {}).get("ok", false)))
+	assert_eq(receiver.health, 6, "锦囊伤害应正常生效")
+	assert_eq(engine.players["p"].marker_count("got_source"), 0, "锦囊伤害没有实体来源")
+	var error_count: int = 0
+	for entry: String in engine.log_entries:
+		if entry.begins_with("效果错误"):
+			error_count += 1
+	assert_eq(error_count, 0, "来源为 null 时不应产生运行错误")
+
+
+func test_damaged_can_destroy_entity_source() -> void:
+	var engine: BattleEngine = _started_engine()
+	var rose_card: CardData = _make_test_card(
+		"pvzh:test_thorn_rose_style",
+		"when damaged(side == 'ally'):\n    if is_entity(damage_source):\n        destroy(damage_source)"
+	)
+	rose_card.health = 6
+	engine.summon_card("p", rose_card, 1, 0)
+	var victim_card: CardData = _make_test_card("pvzh:test_thorn_rose_victim", "")
+	victim_card.health = 8
+	var victim: BattleEntity = engine.summon_card("p", victim_card, 2, 0)
+	var attacker_card: CardData = _make_test_card("pvzh:test_thorn_rose_attacker", "")
+	attacker_card.attack = 2
+	attacker_card.health = 5
+	var attacker: BattleEntity = engine.summon_card("z", attacker_card, 2, 0)
+	assert_true(engine.force_entity_attack(attacker))
+	engine._flush_deaths()
+	assert_false(attacker.is_alive(), "友方受伤时，监听者应消灭伤害来源实体")
+	assert_true(victim.alive, "受伤的友方应存活（本次伤害不足以致死）")
+
+
+func test_hero_damaged_event_filters_by_side() -> void:
+	var engine: BattleEngine = _started_engine()
+	var watcher_card: CardData = _make_test_card(
+		"pvzh:test_hero_damaged_watcher",
+		"when hero_damaged(side == 'ally'):\n    add_marker('own_hero_hurt', 1)"
+	)
+	engine.summon_card("p", watcher_card, 1, 0)
+	engine.damage_hero("p", 2)
+	assert_eq(engine.players["p"].marker_count("own_hero_hurt"), 1, "我方英雄受伤应触发")
+	engine.damage_hero("z", 2)
+	assert_eq(engine.players["p"].marker_count("own_hero_hurt"), 1, "敌方英雄受伤不应触发")
+
+
+func test_hero_damaged_exposes_source_and_amount() -> void:
+	var engine: BattleEngine = _started_engine()
+	var watcher_card: CardData = _make_test_card(
+		"pvzh:test_hero_damaged_source",
+		"when hero_damaged(side == 'ally' and is_entity(damage_source) and damage_amount >= 3):\n"
+		+ "    give_keyword(damage_source, 'armored')"
+	)
+	engine.summon_card("p", watcher_card, 1, 0)
+	var attacker_card: CardData = _make_test_card("pvzh:test_hero_damaged_attacker", "")
+	attacker_card.attack = 3
+	attacker_card.health = 5
+	var attacker: BattleEntity = engine.summon_card("z", attacker_card, 2, 0)
+	assert_true(engine.force_entity_attack(attacker), "该列没有 p 实体，应攻击 p 英雄")
+	assert_true(attacker.has_keyword("armored"), "hero_damaged 应能拿到伤害来源并施加效果")

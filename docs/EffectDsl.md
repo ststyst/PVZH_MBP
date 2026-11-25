@@ -64,7 +64,7 @@
 - 变量：`x = 2 + 3 * 2`（后续语句可用 `x`）
 - 四则运算：`+ - * /`（整数运算，除数为 0 会记录运行错误）
 - 比较：`== != < <= > >=`；逻辑：`and` `or` `not`
-- 查询函数：`attack(target)`、`health(target)`、`max_health(target)`、`shield(target)`、`defense(target)`、`cost(target)`、`highest(目标集合, 数值名[, 条件])`、`lowest(目标集合, 数值名[, 条件])`、`entities_matching(筛选)`、`entities_matching(范围, 筛选)`、`min(a,b)`、`max(a,b)`、`has_tribe("pea")`、`has_tribe("pea", target)`、`has_keyword("taunt")`、`has_keyword("taunt", target)`、`keyword_value("first_strike", target)`、`has_buff("frozen", target)`、`marker_count("名字")`（`marker_count` 用于玩家特殊标志物数量）
+- 查询函数：`attack(target)`、`health(target)`、`max_health(target)`、`shield(target)`、`defense(target)`、`cost(target)`、`highest(目标集合, 数值名[, 条件])`、`lowest(目标集合, 数值名[, 条件])`、`entities_matching(筛选)`、`entities_matching(范围, 筛选)`、`min(a,b)`、`max(a,b)`、`has_tribe("pea")`、`has_tribe("pea", target)`、`has_keyword("taunt")`、`has_keyword("taunt", target)`、`keyword_value("first_strike", target)`、`has_buff("frozen", target)`、`is_entity(target)`、`marker_count("名字")`（`marker_count` 用于玩家特殊标志物数量）
 - 单参数形式读“当前作用域目标”（事件触发者 / `for_each` 当前目标），双参数形式显式指定实体；`defense` 与 `shield` 等价
 - 字符串可用单引号或双引号：`side == 'enemy'` / `side == "enemy"`
 
@@ -162,6 +162,7 @@ deal_damage(chosen, x)
 |---|---|
 | `self` | 技能拥有者（实体自己） |
 | `event` | 触发本次事件的实体 |
+| `damage_source` | 伤害类事件（`damaged` / `hero_damaged`）的来源；无来源时为空数组 |
 | `chosen` | 玩家本次选中的目标（**数组**；可以用 `choose` 选多个） |
 | `chosen_if(<条件>)` | 选中目标中满足条件的（没有则本次原语跳过） |
 | `hero` / `enemy_hero` | 我方 / 敌方英雄 |
@@ -174,6 +175,7 @@ deal_damage(chosen, x)
 ## 五、事件
 
 目前支持：`enter`（入场）、`die`（死亡）、`attack`（攻击）、`attacked`（受击）、`damaged`（实际受到伤害）、
+`hero_damaged`（英雄受到有效伤害）、
 `healed`（被治疗）、`attack_changed`（攻击力变化）、`health_changed`（生命值变化）、`turn_start`（回合开始）、
 `turn_end`（回合结束）、`ally_die`（友方实体死亡，可触发牌库/手牌被动）、`position_changed`（被卡牌移动）、
 `buff_applied` / `buff_removed`（Buff 添加/移除）、`extra_attack`（额外攻击）、`after_attack`（攻击动作完成）、
@@ -1451,7 +1453,7 @@ when damage_dealt:
 | 谁触发 | **被伤害的实体**自己 | **伤害来源实体**自己 |
 | 事件目标 `event` | 受伤者 | 来源实体 |
 | 触发次数 | 每个受伤目标各一次 | 每次结算按来源汇总一次 |
-| 能拿到什么目标 | 只有自己（没有"伤害来源"信息） | `damage_targets` 数组：本次所有造成有效伤害的实体 + 英雄 |
+| 能拿到什么 | 只有受伤者自己；另外可通过 `damage_source` 读伤害来源 | `damage_targets` 数组：本次所有造成有效伤害的实体 + 英雄 |
 | 英雄受伤 | **不触发**（英雄没有这个事件） | 能包含英雄目标 |
 | 来源要求 | 无 | **必须有一个实体来源**：锦囊 / 环境 / 无来源效果伤害不触发 |
 | 时机 | 在 `damage_entity` 内立即触发 | 在结算点批量触发（攻击里在 `attack` 事件之后） |
@@ -1470,12 +1472,51 @@ when damage_dealt:
             ...
 ```
 
-两个限制要注意：
+### 伤害来源事实（`damage_source` / `damage_amount`）
 
-- 被 `damaged` 触发的实体**看不到伤害来源**；需要"受击后反击来源"这类逻辑，目前只有 `thorns` 词缀
-  （或改用来源侧的 `damage_dealt`）。
-- 英雄受伤**没有**独立的 DSL 事件：要看"我方英雄被打了"，只能用来源侧的 `damage_dealt`
-  检查 `damage_targets` 里是否含 `class == 'hero'` 的目标；无来源的伤害则观察不到。
+`damaged` 与 `hero_damaged` 事件里都能读到伤害来源，不需要再去猜：
+
+| 名称 | 类型 | 说明 |
+|---|---|---|
+| `damage_source` | 选择器 | 伤害来源句柄；没有来源（锦囊 / 环境 / 无来源效果伤害）时返回**空数组** |
+| `is_entity(目标)` | 查询 | 该目标是否是实体（英雄句柄、卡牌实例、`null` 都返回 false），**空值保护就靠它** |
+| `damage_amount` | 事实变量 | 本次造成的**有效伤害**数值 |
+| `damage_source_is_entity` | 事实变量 | 等价于 `is_entity(damage_source)` 的快捷布尔 |
+
+```text
+# 受伤时给来源上 Buff（先判类型：来源为空或为英雄时自动跳过）
+when damaged:
+    if is_entity(damage_source):
+        apply_buff(damage_source, 'hatred')
+
+# 带刺玫瑰式写法：友方受伤 → 消灭伤害来源实体
+when damaged(side == 'ally'):
+    if is_entity(damage_source):
+        destroy(damage_source)
+
+# 按伤害量分流
+when damaged:
+    if damage_amount >= 3:
+        draw_cards(1)
+```
+
+- `damage_source` 直接当目标传给原语是安全的：空数组会被原语自动跳过（`destroy(damage_source)` 在没有来源时什么都不做）。
+- 但**查询函数**（`attack(x)` / `cost(x)` …）要求单个目标，无来源时会记录运行错误——所以先 `if is_entity(damage_source):` 再读。
+- 来源是**英雄**时 `is_entity` 为 false；要区分"英雄来源"可以再判 `class == 'hero'`。
+
+### 英雄受伤事件（`hero_damaged`）
+
+```text
+when hero_damaged(side == 'ally'):
+    ...
+```
+
+- 事件目标是**受伤的英雄句柄**（`hero:p` / `hero:z`）。英雄没有自己的技能，所以监听方必须写过滤条件
+  （`side == 'ally'` / `'enemy'`）；不写过滤不会触发。
+- 只在**有效伤害**时触发：护盾完全吸收、充能免伤、`hero_ward` 挡下都不触发。
+- 同样携带 `damage_source` / `damage_amount`（见上表），可以据此反制伤害来源。
+- **环境牌不监听该事件**（英雄没有所在列，否则会按 5 列重复触发）。
+- 与 `damaged` 互补：`damaged` 只对实体触发，`hero_damaged` 只对英雄触发。
 
 ## 十、循环与逐目标分支（`for_each`）
 

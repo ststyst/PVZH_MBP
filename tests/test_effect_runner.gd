@@ -668,6 +668,48 @@ func test_entities_matching_implicit_deck_includable() -> void:
 	assert_eq(context.calls.size(), 0, "未显式写 deck_includable 时默认排除不可编入牌组的实体")
 
 
+func test_damage_source_selector_and_is_entity() -> void:
+	context.entity_handles = ["source_entity"]
+	context.set_damage_source("source_entity")
+	_run("if is_entity(damage_source):\n    give_keyword(damage_source, 'armored')")
+	assert_eq(context.calls.size(), 1, "有实体来源时应能对其施加效果")
+	if not context.calls.is_empty():
+		assert_eq(str(context.calls[0].get("target", "")), "source_entity")
+	context.calls.clear()
+	context.set_damage_source(null)
+	var errors: Array[String] = _run("destroy(damage_source)")
+	assert_eq(errors.size(), 0, "没有伤害来源时 destroy(damage_source) 不应报错")
+	assert_eq(context.calls.size(), 0, "空来源不应产生原语调用")
+
+
+func test_damage_source_is_entity_fact_in_predicate() -> void:
+	var script: CardEffectScript = CardEffectScript.parse(
+		"when damaged(damage_source_is_entity and damage_amount >= 3): add_marker('hit', 1)"
+	)
+	assert_false(script.has_errors(), "过滤条件应可解析：%s" % [script.errors])
+	context.entity_handles = ["src"]
+	context.set_damage_source("src")
+	context.set_damage_amount(3)
+	script.run_event(context, "damaged", "self_handle")
+	assert_eq(context.calls.size(), 1, "实体来源 + 伤害 >= 3 应触发")
+	context.calls.clear()
+	context.set_damage_amount(1)
+	script.run_event(context, "damaged", "self_handle")
+	assert_eq(context.calls.size(), 0, "伤害不足时不应触发")
+
+
+func test_damage_amount_fact_in_event_body() -> void:
+	var script: CardEffectScript = CardEffectScript.parse(
+		"when damaged:\n    if damage_amount >= 3:\n        add_marker('big', 1)"
+	)
+	assert_false(script.has_errors(), "事件块应可解析：%s" % [script.errors])
+	context.set_damage_amount(4)
+	script.run_event(context, "damaged", "self_handle")
+	assert_eq(context.calls.size(), 1, "damage_amount 应在事件块里可读")
+	if not context.calls.is_empty():
+		assert_eq(str(context.calls[0].get("name", "")), "big")
+
+
 func test_entities_matching_invalid_filter_is_error() -> void:
 	context.selector_results["all_entities"] = ["e1"]
 	context.filter_facts["e1"] = {"deck_includable": true}

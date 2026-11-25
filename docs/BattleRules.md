@@ -423,6 +423,8 @@ damage == 0 = 未造成有效伤害
 - 反伤、充能免伤、护盾完全挡下不触发
 - 多目标伤害会汇总到 `damage_targets` 数组，触发一次事件
 - 数组可包含实体和英雄句柄；英雄目标的 `class` 事实为 `hero`，可据此分流
+- `damaged` / `hero_damaged` 都能读到伤害来源（`damage_source`）与有效伤害数值（`damage_amount`）；
+  锦囊 / 环境 / 无来源伤害的来源为空
 - 逐元素回调请用 `for_each`（见文末「逐目标循环结算」）
 
 ## 逐目标循环结算
@@ -493,3 +495,28 @@ deal_damage(entities_matching(enemy_entities, "keyword == 'taunt'"), 1)
 - **空结果**：没有实体符合条件时什么都不发生。
 
 字段、运算符与组合写法见 `docs/EffectDsl.md`「用卡牌筛选语法筛选在场实体」。
+
+## 英雄受伤事件
+
+- 英雄受到**有效伤害**时触发 `hero_damaged`，事件目标是受伤的英雄
+- 护盾完全吸收、充能免伤、英雄壁垒挡下时都不触发
+- 监听方必须写过滤条件（`side == 'ally'` / `'enemy'`），因为英雄没有自己的技能
+- 环境牌不监听该事件（英雄没有所在列，否则会按 5 列重复触发）
+- 与 `damaged` 互补：`damaged` 只对实体触发，`hero_damaged` 只对英雄触发
+- 两者都能读到伤害来源 `damage_source` 与有效伤害 `damage_amount`
+
+## 伤害来源事实
+
+`damaged` / `hero_damaged` 事件里可以拿到伤害来源：
+
+- `damage_source`：来源句柄；锦囊 / 环境 / 无来源效果伤害为空
+- `is_entity(damage_source)`：来源是否为实体（英雄与空来源都返回 false）
+- `damage_amount`：本次有效伤害数值
+
+示例（带刺玫瑰式效果）：
+
+```text
+when damaged(side == 'ally'):
+    if is_entity(damage_source):
+        destroy(damage_source)
+```

@@ -15,6 +15,9 @@ var _self_handle: Variant = null
 var _event_handle: Variant = null
 var source_name: String = ""
 var damage_targets: Array = []
+## damaged / hero_damaged 事件派发期间的伤害来源与有效伤害数值。
+var damage_source: Variant = null
+var damage_amount: int = 0
 
 
 func _init(battle_engine: BattleEngine, side: String) -> void:
@@ -36,6 +39,26 @@ func set_source_name(name: String) -> void:
 
 func set_damage_targets(targets: Array) -> void:
 	damage_targets = targets.duplicate()
+
+
+func set_damage_source(handle) -> void:
+	damage_source = handle
+
+
+func get_damage_source() -> Variant:
+	return damage_source
+
+
+func set_damage_amount(amount: int) -> void:
+	damage_amount = amount
+
+
+func get_damage_amount() -> int:
+	return damage_amount
+
+
+func is_entity_handle(handle) -> bool:
+	return handle is BattleEntity
 
 
 func set_chosen_target(handle) -> void:
@@ -84,6 +107,8 @@ func resolve_selector(selector: String) -> Array:
 			return chosen_targets.duplicate()
 		"damage_targets":
 			return damage_targets.duplicate()
+		"damage_source":
+			return [] if damage_source == null else [damage_source]
 		"hero":
 			return [engine.hero_handle(caster_side)]
 		"enemy_hero":
