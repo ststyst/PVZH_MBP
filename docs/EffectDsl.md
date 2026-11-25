@@ -1145,3 +1145,22 @@ when drawn(side == 'ally'):
 - 事件目标是抽牌阵营的英雄
 - 可以使用 `side == 'ally'` / `side == 'enemy'`
 - 手牌/牌库中带 `in_hand()` / `in_deck()` 作用域的能力也可以响应
+
+### 同列前后位置伤害
+
+仅实体能力可使用：
+
+```text
+damage_column_relative(2, 'front')
+damage_column_relative(3, 'back')
+```
+
+- `front`：同列的普通位（靠前）
+- `back`：同列的组队位（靠后）
+- 只伤害与施放者同列的敌方实体
+- 只命中指定位置
+- 伤害携带施放者词缀
+- 不会命中英雄
+- 不进入攻击流程，不触发先攻、双击、狂热、穿透、三连等攻击形式
+
+也接受 `ahead` / `behind` 和 `前` / `后`。

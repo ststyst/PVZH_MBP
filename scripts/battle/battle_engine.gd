@@ -1794,6 +1794,28 @@ func _battle_over() -> bool:
 	return winner != ""
 
 
+## 对同一列中位置靠前/靠后的敌方实体造成伤害；front=普通位，back=组队位。
+func damage_column_relative(source: BattleEntity, amount: int, direction: String) -> int:
+	if source == null or not source.alive or amount <= 0:
+		return 0
+	var normalized: String = direction.strip_edges().to_lower()
+	var target_slot: int = -1
+	if normalized in ["front", "ahead", "前"]:
+		target_slot = SLOT_NORMAL
+	elif normalized in ["back", "behind", "后"]:
+		target_slot = SLOT_TEAM_UP
+	if target_slot < 0:
+		return 0
+	var total: int = 0
+	for entity: BattleEntity in entities.duplicate():
+		if not entity.alive or entity.side == source.side:
+			continue
+		if entity.column != source.column or entity.slot != target_slot:
+			continue
+		total += damage_entity(entity, amount, source.keywords, false, source)
+	return total
+
+
 func damage_handle(handle: Variant, amount: int, source_keywords: Array = [], from_spell: bool = false, source_entity: BattleEntity = null, explicit_source: String = "") -> void:
 	if _battle_over():
 		return

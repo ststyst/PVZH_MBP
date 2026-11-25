@@ -246,6 +246,11 @@ func _exec_primitive(statement: Dictionary) -> void:
 					break
 				var amount_value: int = int(spread_amounts[mini(target_index, spread_amounts.size() - 1)])
 				context.deal_damage(spread_targets[target_index], amount_value)
+		"damage_column_relative":
+			context.damage_column_relative(
+				_as_int(_eval(arguments[0], {})),
+				_as_string(_eval(arguments[1], {}))
+			)
 		"add_random_cards_to_deck", "add_random_cards_to_hand":
 			var card_targets: Array = _resolve_argument_target(arguments[0])
 			if card_targets.size() != 1:

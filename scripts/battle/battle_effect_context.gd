@@ -269,6 +269,16 @@ func deal_damage(target, amount: int) -> void:
 	engine.damage_handle(target, amount, source_keywords, is_spell_source, source_entity, source_label)
 
 
+func damage_column_relative(amount: int, direction: String) -> void:
+	if not _self_handle is BattleEntity:
+		return
+	engine.damage_column_relative(
+		_self_handle,
+		amount,
+		direction
+	)
+
+
 func heal(target, amount: int) -> void:
 	engine.heal_handle(target, amount)
 

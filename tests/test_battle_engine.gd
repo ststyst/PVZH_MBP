@@ -330,6 +330,25 @@ func test_keyword_and_tribe_filters_use_membership() -> void:
 	assert_true(filter.matches(card))
 
 
+func test_damage_column_relative_front_and_back() -> void:
+	var engine: BattleEngine = _started_engine()
+	var source_card: CardData = _make_test_card("pvzh:test_column_relative_source", "")
+	source_card.health = 5
+	var source: BattleEntity = engine.summon_card("p", source_card, 2, 0)
+	var front_card: CardData = _make_test_card("pvzh:test_column_relative_front", "")
+	front_card.health = 5
+	var back_card: CardData = _make_test_card("pvzh:test_column_relative_back", "")
+	back_card.health = 5
+	var front: BattleEntity = engine.summon_card("z", front_card, 2, BattleEngine.SLOT_NORMAL)
+	var back: BattleEntity = engine.summon_card("z", back_card, 2, BattleEngine.SLOT_TEAM_UP)
+	assert_eq(engine.damage_column_relative(source, 2, "front"), 2)
+	assert_eq(front.health, 3)
+	assert_eq(back.health, 5)
+	assert_eq(engine.damage_column_relative(source, 2, "back"), 2)
+	assert_eq(front.health, 3)
+	assert_eq(back.health, 3)
+
+
 func test_deadly_blocked_by_shield_triggers_no_events() -> void:
 	var engine: BattleEngine = _started_engine()
 	var target_card: CardData = _make_test_card("pvzh:test_deadly_shield_target", "")

@@ -68,6 +68,10 @@ func deal_damage(_target, _amount: int) -> void:
 	push_warning("EffectContext.deal_damage 未实现：需要战斗层提供")
 
 
+func damage_column_relative(_amount: int, _direction: String) -> void:
+	push_warning("EffectContext.damage_column_relative 未实现：需要战斗层提供")
+
+
 func heal(_target, _amount: int) -> void:
 	push_warning("EffectContext.heal 未实现：需要战斗层提供")
 
