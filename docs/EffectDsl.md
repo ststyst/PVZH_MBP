@@ -622,7 +622,7 @@ put_hand_card_on_deck_top(hero, "kind == spell")
 `destroy` 的机制：
 
 - 不造成伤害，直接尝试将实体生命值设为 0
-- 仍会被无敌 Buff 阻止
+- 无敌 Buff **不阻止**消灭：消灭时先移除 1 层无敌 Buff，再把生命归零
 - 会被墓碑等离场规则处理
 - 隐形不阻止 `destroy`
 - `remove_entity` 与 `destroy` 不同：移除不触发死亡与亡语
@@ -1179,6 +1179,8 @@ add_random_cards_to_hand(hero, 2, "kind == 'entity'", 0, "", 1, 2, 0)
 - `put_card_on_deck_top`：从卡牌数据库创造新牌，放到牌库顶
 - `summon`：从卡牌数据库召唤实体，不走手牌/牌库
 - `transform` / `transform_hand`：把已有实体或手牌替换为随机卡牌，不是新增复制
+- 创造到手的牌受手牌上限约束：手牌已满时该张创造失败，不触发任何事件
+- 创造牌不会触发 `drawn`（它不是抽牌），只发 `changed` 界面信号
 
 ### 创造牌可施加的效果
 
@@ -1222,7 +1224,8 @@ draw_matching_cards(enemy_hero, 1, "class == 'guardian'", -1)
 - 不创建新牌，只移动已有牌
 - 抽到的牌进入手牌
 - 每张都触发 `drawn` 事件
-- 牌库为空时视为抽牌失败，增加 1 层疲劳
+- 牌库为空时视为抽牌失败，增加 1 层疲劳，并仍触发一次 `drawn`
+- 手牌已满时停止抽牌，且不触发 `drawn`
 - 牌库有牌但没有符合条件的牌时不会增加疲劳
 
 ### 疲劳标志物
@@ -1273,6 +1276,8 @@ when drawn(side == 'ally'):
 
 - `draw_cards` 和 `draw_matching_cards` 都会触发
 - 事件目标是抽牌阵营的英雄
+- 手牌已满导致的抽牌失败不触发 `drawn`；牌库为空导致的疲劳失败仍触发一次
+- 创造牌到牌库/手牌不会触发 `drawn`
 - 可以使用 `side == 'ally'` / `side == 'enemy'`
 - 手牌/牌库中带 `in_hand()` / `in_deck()` 作用域的能力也可以响应
 

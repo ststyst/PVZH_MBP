@@ -2279,8 +2279,12 @@ func damage_hero(side: String, amount: int, source_keywords: Array = [], source_
 	# 真实受击：先结算充能护盾，再决定是否免疫本次伤害。
 	var is_bullseye: bool = source_keywords.has("bullseye")
 	var lethal: bool = damage >= state.hero_health
+	# 手牌已满时充能失败：不获得充能、不消耗致命保护，也不会触发满充能免伤与超能力。
+	var charge_blocked_by_hand: bool = state.hand.size() >= mode.hand_limit
 	var charge_gain: int = 0
-	if not is_bullseye:
+	if charge_blocked_by_hand and not is_bullseye:
+		_log("%s 手牌已满（%d），本次充能失败" % [side.to_upper(), mode.hand_limit])
+	if not is_bullseye and not charge_blocked_by_hand:
 		if lethal and state.charge_shield_emergency_uses > 0 and state.charge_shield_durability > 0:
 			state.charge_shield_emergency_uses -= 1
 			charge_gain = 3

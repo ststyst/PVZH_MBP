@@ -2674,6 +2674,90 @@ func test_environment_effects_ignore_spell_immunity() -> void:
 	assert_eq(target.health, 0, "环境消灭应正常作用于锦囊免疫实体")
 
 
+func test_full_hand_blocks_charge_shield() -> void:
+	var engine: BattleEngine = _started_engine()
+	var state: BattlePlayerState = engine.players["p"]
+	state.hand.clear()
+	for _index: int in range(engine.mode.hand_limit):
+		engine.add_card_to_hand("p", "pvzh:gnoll")
+	state.hero_health = 10
+	state.charge_shield = engine.mode.charge_shield_max - 1
+	state.charge_shield_durability = 3
+	state.special_offer_id = 0
+	engine.damage_hero("p", 3)
+	assert_eq(state.charge_shield, engine.mode.charge_shield_max - 1, "手牌满时不应获得充能")
+	assert_eq(state.charge_shield_durability, 3, "不应消耗耐久或触发免伤")
+	assert_eq(state.special_offer_id, 0, "不应发放超能力")
+	assert_eq(state.hero_health, 7, "伤害仍应正常结算")
+
+
+func test_full_hand_blocks_lethal_charge_protection() -> void:
+	var engine: BattleEngine = _started_engine()
+	var state: BattlePlayerState = engine.players["p"]
+	state.hand.clear()
+	for _index: int in range(engine.mode.hand_limit):
+		engine.add_card_to_hand("p", "pvzh:gnoll")
+	state.hero_health = 2
+	state.charge_shield = 0
+	state.charge_shield_emergency_uses = 1
+	state.charge_shield_durability = 3
+	engine.damage_hero("p", 5)
+	assert_eq(state.charge_shield_emergency_uses, 1, "手牌满时不应消耗致命保护")
+	assert_eq(state.charge_shield, 0, "手牌满时充能失败")
+	assert_eq(engine.winner, "z", "致命伤害仍应正常判负")
+
+
+func test_hand_full_draw_fires_no_events() -> void:
+	var engine: BattleEngine = _started_engine()
+	var watcher_card: CardData = _make_test_card(
+		"pvzh:test_drawn_watcher",
+		"when drawn(side == 'ally'): add_marker('drawn', 1)"
+	)
+	engine.summon_card("p", watcher_card, 1, 0)
+	var state: BattlePlayerState = engine.players["p"]
+	state.hand.clear()
+	for _index: int in range(engine.mode.hand_limit):
+		engine.add_card_to_hand("p", "pvzh:gnoll")
+	assert_eq(engine.draw_cards("p", 2), 0, "手牌满时抽牌失败")
+	assert_eq(state.marker_count("drawn"), 0, "抽牌失败不应触发 drawn")
+
+
+func test_creation_to_hand_fails_silently_when_full() -> void:
+	var engine: BattleEngine = _started_engine()
+	var watcher_card: CardData = _make_test_card(
+		"pvzh:test_create_watcher",
+		"when drawn(side == 'ally'): add_marker('drawn', 1)"
+	)
+	engine.summon_card("p", watcher_card, 1, 0)
+	var state: BattlePlayerState = engine.players["p"]
+	state.hand.clear()
+	for _index: int in range(engine.mode.hand_limit):
+		engine.add_card_to_hand("p", "pvzh:gnoll")
+	var before: int = state.hand.size()
+	assert_eq(engine.add_random_cards("p", "hand", 2, "kind == 'entity'", 0), 0, "手牌满时创造失败")
+	assert_eq(state.hand.size(), before, "手牌数量不应变化")
+	assert_eq(state.marker_count("drawn"), 0, "创造失败不应触发事件")
+
+
+func test_bounce_full_hand_does_not_fire_drawn() -> void:
+	var engine: BattleEngine = _started_engine()
+	var watcher_card: CardData = _make_test_card(
+		"pvzh:test_bounce_watcher",
+		"when drawn(side == 'ally'): add_marker('drawn', 1)"
+	)
+	engine.summon_card("p", watcher_card, 1, 0)
+	var state: BattlePlayerState = engine.players["p"]
+	state.hand.clear()
+	for _index: int in range(engine.mode.hand_limit):
+		engine.add_card_to_hand("p", "pvzh:gnoll")
+	var card: CardData = _make_test_card("pvzh:test_bounce_events", "")
+	card.health = 3
+	var entity: BattleEntity = engine.summon_card("p", card, 2, 0)
+	engine.apply_buff_handle(entity, "bounce")
+	assert_eq(state.deck[0].card_id, "pvzh:test_bounce_events", "手牌满时弹回牌应进入牌库顶")
+	assert_eq(state.marker_count("drawn"), 0, "弹回不应触发 drawn")
+
+
 func test_bounce_death_check_only_resolves_itself() -> void:
 	var engine: BattleEngine = _started_engine()
 	var bounced_card: CardData = _make_test_card("pvzh:test_bounce_self_a", "")
