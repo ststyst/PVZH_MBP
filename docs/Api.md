@@ -489,6 +489,8 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 - Buff/Debuff 定义在 `scripts/data/card_buffs.gd`，词缀定义在 `scripts/data/card_keywords.gd`
 - 进化/底座是实体牌顶层声明：`evolve(filter)` / `base()`；锦囊/环境出现会被编译拒绝
 - 额外攻击事件为 `extra_attack`；`force_attack` 和狂热追加攻击触发，双重打击第二击不触发
+- `after_attack` 在死亡判定**之前**触发（被击杀实体仍在场，生命 ≤ 0）；`damage_dealt` 的
+  `damage_targets` 同时包含实体句柄与英雄句柄
 - 战斗棋盘长按任意在场实体，弹出与牌组界面相同的 `CardInfoDialog`
 - 战斗手牌调用 `CardTile.setup(..., false)`，不显示收藏拥有状态
 - `first_strike` 伤害与普通英雄伤害共用 `damage_hero`，会经过免疫、护盾并触发 `hero_damaged`

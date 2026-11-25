@@ -2335,3 +2335,43 @@ func test_hero_damage_without_guard_still_hits_hero() -> void:
 	p_state.hero_health = 20
 	engine.damage_hero("p", 6)
 	assert_eq(p_state.hero_health, 14, "没有守护词缀时伤害照常落在英雄身上")
+
+
+func test_after_attack_resolves_before_death_flush() -> void:
+	var engine: BattleEngine = _started_engine()
+	var attacker_card: CardData = _make_test_card(
+		"pvzh:test_after_attack_order",
+		"when after_attack: for_each(all_enemies) as e:\n    if health <= 0:\n        add_marker('saw_dead', 1)"
+	)
+	attacker_card.attack = 5
+	attacker_card.health = 6
+	attacker_card.keywords = ["frenzy"]
+	var attacker: BattleEntity = engine.summon_card("p", attacker_card, 1, 0)
+	var target_card: CardData = _make_test_card("pvzh:test_after_attack_target", "")
+	target_card.health = 3
+	var target: BattleEntity = engine.summon_card("z", target_card, 1, 0)
+	assert_true(engine.force_entity_attack(attacker), "强制攻击应成功")
+	assert_eq(
+		engine.players["p"].marker_count("saw_dead"), 1,
+		"after_attack 应在死亡判定前结算，此时被击杀的敌方仍在场（生命 <= 0）"
+	)
+	assert_false(target.is_alive(), "本次攻击仍应正常结算死亡")
+
+
+func test_damage_dealt_includes_hero_targets() -> void:
+	var engine: BattleEngine = _started_engine()
+	var attacker_card: CardData = _make_test_card(
+		"pvzh:test_damage_dealt_hero",
+		"when damage_dealt: for_each(damage_targets) as t: add_marker('dealt', 1)"
+	)
+	attacker_card.attack = 3
+	attacker_card.health = 5
+	var attacker: BattleEntity = engine.summon_card("p", attacker_card, 1, 0)
+	var z_state: BattlePlayerState = engine.players["z"]
+	z_state.hero_health = 20
+	assert_true(engine.force_entity_attack(attacker), "该列没有敌方实体，应攻击英雄")
+	assert_eq(z_state.hero_health, 17, "英雄应受到 3 点伤害")
+	assert_eq(
+		engine.players["p"].marker_count("dealt"), 1,
+		"damage_dealt 的 damage_targets 应包含英雄目标"
+	)

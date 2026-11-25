@@ -2595,7 +2595,8 @@ func _end_effect_resolution() -> void:
 func _record_damage_dealt(source: BattleEntity, target: Variant) -> void:
 	if source == null or not source.alive or target == null:
 		return
-	if target == source:
+	# target 可能是实体，也可能是英雄句柄（String），跨类型比较会抛错，需先判类型。
+	if target is BattleEntity and target == source:
 		return
 	var key: int = source.entity_id
 	var targets: Array = _pending_damage_dealt.get(key, [])
@@ -2859,13 +2860,14 @@ func _execute_entity_attack(
 	if not attacker.has_keyword("strikethrough") and target is BattleEntity and target.alive:
 		_fire_event("attacked", target)
 	_emit_animation_cue("attack", attacker, target)
+	# after_attack 在死亡判定之前结算：被击杀的实体此时仍在场上（生命 <= 0 但尚未移除）。
+	if attacker != null and attacker.alive and not _battle_over():
+		_fire_event("after_attack", attacker)
 	if killed_enemy and attacker.alive and attacker.has_keyword("frenzy") and frenzy_depth < 8:
 		_flush_column_deaths(attacker.column)
 		if attacker.alive and not _battle_over():
 			_execute_attack_action(attacker, true)
 		_flush_column_deaths(attacker.column)
-	if attacker != null and attacker.alive and not _battle_over():
-		_fire_event("after_attack", attacker)
 	_flush_damage_dealt()
 
 
