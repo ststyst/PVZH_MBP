@@ -492,6 +492,11 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 - 战斗棋盘长按任意在场实体，弹出与牌组界面相同的 `CardInfoDialog`
 - 战斗手牌调用 `CardTile.setup(..., false)`，不显示收藏拥有状态
 - `first_strike` 伤害与普通英雄伤害共用 `damage_hero`，会经过免疫、护盾并触发 `hero_damaged`
+- `hero_guard` 守护英雄：`damage_hero` 在英雄免疫判定之后、护盾吸收之前把伤害转给在场守护实体
+  （多个时取当前生命最高者），按实体自身抗性结算；守护实体倒下后多余伤害**不会**溢出到英雄
+- `hero_ward` 英雄壁垒：`damage_hero` 在护盾吸收之后把本次伤害压到「英雄生命 - 1」，
+  因此不会触发基于致命伤害的充能与致命保护；英雄已在 1 点时伤害归零
+- `BattleEngine.has_side_keyword(side, keyword)` 判断某阵营是否有在场实体拥有该词缀（持续效果用）
 - 充能护盾在真实受击后结算；满充能触发免疫、耐久 -1，并给该英雄发放随机超能力进入特殊回合
 - 必中（`bullseye`）伤害不增加充能护盾充能
 - `CardEffectScript.target_requirement()` 返回入场/锦囊 `choose(count, selector)` 的目标需求

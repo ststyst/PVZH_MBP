@@ -2209,6 +2209,26 @@ func _damage_source_label(source_entity: BattleEntity, source_keywords: Array, f
 	return "未知来源"
 
 
+## 我方是否存在拥有该词缀的存活实体（用于“在场时”的持续效果）。
+func has_side_keyword(side: String, keyword: String) -> bool:
+	for entity: BattleEntity in entities:
+		if entity.alive and entity.side == side and entity.has_keyword(keyword):
+			return true
+	return false
+
+
+## 挑选代替英雄承伤的实体：拥有 hero_guard 的存活友方里当前生命最高者
+## （并列时取更早入场的那个）。
+func _pick_hero_guard(side: String) -> BattleEntity:
+	var guard: BattleEntity = null
+	for entity: BattleEntity in entities:
+		if not entity.alive or entity.side != side or not entity.has_keyword("hero_guard"):
+			continue
+		if guard == null or entity.health > guard.health:
+			guard = entity
+	return guard
+
+
 func damage_hero(side: String, amount: int, source_keywords: Array = [], source_entity: BattleEntity = null, explicit_source: String = "") -> void:
 	if _battle_over():
 		return
@@ -2218,6 +2238,12 @@ func damage_hero(side: String, amount: int, source_keywords: Array = [], source_
 	if state.hero_damage_immune:
 		_log("%s 英雄免疫本次伤害（%d）" % [side.to_upper(), amount])
 		return
+	# 守护英雄：在场的守护实体代替英雄承受本次伤害，按实体自身抗性照常结算。
+	var guard: BattleEntity = _pick_hero_guard(side)
+	if guard != null:
+		_log("%s 的 %s 代替英雄承受 %d 点伤害" % [side.to_upper(), guard.display_name(), amount])
+		damage_entity(guard, amount, source_keywords, false, source_entity, explicit_source)
+		return
 	var damage: int = amount
 	var absorbed: int = mini(state.hero_shield, damage)
 	state.hero_shield -= absorbed
@@ -2225,6 +2251,14 @@ func damage_hero(side: String, amount: int, source_keywords: Array = [], source_
 	if damage <= 0:
 		_log("%s 英雄护盾吸收本次伤害（剩余护盾 %d）" % [side.to_upper(), state.hero_shield])
 		return
+	# 英雄壁垒：在场的壁垒实体让我方英雄生命值不会低于 1。
+	if has_side_keyword(side, "hero_ward"):
+		var allowed: int = maxi(state.hero_health - 1, 0)
+		if damage > allowed:
+			damage = allowed
+			if damage <= 0:
+				_log("%s 的英雄壁垒挡下本次伤害（生命保持 %d）" % [side.to_upper(), state.hero_health])
+				return
 	# 真实受击：先结算充能护盾，再决定是否免疫本次伤害。
 	var is_bullseye: bool = source_keywords.has("bullseye")
 	var lethal: bool = damage >= state.hero_health

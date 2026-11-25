@@ -2214,3 +2214,124 @@ func test_entities_matching_uses_current_board_state() -> void:
 	assert_false(soldier.is_alive(), "符合 class + cost 的士兵应被消灭")
 	assert_false(taunted.is_alive(), "运行期获得的嘲讽词缀也应参与筛选")
 	assert_true(zombie.is_alive(), "不符合条件的僵尸应存活")
+
+
+func test_hero_guard_redirects_hero_damage() -> void:
+	var engine: BattleEngine = _started_engine()
+	var guardian_card: CardData = _make_test_card("pvzh:test_hero_guard", "")
+	guardian_card.health = 6
+	var guardian: BattleEntity = engine.summon_card("p", guardian_card, 1, 0)
+	guardian.add_keyword("hero_guard")
+	var p_state: BattlePlayerState = engine.players["p"]
+	p_state.hero_health = 20
+	engine.damage_hero("p", 4)
+	assert_eq(p_state.hero_health, 20, "守护实体在场时英雄不掉血")
+	assert_eq(guardian.health, 2, "伤害应转由守护实体承受")
+
+
+func test_hero_guard_picks_highest_health_guardian() -> void:
+	var engine: BattleEngine = _started_engine()
+	var weak_card: CardData = _make_test_card("pvzh:test_guard_weak", "")
+	weak_card.health = 2
+	var strong_card: CardData = _make_test_card("pvzh:test_guard_strong", "")
+	strong_card.health = 9
+	var weak_guard: BattleEntity = engine.summon_card("p", weak_card, 1, 0)
+	weak_guard.add_keyword("hero_guard")
+	var strong_guard: BattleEntity = engine.summon_card("p", strong_card, 2, 0)
+	strong_guard.add_keyword("hero_guard")
+	var p_state: BattlePlayerState = engine.players["p"]
+	p_state.hero_health = 20
+	engine.damage_hero("p", 3)
+	assert_eq(strong_guard.health, 6, "应由当前生命最高的守护实体承伤")
+	assert_eq(weak_guard.health, 2, "另一个守护实体不承伤")
+	assert_eq(p_state.hero_health, 20)
+
+
+func test_hero_guard_applies_entity_mitigation() -> void:
+	var engine: BattleEngine = _started_engine()
+	var guardian_card: CardData = _make_test_card("pvzh:test_guard_shield", "")
+	guardian_card.health = 8
+	guardian_card.shield = 2
+	var guardian: BattleEntity = engine.summon_card("p", guardian_card, 1, 0)
+	guardian.add_keyword("hero_guard")
+	engine.damage_hero("p", 5)
+	assert_eq(guardian.health, 5, "守护实体按自身防御减伤（5 - 2 = 3 点）")
+
+
+func test_hero_guard_stops_after_guardian_dies() -> void:
+	var engine: BattleEngine = _started_engine()
+	var guardian_card: CardData = _make_test_card("pvzh:test_guard_dies", "")
+	guardian_card.health = 3
+	var guardian: BattleEntity = engine.summon_card("p", guardian_card, 1, 0)
+	guardian.add_keyword("hero_guard")
+	var p_state: BattlePlayerState = engine.players["p"]
+	p_state.hero_health = 20
+	engine.damage_hero("p", 8)
+	engine._flush_deaths()
+	assert_false(guardian.is_alive(), "守护实体应被这次伤害打死")
+	assert_eq(p_state.hero_health, 20, "守护实体倒下后溢出伤害不会转到英雄")
+	engine.damage_hero("p", 2)
+	assert_eq(p_state.hero_health, 18, "没有守护实体后英雄正常受击")
+
+
+func test_hero_guard_intercepts_attack_on_hero() -> void:
+	var engine: BattleEngine = _started_engine()
+	var guardian_card: CardData = _make_test_card("pvzh:test_guard_attack", "")
+	guardian_card.health = 9
+	var guardian: BattleEntity = engine.summon_card("p", guardian_card, 1, 0)
+	guardian.add_keyword("hero_guard")
+	var attacker_card: CardData = _make_test_card("pvzh:test_guard_attacker", "")
+	attacker_card.attack = 4
+	attacker_card.health = 5
+	var attacker: BattleEntity = engine.summon_card("z", attacker_card, 2, 0)
+	var p_state: BattlePlayerState = engine.players["p"]
+	p_state.hero_health = 15
+	assert_true(engine.force_entity_attack(attacker))
+	assert_eq(p_state.hero_health, 15, "打向英雄的攻击伤害应被守护实体接住")
+	assert_eq(guardian.health, 5, "守护实体承受 4 点攻击伤害")
+
+
+func test_hero_ward_keeps_hero_at_one() -> void:
+	var engine: BattleEngine = _started_engine()
+	var warder_card: CardData = _make_test_card("pvzh:test_hero_ward", "")
+	var warder: BattleEntity = engine.summon_card("p", warder_card, 1, 0)
+	warder.add_keyword("hero_ward")
+	var p_state: BattlePlayerState = engine.players["p"]
+	p_state.hero_health = 10
+	engine.damage_hero("p", 99)
+	assert_eq(p_state.hero_health, 1, "英雄壁垒应把生命值卡在 1")
+	assert_eq(engine.winner, "", "不应因这次伤害判负")
+
+
+func test_hero_ward_blocks_damage_when_already_at_one() -> void:
+	var engine: BattleEngine = _started_engine()
+	var warder_card: CardData = _make_test_card("pvzh:test_hero_ward_low", "")
+	var warder: BattleEntity = engine.summon_card("p", warder_card, 1, 0)
+	warder.add_keyword("hero_ward")
+	var p_state: BattlePlayerState = engine.players["p"]
+	p_state.hero_health = 1
+	engine.damage_hero("p", 5)
+	assert_eq(p_state.hero_health, 1, "已经 1 点时再受伤仍保持 1")
+	assert_eq(engine.winner, "", "不应判负")
+
+
+func test_hero_guard_and_ward_stack() -> void:
+	var engine: BattleEngine = _started_engine()
+	var card: CardData = _make_test_card("pvzh:test_guard_and_ward", "")
+	card.health = 10
+	var guardian: BattleEntity = engine.summon_card("p", card, 1, 0)
+	guardian.add_keyword("hero_guard")
+	guardian.add_keyword("hero_ward")
+	var p_state: BattlePlayerState = engine.players["p"]
+	p_state.hero_health = 5
+	engine.damage_hero("p", 6)
+	assert_eq(p_state.hero_health, 5, "有守护实体时英雄完全不掉血")
+	assert_eq(guardian.health, 4, "伤害由守护实体承受")
+
+
+func test_hero_damage_without_guard_still_hits_hero() -> void:
+	var engine: BattleEngine = _started_engine()
+	var p_state: BattlePlayerState = engine.players["p"]
+	p_state.hero_health = 20
+	engine.damage_hero("p", 6)
+	assert_eq(p_state.hero_health, 14, "没有守护词缀时伤害照常落在英雄身上")

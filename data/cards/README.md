@@ -78,7 +78,8 @@ english_name,chinese_name,kind,cost,attack,health,shield,class,rarity,keywords,t
 `charge` 冲锋、`taunt` 嘲讽、`deadly` 致命、`armored` 护甲、`strikethrough` 穿透、
 `bullseye` 必中、`double_strike` 双重打击、`overshoot` 溅射、`frenzy` 狂热、`untrickable` 免疫锦囊、
 `spell_immune` 锦囊免疫、`hero_counter` 克制英雄、`invincible` 无敌、`hunt` 捕猎、`amphibious` 两栖、
-`debuff_immune` 免疫负面、`frost` 寒霜、`thorns` 反伤、`team_up` 组队。
+`debuff_immune` 免疫负面、`frost` 寒霜、`thorns` 反伤、`team_up` 组队、
+`hero_guard` 守护英雄（在场时替我方英雄承受伤害）、`hero_ward` 英雄壁垒（在场时我方英雄生命不会低于 1）。
 
 Buff/Debuff（只存在于实体上，不是卡牌词缀）见 `scripts/data/card_buffs.gd`。
 

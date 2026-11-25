@@ -69,6 +69,16 @@ const DEFINITIONS: Dictionary = {
 		"value": true,
 		"allowed_kinds": ["entity"],
 	},
+	"hero_guard": {
+		"label": "守护英雄",
+		"description": "自身在场时，我方英雄受到的伤害改由自身承受（自动选当前生命最高的守护实体）。",
+		"allowed_kinds": ["entity"],
+	},
+	"hero_ward": {
+		"label": "英雄壁垒",
+		"description": "自身在场时，我方英雄的生命值不会低于 1。",
+		"allowed_kinds": ["entity"],
+	},
 	"invincible": {
 		"label": "无敌",
 		"description": "入场时获得无敌 Buff。",
