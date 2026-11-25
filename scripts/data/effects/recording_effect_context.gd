@@ -98,7 +98,11 @@ func destroy(target) -> void:
 	calls.append({"op": "destroy", "target": target})
 
 
-func add_random_cards(zone: String, target, count: int, filter_text: String, cost_delta: int = 0) -> int:
+func add_random_cards(
+	zone: String, target, count: int, filter_text: String, cost_delta: int = 0,
+	keyword: String = "", attack_bonus: int = 0, health_bonus: int = 0, shield_bonus: int = 0,
+	keyword_value: int = 0
+) -> int:
 	calls.append({
 		"op": "add_random_cards",
 		"zone": zone,
@@ -106,5 +110,10 @@ func add_random_cards(zone: String, target, count: int, filter_text: String, cos
 		"count": count,
 		"filter": filter_text,
 		"cost_delta": cost_delta,
+		"keyword": keyword,
+		"attack_bonus": attack_bonus,
+		"health_bonus": health_bonus,
+		"shield_bonus": shield_bonus,
+		"keyword_value": keyword_value,
 	})
 	return count
