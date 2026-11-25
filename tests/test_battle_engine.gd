@@ -2402,3 +2402,38 @@ func test_multi_target_damage_callbacks_split_by_type() -> void:
 	assert_eq(enemy.health, 8, "敌方实体应受到 2 点伤害")
 	assert_eq(p_state.marker_count("hero_hit"), 1, "回调里应识别出英雄目标")
 	assert_eq(p_state.marker_count("entity_hit"), 1, "回调里应识别出实体目标")
+
+
+func test_damaged_and_damage_dealt_are_separate_triggers() -> void:
+	var engine: BattleEngine = _started_engine()
+	var p_state: BattlePlayerState = engine.players["p"]
+	var z_state: BattlePlayerState = engine.players["z"]
+	z_state.hero_health = 20
+	var attacker_card: CardData = _make_test_card(
+		"pvzh:test_trigger_source",
+		"when damage_dealt: add_marker('source_trigger', 1)"
+	)
+	attacker_card.attack = 2
+	attacker_card.health = 5
+	var target_card: CardData = _make_test_card(
+		"pvzh:test_trigger_target",
+		"when damaged: add_marker('target_trigger', 1)"
+	)
+	target_card.health = 6
+	var attacker: BattleEntity = engine.summon_card("p", attacker_card, 1, 0)
+	var target: BattleEntity = engine.summon_card("z", target_card, 1, 0)
+	assert_true(engine.force_entity_attack(attacker))
+	assert_true(target.alive, "目标应存活，便于区分两个触发器的独立生效")
+	assert_eq(p_state.marker_count("source_trigger"), 1, "来源侧应触发 damage_dealt")
+	assert_eq(z_state.marker_count("target_trigger"), 1, "受伤侧应触发 damaged")
+	# 再打英雄（该列没有敌方实体）：damage_dealt 触发，但英雄受伤不触发 damaged
+	var attacker2_card: CardData = _make_test_card(
+		"pvzh:test_trigger_source2",
+		"when damage_dealt: add_marker('source_trigger', 1)"
+	)
+	attacker2_card.attack = 2
+	attacker2_card.health = 5
+	var attacker2: BattleEntity = engine.summon_card("p", attacker2_card, 3, 0)
+	assert_true(engine.force_entity_attack(attacker2), "该列没有敌方实体，应攻击英雄")
+	assert_eq(p_state.marker_count("source_trigger"), 2, "打英雄同样触发 damage_dealt")
+	assert_eq(z_state.marker_count("target_trigger"), 1, "英雄受伤不会触发 damaged")

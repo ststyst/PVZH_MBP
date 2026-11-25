@@ -176,8 +176,11 @@ deal_damage(chosen, x)
 目前支持：`enter`（入场）、`die`（死亡）、`attack`（攻击）、`attacked`（受击）、`damaged`（实际受到伤害）、
 `healed`（被治疗）、`attack_changed`（攻击力变化）、`health_changed`（生命值变化）、`turn_start`（回合开始）、
 `turn_end`（回合结束）、`ally_die`（友方实体死亡，可触发牌库/手牌被动）、`position_changed`（被卡牌移动）、
-`buff_applied` / `buff_removed`（Buff 添加/移除）、`extra_attack`（额外攻击）、`evolved`（进化成功）、
-`mounted`（底座被放置实体）、`tombstone_enter`（埋入墓碑）、`tombstone_reveal`（墓碑揭示）。
+`buff_applied` / `buff_removed`（Buff 添加/移除）、`extra_attack`（额外攻击）、`after_attack`（攻击动作完成）、
+`damage_dealt`（自身造成有效伤害）、`evolved`（进化成功）、`mounted`（底座被放置实体）、
+`tombstone_enter`（埋入墓碑）、`tombstone_reveal`（墓碑揭示）、`transformed`（实体被变形）、
+`hand_transformed`（手牌被变形）、`drawn`（抽到牌）、`hand_played`（手牌被打出）、
+`ally_attack_gained`（友方攻击力提升）。
 
 ### 事件触发判定
 
@@ -1441,9 +1444,38 @@ when damage_dealt:
 
 ### 与 `damaged` 的区别
 
-- `damaged`：受到伤害的实体触发，事件目标是受伤者
-- `damage_dealt`：造成伤害的来源实体触发，事件目标是来源
-- `damage_dealt` 通过 `damage_targets` 获取本次造成有效伤害的目标数组
+`damaged`（受伤）与 `damage_dealt`（造成有效伤害）是**两个独立触发器**，不能互相替代：
+
+| 对比项 | `damaged` | `damage_dealt` |
+|---|---|---|
+| 谁触发 | **被伤害的实体**自己 | **伤害来源实体**自己 |
+| 事件目标 `event` | 受伤者 | 来源实体 |
+| 触发次数 | 每个受伤目标各一次 | 每次结算按来源汇总一次 |
+| 能拿到什么目标 | 只有自己（没有"伤害来源"信息） | `damage_targets` 数组：本次所有造成有效伤害的实体 + 英雄 |
+| 英雄受伤 | **不触发**（英雄没有这个事件） | 能包含英雄目标 |
+| 来源要求 | 无 | **必须有一个实体来源**：锦囊 / 环境 / 无来源效果伤害不触发 |
+| 时机 | 在 `damage_entity` 内立即触发 | 在结算点批量触发（攻击里在 `attack` 事件之后） |
+
+由此带来的写法差异：
+
+```text
+# 这是"我被打了"——默认只响应自己；要观察友方受伤需要过滤
+when damaged(side == 'ally'):
+    ...
+
+# 这是"我打出了有效伤害"——能拿到被打的目标数组
+when damage_dealt:
+    for_each(damage_targets) as t:
+        if class == 'hero':
+            ...
+```
+
+两个限制要注意：
+
+- 被 `damaged` 触发的实体**看不到伤害来源**；需要"受击后反击来源"这类逻辑，目前只有 `thorns` 词缀
+  （或改用来源侧的 `damage_dealt`）。
+- 英雄受伤**没有**独立的 DSL 事件：要看"我方英雄被打了"，只能用来源侧的 `damage_dealt`
+  检查 `damage_targets` 里是否含 `class == 'hero'` 的目标；无来源的伤害则观察不到。
 
 ## 十、循环与逐目标分支（`for_each`）
 
