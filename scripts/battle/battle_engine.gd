@@ -1795,8 +1795,36 @@ func _battle_over() -> bool:
 
 
 ## 对同一列中位置靠前/靠后的敌方实体造成伤害；front=普通位，back=组队位。
-func damage_column_relative(source: BattleEntity, amount: int, direction: String) -> int:
+## 只有单个敌人时，无论前后都会命中它；column_offset 相对参考列。
+func damage_column_relative(source: BattleEntity, amount: int, direction: String, column_offset: int = 0) -> int:
 	if source == null or not source.alive or amount <= 0:
+		return 0
+	return damage_column_relative_at(
+		source.side,
+		source.column,
+		amount,
+		direction,
+		column_offset,
+		source,
+		source.keywords,
+		""
+	)
+
+
+func damage_column_relative_at(
+	caster_side: String,
+	reference_column: int,
+	amount: int,
+	direction: String,
+	column_offset: int,
+	source_entity: BattleEntity,
+	source_keywords: Array,
+	explicit_source: String,
+) -> int:
+	if amount <= 0 or reference_column < 0:
+		return 0
+	var target_column: int = reference_column + column_offset
+	if target_column < 0 or target_column >= COLUMN_COUNT:
 		return 0
 	var normalized: String = direction.strip_edges().to_lower()
 	var target_slot: int = -1
@@ -1806,13 +1834,20 @@ func damage_column_relative(source: BattleEntity, amount: int, direction: String
 		target_slot = SLOT_TEAM_UP
 	if target_slot < 0:
 		return 0
-	var total: int = 0
+	var exact: Array[BattleEntity] = []
+	var all_enemies: Array[BattleEntity] = []
 	for entity: BattleEntity in entities.duplicate():
-		if not entity.alive or entity.side == source.side:
+		if not entity.alive or entity.side == caster_side or entity.column != target_column:
 			continue
-		if entity.column != source.column or entity.slot != target_slot:
-			continue
-		total += damage_entity(entity, amount, source.keywords, false, source)
+		all_enemies.append(entity)
+		if entity.slot == target_slot:
+			exact.append(entity)
+	var targets: Array[BattleEntity] = exact
+	if targets.is_empty() and all_enemies.size() == 1:
+		targets = all_enemies
+	var total: int = 0
+	for entity: BattleEntity in targets:
+		total += damage_entity(entity, amount, source_keywords, false, source_entity, explicit_source)
 	return total
 
 

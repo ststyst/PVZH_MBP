@@ -269,13 +269,29 @@ func deal_damage(target, amount: int) -> void:
 	engine.damage_handle(target, amount, source_keywords, is_spell_source, source_entity, source_label)
 
 
-func damage_column_relative(amount: int, direction: String) -> void:
-	if not _self_handle is BattleEntity:
+func damage_column_relative(amount: int, direction: String, column_offset: int = 0) -> void:
+	var reference_column: int = base_column
+	var source_entity: BattleEntity = null
+	if _self_handle is BattleEntity:
+		reference_column = _self_handle.column
+		source_entity = _self_handle
+	if reference_column < 0:
 		return
-	engine.damage_column_relative(
-		_self_handle,
+	var explicit_source: String = ""
+	if source_entity == null:
+		if is_spell_source:
+			explicit_source = "锦囊：%s" % source_name if not source_name.is_empty() else "锦囊"
+		elif get_zone() == "environment":
+			explicit_source = "环境"
+	engine.damage_column_relative_at(
+		caster_side,
+		reference_column,
 		amount,
-		direction
+		direction,
+		column_offset,
+		source_entity,
+		source_keywords,
+		explicit_source
 	)
 
 

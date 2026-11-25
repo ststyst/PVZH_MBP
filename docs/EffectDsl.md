@@ -1148,19 +1148,51 @@ when drawn(side == 'ally'):
 
 ### 同列前后位置伤害
 
-仅实体能力可使用：
-
 ```text
 damage_column_relative(2, 'front')
-damage_column_relative(3, 'back')
+damage_column_relative(3, 'back', -1)
+damage_column_relative(1, 'front', 1)
 ```
 
-- `front`：同列的普通位（靠前）
-- `back`：同列的组队位（靠后）
-- 只伤害与施放者同列的敌方实体
-- 只命中指定位置
+参数：
+
+1. 伤害数值
+2. `front` / `back`
+3. 可选相对列偏移，默认 0
+
+- `front`：目标列普通位（靠前）
+- `back`：目标列组队位（靠后）
+- 偏移 `0`：当前列；`-1`：左侧列；`1`：右侧列
+- 如果目标列只有一个敌方实体，无论 `front` 还是 `back` 都会命中它
+- 目标列没有敌方实体时不造成伤害
+- 只伤害敌方实体，不命中英雄
 - 伤害携带施放者词缀
-- 不会命中英雄
 - 不进入攻击流程，不触发先攻、双击、狂热、穿透、三连等攻击形式
 
 也接受 `ahead` / `behind` 和 `前` / `后`。
+
+实体能力示例：
+
+```text
+when enter:
+    damage_column_relative(2, 'front')
+
+when turn_end:
+    damage_column_relative(3, 'back', -1)
+```
+
+选列锦囊示例：
+
+```text
+choose_column()
+damage_column_relative(4, 'back')
+```
+
+环境牌示例：
+
+```text
+damage_column_relative(2, 'front')
+```
+
+- 选列锦囊使用玩家选择的列作为参考列
+- 环境牌使用自身所在列作为参考列

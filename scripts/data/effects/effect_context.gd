@@ -68,7 +68,7 @@ func deal_damage(_target, _amount: int) -> void:
 	push_warning("EffectContext.deal_damage 未实现：需要战斗层提供")
 
 
-func damage_column_relative(_amount: int, _direction: String) -> void:
+func damage_column_relative(_amount: int, _direction: String, _column_offset: int = 0) -> void:
 	push_warning("EffectContext.damage_column_relative 未实现：需要战斗层提供")
 
 

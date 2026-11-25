@@ -330,6 +330,48 @@ func test_keyword_and_tribe_filters_use_membership() -> void:
 	assert_true(filter.matches(card))
 
 
+func test_damage_column_relative_fallback_and_offsets() -> void:
+	var engine: BattleEngine = _started_engine()
+	var source_card: CardData = _make_test_card("pvzh:test_relative_fallback_source", "")
+	source_card.health = 5
+	var source: BattleEntity = engine.summon_card("p", source_card, 2, 0)
+	var only_card: CardData = _make_test_card("pvzh:test_relative_fallback_target", "")
+	only_card.health = 5
+	var only: BattleEntity = engine.summon_card("z", only_card, 2, BattleEngine.SLOT_TEAM_UP)
+	assert_eq(engine.damage_column_relative(source, 2, "front"), 2)
+	assert_eq(only.health, 3, "只有一个敌人时前后位置都应命中它")
+	assert_eq(engine.damage_column_relative(source, 2, "front", -1), 0)
+	only.column = 1
+	assert_eq(engine.damage_column_relative(source, 2, "front", -1), 2)
+	assert_eq(only.health, 1, "相对列偏移应命中左侧列的唯一敌人")
+
+
+func test_spell_and_environment_can_use_relative_column_damage() -> void:
+	var engine: BattleEngine = _started_engine()
+	var enemy_card: CardData = _make_test_card("pvzh:test_relative_spell_enemy", "")
+	enemy_card.health = 8
+	var enemy: BattleEntity = engine.summon_card("z", enemy_card, 1, 0)
+	var spell: CardData = _make_test_card(
+		"pvzh:test_relative_spell",
+		"choose_column(); damage_column_relative(2, 'front')"
+	)
+	spell.kind = "spell"
+	_set_hand(engine, "p", [spell.card_id])
+	engine.players["p"].energy = 10
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "p"
+	assert_true(bool(engine.play_card("p", 0, {"column": 1}).get("ok", false)))
+	assert_eq(enemy.health, 6, "选列锦囊应能从所选列释放相对位置伤害")
+	var env: CardData = _make_test_card(
+		"pvzh:test_relative_env",
+		"damage_column_relative(2, 'front')"
+	)
+	env.kind = "environment"
+	env.english_name = "test_relative_env"
+	assert_true(engine._place_environment("p", 1, env))
+	assert_eq(enemy.health, 4, "环境也应能从自身列释放相对位置伤害")
+
+
 func test_damage_column_relative_front_and_back() -> void:
 	var engine: BattleEngine = _started_engine()
 	var source_card: CardData = _make_test_card("pvzh:test_column_relative_source", "")
