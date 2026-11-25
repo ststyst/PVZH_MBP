@@ -119,7 +119,7 @@
 
 1. 战斗已结束、实体不存在或已死亡 → 无有效伤害
 2. 实体在墓碑中 → 无有效伤害
-3. 无敌、锦囊免疫、隐形免疫 → 无有效伤害
+3. 无敌、锦囊免疫（仅敌方锦囊）、隐形免疫 → 无有效伤害
 4. 非必中伤害先扣护盾：`max(amount - shield, 0)`
 5. 最终伤害大于 0 才扣生命
 6. 致命只在最终伤害大于 0 时把生命归零
@@ -197,8 +197,8 @@ damage == 0 = 未造成有效伤害
 | 反伤 `thorns` | 被普通攻击命中且受到有效伤害时反击 |
 | 隐形 `invisible` | 没有必中时免疫伤害；回合结束数值 -1 |
 | 无敌 `invincible` | 入场时获得一层无敌 Buff（词缀本身不参与任何结算） |
-| 锦囊免疫 `spell_immune` | 不会被锦囊选中，锦囊效果/伤害无效（只针对锦囊来源） |
-| 免疫锦囊 `untrickable` | 与锦囊免疫相同的不可选中效果（只针对锦囊来源） |
+| 锦囊免疫 `spell_immune` | 不会被**敌方**锦囊选中，敌方锦囊伤害/效果无效；我方锦囊与环境正常生效 |
+| 免疫锦囊 `untrickable` | 与锦囊免疫相同的不可选中效果（只针对敌方锦囊） |
 | 免疫负面 `debuff_immune` | 不会获得 Debuff |
 | 墓碑 `tombstone` | 入场时埋入墓碑，按阶段揭示 |
 | 组队 `team_up` | 允许同列第二个实体，并可挤开现有实体 |
@@ -464,7 +464,7 @@ apply_buff(lowest(enemy_entities, 'defense'), 'frozen')
 - **并列**：所有并列最高 / 最低的实体都会成为目标（两张实体攻击力同为 7，就都吃这次效果）。
 - **只接受单个目标的原语**：`apply_buff` / `remove_buff` / `force_attack` / `move_entity` / `remove_entity` 这类原语在并列时会结算失败（记录运行错误、不生效）。
 - **空范围**：范围内没有实体时什么都不发生，也不报错。
-- **免疫权限**：挑选本身不看锦囊免疫 / 隐形，但效果真正生效时仍按原语自身的规则过滤（锦囊伤害/消灭打不到锦囊免疫实体；实体能力的伤害/消灭照常生效）。
+- **免疫权限**：挑选本身不看锦囊免疫 / 隐形，但效果真正生效时仍按原语自身的规则过滤（敌方锦囊的伤害/消灭打不到锦囊免疫实体；我方锦囊、实体能力、环境效果照常生效）。
 
 完整语法与数值名列表见 `docs/EffectDsl.md`「按数值挑选目标」。
 
@@ -497,7 +497,7 @@ deal_damage(entities_matching(enemy_entities, "keyword == 'frost'"), 1)
 |---|---|---|---|---|
 | `frozen` 冰冻 | debuff | `apply_buff`、寒霜命中、光环 | 无法攻击（战斗阶段跳过、`force_attack` 失败、攻击动作直接返回） | **战斗阶段**每列结算完成时清除该列全部层数；免疫负面阻止施加 |
 | `invincible` 无敌 | buff | 词缀 `invincible` **只在入场时给 1 层 Buff**（词缀本身不参与任何结算）、`apply_buff` | 无敌 **Buff** 免疫伤害（`damage_entity` 直接返回）；**不**阻止被 `destroy`（消灭时先移除 1 层再把生命归零） | 战斗阶段列结算后清空全部层数；被 `destroy` 消耗 1 层 |
-| `spell_immune` 临时锦囊免疫 | buff | `apply_buff`、光环（保护伞） | **只**拦锦囊来源：`can_target` 对锦囊来源返回 false、`damage_entity(from_spell)` 免伤、`destroy(from_spell)` 拒绝；实体能力 / 环境等来源的伤害、消灭、Buff 正常生效 | 光环来源离场时按来源移除；无战斗后清除 |
+| `spell_immune` 临时锦囊免疫 | buff | `apply_buff`、光环（保护伞） | **只**拦敌方锦囊：`can_target`、`damage_entity`、`destroy` 在“施法方与实体不同阵营”时才免疫；我方锦囊照常影响我方实体（不判断效果有益/有害）；环境等非锦囊来源正常生效 | 光环来源离场时按来源移除；无战斗后清除 |
 | `hatred` 仇恨 | buff | 光环（带刺玫瑰）、`apply_buff` | 受到**敌方实体来源**的有效伤害后，消灭该来源 | 光环来源离场 / `remove_buff` |
 | `life_force` 生命力量 | buff | `apply_buff` | 攻击伤害改用当前生命值（主攻击与穿透；先攻仍按先攻数值，溅射仍按溅射数值） | `remove_buff` |
 | `buried` 埋入墓碑 | buff | 词缀 `tombstone` 入场自动埋入、`apply_buff` | 无法被伤害 / 指定；对敌方隐藏信息与费用 | Z 方锦囊阶段**开始**时按列揭示（随后触发 `tombstone_reveal` 与 `enter`） |
@@ -511,7 +511,7 @@ deal_damage(entities_matching(enemy_entities, "keyword == 'frost'"), 1)
 
 - **`frozen` 冰冻**：判定用 `is_frozen()`；战斗阶段列结算、`force_attack` 与攻击动作本身都会因它跳过；施加时被 `debuff_immune` 拦下；解除只发生在战斗阶段某列结算完成（一次清空全部层），并触发 `buff_removed`。
 - **`invincible` 无敌**：`invincible` **词缀**只在入场时调用一次 `apply_buff_handle` 给 1 层 Buff，之后所有判定只看 Buff（`is_invincible()` 不再看词缀）；`damage_entity` 因 Buff 返回 0；`destroy_handle` 先移除 1 层再把生命归零（无敌**不**阻止消灭）；列结算完成清空全部层。
-- **`spell_immune` 临时锦囊免疫**：三层拦截都以“来源是锦囊”为前提——`can_target`（锦囊来源不可选）、`damage_entity(from_spell)`、`destroy_handle(from_spell)`；实体能力、环境、反伤、仇恨等非锦囊来源不受影响。没有战斗后清除，靠光环来源追踪或 `remove_buff` 解除。
+- **`spell_immune` 临时锦囊免疫**：三层拦截都以“**敌方**锦囊来源”为前提——`can_target`（敌方锦囊不可选我方免疫实体）、`damage_entity`、`destroy_handle`；我方锦囊照常生效（也不判断效果有益或有害，例如我方锦囊对我方实体的伤害同样命中）；环境 / 实体能力 / 反伤 / 仇恨等非锦囊来源不受影响。没有战斗后清除，靠光环来源追踪或 `remove_buff` 解除。
 - **`hatred` 仇恨**：在 `damage_entity` 内、有效伤害 > 0 后检查；要求来源是**存活的敌方实体**；用 `destroy_handle` 消灭来源（来源带无敌 Buff 时先消耗其 1 层）。
 - **`life_force` 生命力量**：`_attack_power()` 用它替换攻击力，所有攻击动作共用；先攻仍按先攻数值、溅射仍按溅射数值。
 - **`buried` 埋入墓碑**：`damage_entity` 返回 0、`can_target` 返回 false、对敌方隐藏身份与费用；揭示在 Z 方锦囊阶段**开始**时按列进行，先 `tombstone_reveal` 再 `enter`，并清空双方的隐藏费用显示。

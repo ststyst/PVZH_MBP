@@ -2614,6 +2614,66 @@ func test_invincible_keyword_only_grants_buff() -> void:
 	assert_eq(entity.health, 2, "Buff 移除后应正常受伤")
 
 
+func test_spell_immunity_ignores_friendly_spells() -> void:
+	var engine: BattleEngine = _started_engine()
+	var own_card: CardData = _make_test_card("pvzh:test_friendly_immune_own", "")
+	own_card.health = 8
+	var enemy_card: CardData = _make_test_card("pvzh:test_friendly_immune_enemy", "")
+	enemy_card.health = 8
+	var own_immune: BattleEntity = engine.summon_card("p", own_card, 1, 0)
+	var enemy_immune: BattleEntity = engine.summon_card("z", enemy_card, 2, 0)
+	engine.apply_buff_handle(own_immune, "spell_immune", 1)
+	engine.apply_buff_handle(enemy_immune, "spell_immune", 1)
+	var context := BattleEffectContext.new(engine, "p")
+	context.set_spell_source(true)
+	# 我方锦囊：伤害 / Buff / 消灭都应作用于我方免疫实体（不判断效果有益或有害）
+	context.deal_damage(own_immune, 3)
+	assert_eq(own_immune.health, 5, "我方锦囊伤害应命中我方锦囊免疫实体")
+	assert_true(context.apply_buff(own_immune, "frozen"), "我方锦囊的 Buff 应生效")
+	context.destroy(own_immune)
+	assert_eq(own_immune.health, 0, "我方锦囊的消灭应生效")
+	# 敌方锦囊：仍然全部被免疫
+	context.deal_damage(enemy_immune, 3)
+	assert_eq(enemy_immune.health, 8, "敌方锦囊伤害应被免疫")
+	assert_false(context.apply_buff(enemy_immune, "frozen"), "敌方锦囊 Buff 应被免疫")
+	context.destroy(enemy_immune)
+	assert_eq(enemy_immune.health, 8, "敌方锦囊消灭应被免疫")
+
+
+func test_friendly_spell_targeting_and_choose_include_immune_allies() -> void:
+	var engine: BattleEngine = _started_engine()
+	var own_card: CardData = _make_test_card("pvzh:test_friendly_target_own", "")
+	own_card.health = 5
+	var enemy_card: CardData = _make_test_card("pvzh:test_friendly_target_enemy", "")
+	enemy_card.health = 5
+	var own_immune: BattleEntity = engine.summon_card("p", own_card, 1, 0)
+	var enemy_immune: BattleEntity = engine.summon_card("z", enemy_card, 2, 0)
+	engine.apply_buff_handle(own_immune, "spell_immune", 1)
+	engine.apply_buff_handle(enemy_immune, "spell_immune", 1)
+	own_immune.health = 3
+	var heal_spell: CardData = _make_test_card("pvzh:test_friendly_heal", "heal(all_allies, 2)")
+	heal_spell.kind = "spell"
+	var candidates: Array = engine.target_candidates(heal_spell, "p")
+	assert_true(candidates.has(own_immune), "我方锦囊应能选中我方锦囊免疫实体")
+	var ally_pool: Array = engine.choose_candidates("all_allies", "p", true)
+	assert_true(ally_pool.has(own_immune), "我方锦囊 choose 应包含我方免疫实体")
+	var enemy_pool: Array = engine.choose_candidates("all_enemies", "p", true)
+	assert_false(enemy_pool.has(enemy_immune), "敌方锦囊 choose 应排除敌方免疫实体")
+
+
+func test_environment_effects_ignore_spell_immunity() -> void:
+	var engine: BattleEngine = _started_engine()
+	var card: CardData = _make_test_card("pvzh:test_env_immune_target", "")
+	card.health = 6
+	var target: BattleEntity = engine.summon_card("z", card, 2, 0)
+	engine.apply_buff_handle(target, "spell_immune", 1)
+	var env := EnvironmentEffectContext.new(engine, "p", 2)
+	env.deal_damage(target, 2)
+	assert_eq(target.health, 4, "环境效果应正常作用于锦囊免疫实体")
+	env.destroy(target)
+	assert_eq(target.health, 0, "环境消灭应正常作用于锦囊免疫实体")
+
+
 func test_bounce_death_check_only_resolves_itself() -> void:
 	var engine: BattleEngine = _started_engine()
 	var bounced_card: CardData = _make_test_card("pvzh:test_bounce_self_a", "")

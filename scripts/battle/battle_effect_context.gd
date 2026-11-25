@@ -90,9 +90,22 @@ func can_target(handle) -> bool:
 	if handle is BattleEntity:
 		if handle.has_buff("buried"):
 			return false
-		if is_spell_source:
-			return not handle.is_spell_immune()
+		if _spell_immunity_applies(handle):
+			return false
 	return true
+
+
+## 锦囊免疫只在“敌方施放的锦囊”作用于该实体时生效。
+## 我方锦囊照常影响我方实体（不判断效果有益/有害）；环境等非锦囊来源一律不受影响。
+func _spell_immunity_applies(target) -> bool:
+	if not is_spell_source:
+		return false
+	if not target is BattleEntity:
+		return false
+	var entity: BattleEntity = target
+	if entity.side == caster_side:
+		return false
+	return entity.is_spell_immune()
 
 
 func resolve_selector(selector: String) -> Array:
@@ -332,7 +345,7 @@ func deal_damage(target, amount: int) -> void:
 		source_label = "锦囊：%s" % source_name
 	if source_label.is_empty() and source_entity == null and not is_spell_source:
 		source_label = "%s（%s）" % [source_name, caster_side.to_upper()] if not source_name.is_empty() else "%s 方效果" % caster_side.to_upper()
-	engine.damage_handle(target, amount, source_keywords, is_spell_source, source_entity, source_label)
+	engine.damage_handle(target, amount, source_keywords, _spell_immunity_applies(target), source_entity, source_label)
 
 
 func damage_column_relative(amount: int, direction: String, column_offset: int = 0) -> void:
@@ -391,6 +404,8 @@ func environment_grant_keyword_persistent(keyword: String, value: int, side_filt
 
 func transform_targets(targets: Array, filter_text: String) -> void:
 	for handle: Variant in targets:
+		if _spell_immunity_applies(handle):
+			continue
 		engine.transform_entity_handle(handle, filter_text)
 
 
@@ -403,7 +418,8 @@ func environment_grant_stats(attack: int, health: int, shield: int, side_filter:
 
 
 func destroy(target, from_spell: bool = false) -> void:
-	engine.destroy_handle(target, from_spell)
+	# 只有“敌方锦囊”会被锦囊免疫拦下；from_spell 由调用方按来源计算。
+	engine.destroy_handle(target, _spell_immunity_applies(target))
 
 
 func is_spell_effect_source() -> bool:
@@ -411,13 +427,13 @@ func is_spell_effect_source() -> bool:
 
 
 func move_entity(target, column: int, slot: int) -> bool:
-	if is_spell_source and target is BattleEntity and target.is_spell_immune():
+	if _spell_immunity_applies(target):
 		return false
 	return engine.move_entity_handle(target, column, slot)
 
 
 func move_entity_to_chosen_position(target) -> bool:
-	if is_spell_source and target is BattleEntity and target.is_spell_immune():
+	if _spell_immunity_applies(target):
 		return false
 	if chosen_column < 0 or chosen_slot < 0:
 		return false
@@ -534,7 +550,7 @@ func place_environment(column_offset: int, card_name: String) -> bool:
 func apply_buff(target, buff_id: String, amount: int = 1) -> bool:
 	if not target is BattleEntity:
 		return false
-	if is_spell_source and target.is_spell_immune():
+	if _spell_immunity_applies(target):
 		return false
 	return engine.apply_buff_handle(target, buff_id, amount)
 
@@ -542,13 +558,15 @@ func apply_buff(target, buff_id: String, amount: int = 1) -> bool:
 func remove_buff(target, buff_id: String) -> bool:
 	if not target is BattleEntity:
 		return false
+	if _spell_immunity_applies(target):
+		return false
 	return engine.remove_buff_handle(target, buff_id)
 
 
 func force_attack(target) -> bool:
 	if not target is BattleEntity:
 		return false
-	if is_spell_source and target.is_spell_immune():
+	if _spell_immunity_applies(target):
 		return false
 	return engine.force_entity_attack(target)
 
@@ -556,12 +574,14 @@ func force_attack(target) -> bool:
 func remove_entity(target) -> bool:
 	if not target is BattleEntity:
 		return false
-	if is_spell_source and target.is_spell_immune():
+	if _spell_immunity_applies(target):
 		return false
 	return engine.remove_entity_handle(target)
 
 
 func gain_max_health(target, delta: int) -> void:
+	if _spell_immunity_applies(target):
+		return
 	engine.change_max_health_handle(target, delta)
 
 

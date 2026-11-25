@@ -877,7 +877,7 @@ func target_candidates(card: CardData, caster_side: String) -> Array:
 			continue
 		if healing_target and entity.health >= entity.max_health:
 			continue
-		if card != null and card.is_spell() and entity.is_spell_immune():
+		if card != null and card.is_spell() and entity.side != caster_side and entity.is_spell_immune():
 			continue
 		handles.append(entity)
 	if not healing_target or _hero_needs_heal(target_side):
@@ -931,7 +931,7 @@ func choose_candidates(selector: String, caster_side: String, exclude_spell_immu
 	for entity: BattleEntity in entities:
 		if not entity.is_alive() or entity.side != wanted_side:
 			continue
-		if exclude_spell_immune and entity.is_spell_immune():
+		if exclude_spell_immune and entity.side != caster_side and entity.is_spell_immune():
 			continue
 		if selector == "frozen_enemies" and not entity.is_frozen():
 			continue
@@ -1081,7 +1081,7 @@ func play_card(side: String, hand_index: int, target: Dictionary = {}) -> Dictio
 			for handle: Variant in chosen:
 				if not choose_pool.has(handle):
 					return _fail("目标无效。")
-				if card.is_spell() and handle is BattleEntity and handle.is_spell_immune():
+				if card.is_spell() and handle is BattleEntity and handle.side != side and handle.is_spell_immune():
 					return _fail("目标免疫锦囊。")
 		elif card_needs_target(card):
 			if chosen.is_empty():
@@ -1090,7 +1090,7 @@ func play_card(side: String, hand_index: int, target: Dictionary = {}) -> Dictio
 			for handle: Variant in chosen:
 				if not candidates.has(handle):
 					return _fail("目标无效。")
-				if card.is_spell() and handle is BattleEntity and handle.is_spell_immune():
+				if card.is_spell() and handle is BattleEntity and handle.side != side and handle.is_spell_immune():
 					return _fail("目标免疫锦囊。")
 		if card.ability_script != null and card.ability_script.move_requires_position():
 			if int(target.get("column", -1)) < 0 or int(target.get("slot", -1)) < 0:
@@ -2585,10 +2585,10 @@ func give_keyword_to_hand_card(side: String, hand_index: int, keyword: String, v
 	return true
 
 
-func destroy_handle(handle: Variant, from_spell: bool = false) -> void:
+func destroy_handle(handle: Variant, spell_immune_block: bool = false) -> void:
 	if handle is BattleEntity:
-		# 锦囊免疫只挡锦囊来源的消灭；实体/环境等效果照常生效。
-		if from_spell and handle.is_spell_immune():
+		# 只有“敌方锦囊”的消灭会被锦囊免疫拦下（由调用方计算）；实体/环境等效果照常生效。
+		if spell_immune_block and handle.is_spell_immune():
 			return
 		if handle.has_buff("invincible"):
 			handle.remove_buff("invincible")

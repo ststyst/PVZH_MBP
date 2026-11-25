@@ -460,7 +460,7 @@ when buff_removed:
 - Buff 不是词缀，只存在于战场实体上；可在代码中解除
 - `frozen`：不能攻击；所在列战斗结算完成后解除
 - `invincible`：词缀**只在入场时给一层无敌 Buff**，Buff 免疫伤害（**不**阻止消灭），所在列战斗结算完成后解除
-- `spell_immune`：只拦**锦囊来源**——不作为锦囊目标、锦囊效果/伤害不生效、锦囊消灭被拒绝；实体能力/环境等效果正常生效
+- `spell_immune`：只拦**敌方锦囊**——敌方锦囊不能选它、伤害/消灭无效；我方锦囊、实体能力、环境等效果正常生效（不判断效果有益或有害）
 - 相关实体词缀：双重打击、狂热、锦囊免疫、克制英雄、穿透、致命、无敌、捕猎、两栖、溅射、寒霜、反伤、免疫负面
 - `debuff_immune` 会阻止冰冻等 Debuff 被施加
 - 词缀定义在 `scripts/data/card_keywords.gd`，Buff 定义在 `scripts/data/card_buffs.gd`，战斗实现在 `scripts/battle/battle_engine.gd`
@@ -735,7 +735,7 @@ apply_buff(lowest(all_allies, 'cost', has_keyword('frost')), 'frozen')
 
 - 结果是**数组**：并列极值的实体会全部返回，所以多目标原语会逐个生效；只接受单个目标的原语（`apply_buff` / `remove_buff` / `force_attack` / `move_entity` / `remove_entity` 等）在并列时会记录运行错误。
 - 空集合返回空数组：不执行、不报错。
-- 只按数值挑选，**不检查**锦囊免疫 / 隐形等目标限制；具体原语仍按自身规则过滤（例如锦囊伤害仍会跳过锦囊免疫目标）。
+- 只按数值挑选，**不检查**锦囊免疫 / 隐形等目标限制；具体原语仍按自身规则过滤（例如敌方锦囊伤害会跳过锦囊免疫目标）。
 - 读到的都是**当前值**（已结算 Buff、光环、环境修正），不是卡牌数据库里的原始数值。
 
 ### 用卡牌筛选语法筛选在场实体（`entities_matching`）
