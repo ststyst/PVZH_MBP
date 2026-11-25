@@ -296,6 +296,40 @@ func test_draw_matching_cards_fatigue_and_draw_event() -> void:
 	assert_eq(state.hero_health, 29, "1 层疲劳应在回合开始造成 1 点伤害")
 
 
+func test_heal_target_candidates_require_missing_health() -> void:
+	var engine: BattleEngine = _started_engine()
+	var heal_card: CardData = _make_test_card("pvzh:test_heal_targets", "heal(chosen, 3)")
+	heal_card.kind = "spell"
+	var full_card: CardData = _make_test_card("pvzh:test_heal_full", "")
+	full_card.health = 5
+	var injured_card: CardData = _make_test_card("pvzh:test_heal_injured", "")
+	injured_card.health = 5
+	var full: BattleEntity = engine.summon_card("p", full_card, 0, 0)
+	var injured: BattleEntity = engine.summon_card("p", injured_card, 1, 0)
+	injured.health = 2
+	engine.players["p"].hero_health = 20
+	var candidates: Array = engine.target_candidates(heal_card, "p")
+	assert_true(candidates.has(injured))
+	assert_false(candidates.has(full))
+	assert_false(candidates.has(engine.hero_handle("p")), "满血英雄不应成为治疗目标")
+	engine.players["p"].hero_health = 18
+	candidates = engine.target_candidates(heal_card, "p")
+	assert_true(candidates.has(engine.hero_handle("p")), "受伤英雄应成为治疗目标")
+
+
+func test_keyword_and_tribe_filters_use_membership() -> void:
+	var card: CardData = _make_test_card("pvzh:test_filter_membership", "")
+	card.keywords = ["taunt", "armored"]
+	card.tribes = ["pet", "robot"]
+	var filter := CardFilter.new()
+	assert_true(filter.parse("keyword == 'taunt'"))
+	assert_true(filter.matches(card))
+	assert_true(filter.parse("tribe == 'pet'"))
+	assert_true(filter.matches(card))
+	assert_true(filter.parse("keyword != 'deadly'"))
+	assert_true(filter.matches(card))
+
+
 func test_deadly_blocked_by_shield_triggers_no_events() -> void:
 	var engine: BattleEngine = _started_engine()
 	var target_card: CardData = _make_test_card("pvzh:test_deadly_shield_target", "")

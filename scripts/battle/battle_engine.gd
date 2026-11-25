@@ -800,6 +800,37 @@ func target_mode_for(card: CardData) -> String:
 	return _first_target_mode(program.get("on_play", []))
 
 
+## 返回第一个需要目标的原语名（heal / deal_damage / destroy 等）。
+func target_primitive_for(card: CardData) -> String:
+	if card == null or card.ability_script == null:
+		return ""
+	return _first_target_primitive(card.ability_script.to_program().get("on_play", []))
+
+
+func _first_target_primitive(statements: Array) -> String:
+	for raw_statement: Variant in statements:
+		if not raw_statement is Dictionary:
+			continue
+		var statement: Dictionary = raw_statement
+		var statement_type: String = str(statement.get("type", ""))
+		if statement_type == "call":
+			var primitive_name: String = str(statement.get("name", ""))
+			if primitive_name in ["deal_damage", "destroy", "heal", "gain_shield", "buff_stats", "give_keyword"]:
+				return primitive_name
+		elif statement_type == "if":
+			var found: String = _first_target_primitive(statement.get("body", []))
+			if not found.is_empty():
+				return found
+			found = _first_target_primitive(statement.get("else", []))
+			if not found.is_empty():
+				return found
+		elif statement_type == "repeat":
+			var repeated: String = _first_target_primitive(statement.get("body", []))
+			if not repeated.is_empty():
+				return repeated
+	return ""
+
+
 func _first_target_mode(statements: Array) -> String:
 	for raw_statement: Variant in statements:
 		if not raw_statement is Dictionary:
@@ -833,15 +864,24 @@ func target_candidates(card: CardData, caster_side: String) -> Array:
 	if target_mode.is_empty():
 		target_mode = "enemy"
 	var target_side: String = caster_side if target_mode == "ally" else opposite_side(caster_side)
+	var healing_target: bool = target_primitive_for(card) == "heal"
 	var handles: Array = []
 	for entity: BattleEntity in entities:
 		if not entity.is_alive() or entity.side != target_side:
 			continue
+		if healing_target and entity.health >= entity.max_health:
+			continue
 		if card != null and card.is_spell() and entity.is_spell_immune():
 			continue
 		handles.append(entity)
-	handles.append(hero_handle(target_side))
+	if not healing_target or _hero_needs_heal(target_side):
+		handles.append(hero_handle(target_side))
 	return handles
+
+
+func _hero_needs_heal(side: String) -> bool:
+	var state: BattlePlayerState = players.get(side, null)
+	return state != null and state.hero_health < state.hero_max_health
 
 
 ## 多目标锦囊 choose(count, selector) 的候选实体。
