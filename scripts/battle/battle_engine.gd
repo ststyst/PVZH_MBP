@@ -2796,6 +2796,8 @@ func _execute_entity_attack(
 		if attacker.alive and not _battle_over():
 			_execute_attack_action(attacker, true)
 		_flush_column_deaths(attacker.column)
+	if attacker != null and attacker.alive and not _battle_over():
+		_fire_event("after_attack", attacker)
 
 
 func _try_thorns(attacker: BattleEntity, target: BattleEntity, effective_damage: int) -> void:

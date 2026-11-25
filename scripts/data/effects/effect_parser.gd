@@ -40,6 +40,7 @@ const EVENTS: Array[String] = [
 	"transformed",
 	"hand_transformed",
 	"drawn",
+	"after_attack",
 ]
 const SELECTORS: Array[String] = [
 	"self",

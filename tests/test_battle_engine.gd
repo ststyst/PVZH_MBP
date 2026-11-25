@@ -330,6 +330,23 @@ func test_keyword_and_tribe_filters_use_membership() -> void:
 	assert_true(filter.matches(card))
 
 
+func test_after_attack_event_fires_after_attack_action() -> void:
+	var engine: BattleEngine = _started_engine()
+	var attacker_card: CardData = _make_test_card(
+		"pvzh:test_after_attack",
+		"when after_attack:\n    add_marker('after_attack', 1)"
+	)
+	attacker_card.attack = 2
+	attacker_card.health = 5
+	var attacker: BattleEntity = engine.summon_card("p", attacker_card, 0, 0)
+	var target_card: CardData = _make_test_card("pvzh:test_after_attack_target", "")
+	target_card.health = 5
+	var target: BattleEntity = engine.summon_card("z", target_card, 0, 0)
+	engine._execute_entity_attack(attacker, target, 0)
+	assert_eq(engine.players["p"].marker_count("after_attack"), 1, "攻击动作完成后应触发 after_attack")
+	assert_eq(target.health, 3)
+
+
 func test_damage_column_relative_fallback_and_offsets() -> void:
 	var engine: BattleEngine = _started_engine()
 	var source_card: CardData = _make_test_card("pvzh:test_relative_fallback_source", "")
