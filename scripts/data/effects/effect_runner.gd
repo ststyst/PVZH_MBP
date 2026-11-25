@@ -5,10 +5,32 @@ extends RefCounted
 
 const MAX_REPEAT: int = 100
 
+## 目标事实的缺省值：循环里即使上下文给不出 describe_entity，条件判断也不会炸。
+const DEFAULT_FACTS: Dictionary = {
+	"side": "",
+	"class": "",
+	"tribes": [],
+	"keywords": [],
+	"keyword_values": {},
+	"buffs": [],
+	"attack": 0,
+	"health": 0,
+	"max_health": 0,
+	"shield": 0,
+	"defense": 0,
+	"cost": 0,
+	"column": 0,
+	"column_abs": 0,
+	"turn": 0,
+	"entered_this_turn": false,
+}
+
 var context: EffectContext
 var errors: Array[String] = []
 
 var _variables: Dictionary = {}
+## 当前表达式作用域（for_each 循环事实 / 事件过滤事实）；_eval 未显式传 facts 时使用。
+var _facts: Dictionary = {}
 
 
 func _init(effect_context: EffectContext) -> void:
@@ -18,6 +40,7 @@ func _init(effect_context: EffectContext) -> void:
 func run_program_on_play(program: Dictionary) -> Array[String]:
 	errors.clear()
 	_variables.clear()
+	_facts.clear()
 	_exec_block(program.get("on_play", []))
 	return errors
 
@@ -25,6 +48,7 @@ func run_program_on_play(program: Dictionary) -> Array[String]:
 func run_program_event(program: Dictionary, event_name: String, event_handle) -> Array[String]:
 	errors.clear()
 	_variables.clear()
+	_facts.clear()
 	var triggers: Array = program.get("events", [])
 	for trigger: Dictionary in triggers:
 		if str(trigger.get("event", "")) != event_name:
@@ -39,9 +63,13 @@ func run_program_event(program: Dictionary, event_name: String, event_handle) ->
 
 # ----- 语句 -----
 
-func _exec_block(block: Array) -> void:
+func _exec_block(block: Array, facts: Dictionary = {}) -> void:
+	var previous_facts: Dictionary = _facts
+	if not facts.is_empty():
+		_facts = facts
 	for statement: Dictionary in block:
 		_exec_statement(statement)
+	_facts = previous_facts
 
 
 func _exec_statement(statement: Dictionary) -> void:
@@ -49,22 +77,66 @@ func _exec_statement(statement: Dictionary) -> void:
 	match statement_type:
 		"assign":
 			var variable_name: String = str(statement.get("name", ""))
-			_variables[variable_name] = _eval(statement.get("value", {}), {})
+			_variables[variable_name] = _eval(statement.get("value", {}))
 		"if":
-			var condition: bool = _truthy(_eval(statement.get("cond", {}), {}))
+			var condition: bool = _truthy(_eval(statement.get("cond", {})))
 			if condition:
 				_exec_block(statement.get("body", []))
 			else:
 				_exec_block(statement.get("else", []))
 		"repeat":
-			var repeat_count: int = int(_eval(statement.get("count", {}), {}))
+			var repeat_count: int = int(_eval(statement.get("count", {})))
 			repeat_count = clampi(repeat_count, 0, MAX_REPEAT)
 			for _iteration: int in range(repeat_count):
 				_exec_block(statement.get("body", []))
+		"for_each":
+			_exec_for_each(statement)
 		"call":
 			_exec_primitive(statement)
 		_:
 			_error("未知语句类型：%s" % statement_type, _line_of(statement))
+
+
+## for_each：对目标数组逐个执行整个块；块内可读该目标的事实变量。
+func _exec_for_each(statement: Dictionary) -> void:
+	var handles: Array = _resolve_argument_target(statement.get("targets", {}))
+	var loop_name: String = str(statement.get("var", "it"))
+	var body: Array = statement.get("body", [])
+	var had_binding: bool = _variables.has(loop_name)
+	var previous_binding: Variant = _variables.get(loop_name)
+	var total: int = handles.size()
+	for loop_position: int in range(total):
+		var handle: Variant = handles[loop_position]
+		if handle == null:
+			continue
+		_variables[loop_name] = handle
+		_exec_block(body, _loop_facts(handle, loop_position, total))
+	if had_binding:
+		_variables[loop_name] = previous_binding
+	else:
+		_variables.erase(loop_name)
+
+
+## 目标事实 = 缺省值 + 战斗层 describe_entity 的结果；defense 是 shield 的别名。
+func _entity_facts(handle) -> Dictionary:
+	var facts: Dictionary = DEFAULT_FACTS.duplicate(true)
+	var described: Dictionary = {}
+	if context != null:
+		described = context.describe_entity(handle)
+	for key: Variant in described.keys():
+		facts[str(key)] = described[key]
+	if not described.has("defense"):
+		facts["defense"] = int(facts.get("shield", 0))
+	return facts
+
+
+## 循环事实：目标事实 + 循环位置信息。
+func _loop_facts(handle, loop_position: int, total: int) -> Dictionary:
+	var facts: Dictionary = _entity_facts(handle)
+	facts["loop_index"] = loop_position
+	facts["loop_count"] = total
+	facts["loop_target"] = handle
+	return facts
 
 
 func _exec_primitive(statement: Dictionary) -> void:
@@ -341,7 +413,7 @@ func _matches_trigger(trigger: Dictionary, event_handle) -> bool:
 		return _is_self(event_handle) or (context != null and context.get_zone() in ["environment", "base", "hand", "deck"])
 	if context == null:
 		return false
-	var facts: Dictionary = context.describe_entity(event_handle)
+	var facts: Dictionary = _entity_facts(event_handle)
 	facts["zone"] = context.get_zone()
 	return _truthy(_eval(predicate, facts))
 
@@ -353,7 +425,9 @@ func _is_self(event_handle) -> bool:
 
 # ----- 表达式 -----
 
-func _eval(expression: Variant, facts: Dictionary) -> Variant:
+func _eval(expression: Variant, facts: Dictionary = {}) -> Variant:
+	if facts.is_empty():
+		facts = _facts
 	if not expression is Dictionary:
 		_error("表达式节点无效")
 		return null
@@ -392,21 +466,22 @@ func _eval_call(expression: Dictionary, facts: Dictionary) -> Variant:
 	var function_name: String = str(expression.get("name", ""))
 	var arguments: Array = expression.get("args", [])
 	match function_name:
-		"attack", "health", "shield":
-			var handles: Array = _resolve_argument_target(arguments[0])
+		"attack", "health", "max_health", "shield", "defense", "cost":
+			var handles: Array = _resolve_argument_target(arguments[0], facts)
 			if handles.size() != 1:
 				_error("查询函数 %s 需要单个目标" % function_name, _line_of(expression))
 				return 0
-			var entity_facts: Dictionary = context.describe_entity(handles[0])
-			return _as_int(entity_facts.get(function_name, 0))
+			var entity_facts: Dictionary = _entity_facts(handles[0])
+			var stat_key: String = "shield" if function_name == "defense" else function_name
+			return _as_int(entity_facts.get(stat_key, 0))
+		"has_tribe", "has_keyword", "has_buff":
+			return _eval_membership(function_name, arguments, facts, expression)
+		"keyword_value":
+			return _eval_keyword_value(arguments, facts, expression)
 		"min":
 			return mini(_as_int(_eval(arguments[0], facts)), _as_int(_eval(arguments[1], facts)))
 		"max":
 			return maxi(_as_int(_eval(arguments[0], facts)), _as_int(_eval(arguments[1], facts)))
-		"has_tribe":
-			var tribe_name: String = _as_string(_eval(arguments[0], facts))
-			var tribes: Variant = facts.get("tribes", [])
-			return tribes is Array and tribes.has(tribe_name)
 		"marker_count":
 			return context.marker_count(_as_string(_eval(arguments[0], facts)))
 		"entities_in_column":
@@ -436,6 +511,45 @@ func _eval_call(expression: Dictionary, facts: Dictionary) -> Variant:
 		_:
 			_error("原语只能作为语句调用：%s" % function_name, _line_of(expression))
 			return null
+
+
+## has_tribe / has_keyword / has_buff：
+## - 1 个参数：检查当前作用域目标（事件触发者 / for_each 当前目标）；
+## - 2 个参数：第二个参数指定要查询的实体（可传循环变量、选择器或查询结果）。
+func _eval_membership(function_name: String, arguments: Array, facts: Dictionary, expression: Dictionary) -> bool:
+	var wanted: String = _as_string(_eval(arguments[0], facts))
+	var probe_facts: Dictionary = facts
+	if arguments.size() > 1:
+		var probe_handles: Array = _resolve_argument_target(arguments[1], facts)
+		if probe_handles.size() != 1:
+			_error("%s 的实体参数需要单个目标" % function_name, _line_of(expression))
+			return false
+		probe_facts = _entity_facts(probe_handles[0])
+	var list_key: String = "tribes"
+	if function_name == "has_keyword":
+		list_key = "keywords"
+	elif function_name == "has_buff":
+		list_key = "buffs"
+	var values: Variant = probe_facts.get(list_key, [])
+	if values is Dictionary:
+		return values.has(wanted)
+	return values is Array and values.has(wanted)
+
+
+## keyword_value(keyword[, 实体])：读取带数值词缀的当前数值，没有该词缀返回 0。
+func _eval_keyword_value(arguments: Array, facts: Dictionary, expression: Dictionary) -> int:
+	var keyword_name: String = _as_string(_eval(arguments[0], facts))
+	var keyword_facts: Dictionary = facts
+	if arguments.size() > 1:
+		var keyword_handles: Array = _resolve_argument_target(arguments[1], facts)
+		if keyword_handles.size() != 1:
+			_error("keyword_value 的实体参数需要单个目标", _line_of(expression))
+			return 0
+		keyword_facts = _entity_facts(keyword_handles[0])
+	var keyword_values: Variant = keyword_facts.get("keyword_values", {})
+	if keyword_values is Dictionary:
+		return _as_int(keyword_values.get(keyword_name, 0))
+	return 0
 
 
 func _eval_binary(expression: Dictionary, facts: Dictionary) -> Variant:
@@ -536,10 +650,10 @@ func _as_string(value: Variant) -> String:
 
 # ----- 目标 -----
 
-func _resolve_argument_target(expression: Variant) -> Array:
+func _resolve_argument_target(expression: Variant, facts: Dictionary = {}) -> Array:
 	if expression is Dictionary and str(expression.get("type", "")) == "target":
 		return _resolve_target(expression)
-	var value: Variant = _eval(expression, {})
+	var value: Variant = _eval(expression, facts)
 	if value == null:
 		return []
 	if value is Array:
@@ -554,7 +668,7 @@ func _resolve_target(expression: Dictionary) -> Array:
 		var predicate: Variant = expression.get("predicate")
 		var filtered: Array = []
 		for handle: Variant in candidates:
-			var facts: Dictionary = context.describe_entity(handle)
+			var facts: Dictionary = _entity_facts(handle)
 			if _truthy(_eval(predicate, facts)):
 				filtered.append(handle)
 		return filtered

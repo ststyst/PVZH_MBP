@@ -127,3 +127,77 @@ func test_evolve_and_base_are_entity_only() -> void:
 	assert_true(base.validate_for_kind("entity").is_empty())
 	assert_false(base.validate_for_kind("environment").is_empty(), "环境不能声明底座")
 	assert_true(base.is_base_ability)
+
+
+func test_for_each_parses_target_and_variable() -> void:
+	var script: CardEffectScript = _parse("for_each(all_enemies) as e:\n    deal_damage(e, 1)")
+	assert_false(script.has_errors(), "for_each 应可解析：%s" % [script.errors])
+	assert_eq(script.on_play.size(), 1)
+	if script.on_play.is_empty():
+		return
+	var statement: Dictionary = script.on_play[0]
+	assert_eq(str(statement.get("type", "")), "for_each")
+	assert_eq(str(statement.get("var", "")), "e")
+	assert_eq((statement.get("body", []) as Array).size(), 1)
+
+
+func test_for_each_default_variable_name() -> void:
+	var script: CardEffectScript = _parse("for_each(all_allies): heal(it, 2)")
+	assert_false(script.has_errors(), "省略 as 时应默认使用 it：%s" % [script.errors])
+	assert_eq(script.on_play.size(), 1)
+	if script.on_play.is_empty():
+		return
+	assert_eq(str(script.on_play[0].get("var", "")), "it")
+
+
+func test_for_each_body_allows_if_elif_else() -> void:
+	var source: String = (
+		"for_each(all_enemies) as e:\n"
+		+ "    if health <= 3:\n"
+		+ "        destroy(e)\n"
+		+ "    elif cost >= 5:\n"
+		+ "        deal_damage(e, 2)\n"
+		+ "    else:\n"
+		+ "        deal_damage(e, 1)"
+	)
+	var script: CardEffectScript = _parse(source)
+	assert_false(script.has_errors(), "循环内 if/elif/else 应可解析：%s" % [script.errors])
+	if script.on_play.is_empty():
+		return
+	var body: Array = script.on_play[0].get("body", [])
+	assert_eq(body.size(), 1)
+	if body.is_empty():
+		return
+	var if_statement: Dictionary = body[0]
+	assert_eq(str(if_statement.get("type", "")), "if")
+	var elif_branch: Array = if_statement.get("else", [])
+	assert_eq(elif_branch.size(), 1, "elif 应折叠成 else 里的 if")
+	if not elif_branch.is_empty():
+		assert_eq(str((elif_branch[0] as Dictionary).get("type", "")), "if")
+
+
+func test_for_each_supports_cost_and_keyword_queries() -> void:
+	var source: String = (
+		"for_each(all_enemies) as e:\n"
+		+ "    if cost(e) >= 4 and has_keyword('taunt', e):\n"
+		+ "        give_keyword(e, 'armored')\n"
+		+ "    elif keyword_value('first_strike', e) > 0:\n"
+		+ "        heal(e, 1)"
+	)
+	var script: CardEffectScript = _parse(source)
+	assert_false(script.has_errors(), "费用/词缀查询应可解析：%s" % [script.errors])
+
+
+func test_for_each_rejects_fact_variable_name() -> void:
+	var script: CardEffectScript = _parse("for_each(all_enemies) as attack: deal_damage(attack, 1)")
+	assert_true(script.has_errors(), "循环变量名不能与事实变量重名")
+
+
+func test_for_each_rejects_selector_name() -> void:
+	var script: CardEffectScript = _parse("for_each(all_enemies) as chosen: deal_damage(chosen, 1)")
+	assert_true(script.has_errors(), "循环变量名不能与选择器重名")
+
+
+func test_for_each_requires_parentheses() -> void:
+	var script: CardEffectScript = _parse("for_each all_enemies: deal_damage(it, 1)")
+	assert_true(script.has_errors(), "for_each 的目标必须写在括号里")

@@ -51,12 +51,21 @@
 
 多目标选择器（`all_enemies` / `all_allies` / `other_allies`）会被解释器**逐个**调用原语。
 
+除原语外，语句层面还有三种控制结构（不是原语，写法见第十节）：
+
+| 语句 | 说明 |
+|---|---|
+| `if 条件:` / `elif 条件:` / `else:` | 条件分支；`elif` 可连续使用，等价于 `else:` 里再套 `if` |
+| `repeat(n):` | 重复执行块 n 次（上限 100） |
+| `for_each(目标) as 名称:` | 对目标数组逐个执行**整个块**，块内可读当前目标的事实变量 |
+
 ## 三、表达式与变量
 
 - 变量：`x = 2 + 3 * 2`（后续语句可用 `x`）
 - 四则运算：`+ - * /`（整数运算，除数为 0 会记录运行错误）
 - 比较：`== != < <= > >=`；逻辑：`and` `or` `not`
-- 查询函数：`attack(target)`、`health(target)`、`shield(target)`、`min(a,b)`、`max(a,b)`、`has_tribe("pea")`、`marker_count("名字")`（`marker_count` 用于玩家特殊标志物数量）
+- 查询函数：`attack(target)`、`health(target)`、`max_health(target)`、`shield(target)`、`defense(target)`、`cost(target)`、`min(a,b)`、`max(a,b)`、`has_tribe("pea")`、`has_tribe("pea", target)`、`has_keyword("taunt")`、`has_keyword("taunt", target)`、`keyword_value("first_strike", target)`、`has_buff("frozen", target)`、`marker_count("名字")`（`marker_count` 用于玩家特殊标志物数量）
+- 单参数形式读“当前作用域目标”（事件触发者 / `for_each` 当前目标），双参数形式显式指定实体；`defense` 与 `shield` 等价
 - 字符串可用单引号或双引号：`side == 'enemy'` / `side == "enemy"`
 
 ### 变量赋值示例
@@ -848,9 +857,9 @@ transform_hand('enemy', "kind == 'entity'", "category == 'growth'")
 
 ```text
 when transformed(side == 'ally'):
-    ...
+	...
 when hand_transformed:
-    ...
+	...
 ```
 
 ### 生命力量
@@ -888,11 +897,11 @@ environment_grant_stats(-1, 0, 0, 'enemy')
 ```text
 base()
 when mounted:
-    apply_buff(mounted, "frozen")
+	apply_buff(mounted, "frozen")
 
 evolve("name == 'gnoll'")
 when evolved:
-    ...
+	...
 ```
 
 进化实体放置在底座上时：
@@ -969,15 +978,15 @@ add_random_cards_to_deck(hero, 3, "kind == 'spell'", -1)
 
 ```text
 add_random_cards_to_deck(
-    hero,
-    3,
-    "kind == 'entity'",
-    0,
-    "taunt",
-    1,
-    2,
-    1,
-    0
+	hero,
+	3,
+	"kind == 'entity'",
+	0,
+	"taunt",
+	1,
+	2,
+	1,
+	0
 )
 ```
 
@@ -1130,15 +1139,15 @@ marker_count('fatigue')
 
 ```text
 when turn_end:
-    if marker_count('fatigue') >= 3:
-        add_marker('wounded', 1)
+	if marker_count('fatigue') >= 3:
+		add_marker('wounded', 1)
 ```
 
 ### 抽牌事件
 
 ```text
 when drawn(side == 'ally'):
-    ...
+	...
 ```
 
 - `draw_cards` 和 `draw_matching_cards` 都会触发
@@ -1175,10 +1184,10 @@ damage_column_relative(1, 'front', 1)
 
 ```text
 when enter:
-    damage_column_relative(2, 'front')
+	damage_column_relative(2, 'front')
 
 when turn_end:
-    damage_column_relative(3, 'back', -1)
+	damage_column_relative(3, 'back', -1)
 ```
 
 选列锦囊示例：
@@ -1201,7 +1210,7 @@ damage_column_relative(2, 'front')
 
 ```text
 when after_attack:
-    ...
+	...
 ```
 
 - 实体完成一次攻击动作后触发
@@ -1225,7 +1234,7 @@ when after_attack:
 
 ```text
 when damage_dealt:
-    ...
+	...
 ```
 
 - 事件实体是伤害来源
@@ -1236,7 +1245,7 @@ when damage_dealt:
 
 ```text
 when damage_dealt:
-    heal(damage_targets, 1)
+	heal(damage_targets, 1)
 ```
 
 `damage_targets` 数组元素可能是：
@@ -1250,10 +1259,10 @@ when damage_dealt:
 
 ```text
 when enter:
-    deal_damage(all_enemies, 2)
+	deal_damage(all_enemies, 2)
 
 when damage_dealt:
-    deal_damage_each(damage_targets, 1)
+	deal_damage_each(damage_targets, 1)
 ```
 
 一次结算中所有有效目标会汇总到 `damage_targets`，然后触发一次 `damage_dealt`。
@@ -1268,8 +1277,8 @@ deal_damage_each(damage_targets, 1)
 
 注意：
 
-- 当前没有通用的 `for each` 语法
-- 对数组逐个执行原语依赖原语自身的目标数组展开
+- 可以用 `for_each(damage_targets) as hurt:` 逐个处理本次受伤的目标（见第十节）
+- 不写循环时，对数组逐个执行原语依赖原语自身的目标数组展开
 - `damage_dealt` 内部再次造成伤害会继续产生新的 `damage_dealt`，受到连锁上限保护
 
 ### 与 `damaged` 的区别
@@ -1277,3 +1286,116 @@ deal_damage_each(damage_targets, 1)
 - `damaged`：受到伤害的实体触发，事件目标是受伤者
 - `damage_dealt`：造成伤害的来源实体触发，事件目标是来源
 - `damage_dealt` 通过 `damage_targets` 获取本次造成有效伤害的目标数组
+
+## 十、循环与逐目标分支（`for_each`）
+
+`for_each` 是**语句**（不是原语）：对一组目标逐个执行整个语句块，块内可以读当前目标自己的数值、用 `if`/`elif`/`else` 分流、调用任意原语。
+
+### 语法
+
+```text
+for_each(<目标表达式>) as <名称>:
+    <任意语句块>
+```
+
+- `<目标表达式>`：任何能得到句柄或句柄数组的表达式——
+  选择器（`all_enemies`、`chosen`、`damage_targets`）、
+  查询函数（`entities_in_column(-1, 1, 'enemy')`、`random_targets(2, 'all_enemies')`）、
+  或保存了数组的变量（`group = all_enemies` 之后 `for_each(group) as e:`）。
+- `as <名称>` 可省略，默认名称是 `it`。
+- 块内可写：原语、赋值、`if`/`elif`/`else`、`repeat`、嵌套 `for_each`；**不能**在块内声明 `when`。
+- 每个目标**独立结算**：当前这一轮的原语只作用在当前目标上，按数组顺序依次执行。
+- 目标为空数组时不执行块、不报错；`null` 句柄被跳过。
+
+### 循环内可直接读取的事实变量
+
+块内不必写 `attack(e)`：直接写 `attack` 就是**当前目标**的数值。
+
+| 变量 | 含义 |
+|---|---|
+| `attack` / `health` / `max_health` | 当前攻击力 / 当前生命 / 生命上限 |
+| `shield` / `defense` | 防御值（两者等价，`defense` 是别名） |
+| `cost` | 当前费用（在场实体为数据库原始费用；手牌/牌库为结算后的有效费用） |
+| `side` | `self` / `ally` / `enemy` / `neutral`（相对技能拥有者） |
+| `class` | 职业；英雄为 `hero` |
+| `tribes` / `keywords` / `buffs` | 流派数组 / 词缀 id 数组 / 当前 Buff id 数组 |
+| `keyword_values` | 词缀数值字典，如 `first_strike` 的数值 |
+| `column` / `column_abs` | 相对列（-4~4）/ 绝对列（1~5） |
+| `turn` / `entered_this_turn` | 当前回合数 / 是否本回合入场 |
+| `loop_index` / `loop_count` | 本次下标（从 0 开始）/ 目标总数 |
+| `loop_target` | 当前目标句柄（等价于循环变量） |
+
+真正的句柄用**循环变量**引用，作为原语参数：
+
+```text
+for_each(all_enemies) as e:
+    if health <= 3:
+        destroy(e)
+    elif has_keyword('taunt'):
+        buff_stats(e, 0, 2)
+    else:
+        deal_damage(e, 1)
+```
+
+### 条件分支
+
+```text
+for_each(all_enemies) as e:
+    if cost >= 5 and not has_keyword('spell_immune'):
+        destroy(e)
+```
+
+- `elif` 可连续使用，等价于 `else:` 里再套一个 `if`。
+- 条件里可以混用事实变量、查询函数、算术与 `and` / `or` / `not`。
+
+### 新增查询函数
+
+| 查询 | 含义 |
+|---|---|
+| `cost(target)` | 目标当前费用 |
+| `max_health(target)` | 目标生命上限 |
+| `defense(target)` | 目标防御值（与 `shield(target)` 相同） |
+| `has_tribe(流派[, 实体])` | 是否具有该流派（**包含**语义） |
+| `has_keyword(词缀[, 实体])` | 是否具有该词缀（包含语义） |
+| `keyword_value(词缀[, 实体])` | 该词缀的当前数值，没有则为 0 |
+| `has_buff(buff_id[, 实体])` | 是否带有该 Buff/Debuff |
+
+带 `[实体]` 的形式省略第二个参数时读“当前作用域目标”，传入实体时显式查询它——这也是嵌套循环里读外层目标的手段。
+
+### 嵌套与遮蔽
+
+- 内层 `for_each` 的变量与事实**遮蔽**外层：块内 `attack` 永远指最内层当前目标。
+- 读外层目标请用双参数查询：`attack(outer_var)`、`cost(outer_var)`、`has_keyword('taunt', outer_var)`。
+- 循环结束后循环变量的旧绑定会恢复，不会破坏同名变量。
+
+```text
+when damage_dealt:
+    for_each(damage_targets) as hurt:
+        for_each(all_allies) as friend:
+            if health > 0:
+                heal(friend, 1)
+        if attack(hurt) > 4:
+            gain_energy(1)
+```
+
+上例中内层的 `health` 是 `friend` 的当前生命；内层循环结束后，`attack(hurt)` 用双参数查询读外层目标。
+
+### 命名限制
+
+循环变量名不能是：
+
+- 语句关键字：`if` / `elif` / `else` / `repeat` / `for_each` / `when` / `as` / `and` / `or` / `not` / `true` / `false`
+- 选择器名：`self` / `event` / `chosen` / `all_enemies` / `damage_targets` …
+- 事实变量名：`attack` / `health` / `cost` / `shield` / `keywords` / `loop_index` …
+
+违反时在**解析阶段**直接报错，不会等到运行时。
+
+### 与“目标数组原语”的区别
+
+- `deal_damage(all_enemies, 2)`：一次调用被展开到每个目标，参数是共享的常量/表达式结果。
+- `for_each(all_enemies) as e:`：**每个目标重新执行整个块**，因此能按目标自己的数值走不同分支、调用不同原语、累加不同变量。
+
+### 与 `repeat` 的区别
+
+- `repeat(n)`：次数固定，与目标无关，上限 100。
+- `for_each`：次数等于目标数量，没有 100 次上限；但每个目标都会真实执行块，注意能力强度与连锁限制。

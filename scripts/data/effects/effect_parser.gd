@@ -7,6 +7,13 @@ extends RefCounted
 ##   deal_damage(chosen, x)
 ##   if attack(chosen) <= 3:
 ##       destroy(chosen)
+##   elif cost(chosen) >= 7:
+##       gain_energy(1)
+##   for_each(all_enemies) as e:                    # 对每个目标执行整个块
+##       if health <= 3:
+##           destroy(e)
+##       else:
+##           deal_damage(e, 1)
 ##   repeat(3): deal_damage(random_enemy, 1)        # 单行块
 ##   when enter: gain_energy(2)                     # 单行块
 ##   when enter(side == 'enemy' and attack > 3):    # 事件过滤
@@ -69,6 +76,18 @@ const SELECTORS: Array[String] = [
 	"random_enemy_in_column_or_hero",
 ]
 
+## 语句关键字（不能作为循环变量名）
+const RESERVED_NAMES: Array[String] = [
+	"if", "elif", "else", "repeat", "for_each", "when", "as", "and", "or", "not", "true", "false",
+]
+## 循环体内可直接读取的目标事实变量名（不能作为循环变量名）
+const FACT_NAMES: Array[String] = [
+	"side", "class", "tribes", "keywords", "buffs",
+	"attack", "health", "max_health", "shield", "defense", "cost",
+	"column", "column_abs", "turn", "entered_this_turn", "zone",
+	"loop_index", "loop_count", "loop_target",
+]
+
 ## 原语（只能作为语句调用）
 const PRIMITIVES: Dictionary = {
 	"summon": {"min": 1, "max": 3},
@@ -120,8 +139,14 @@ const PRIMITIVES: Dictionary = {
 const QUERIES: Dictionary = {
 	"attack": {"min": 1, "max": 1},
 	"health": {"min": 1, "max": 1},
+	"max_health": {"min": 1, "max": 1},
 	"shield": {"min": 1, "max": 1},
-	"has_tribe": {"min": 1, "max": 1},
+	"defense": {"min": 1, "max": 1},
+	"cost": {"min": 1, "max": 1},
+	"has_tribe": {"min": 1, "max": 2},
+	"has_keyword": {"min": 1, "max": 2},
+	"keyword_value": {"min": 1, "max": 2},
+	"has_buff": {"min": 1, "max": 2},
 	"min": {"min": 2, "max": 2},
 	"max": {"min": 2, "max": 2},
 	"marker_count": {"min": 1, "max": 1},
@@ -168,6 +193,11 @@ func _parse_statement() -> Dictionary:
 		return _parse_if()
 	if _check_ident("repeat"):
 		return _parse_repeat()
+	if _check_ident("elif"):
+		_error("elif 必须紧跟在 if / elif 块之后", line)
+		return _parse_if()
+	if _check_ident("for_each"):
+		return _parse_for_each()
 	if _check_ident("when"):
 		return _parse_when()
 	# 赋值：IDENT "="
@@ -189,18 +219,64 @@ func _parse_statement() -> Dictionary:
 
 func _parse_if() -> Dictionary:
 	var line: int = _peek_line()
-	_advance()  # if
+	if _check_ident("elif"):
+		_advance()  # elif：等价于 else 分支里再接一个 if
+	else:
+		_advance()  # if
 	var condition: Dictionary = _parse_expression()
 	_expect_op(":", line)
 	var body: Array = _parse_block()
 	var else_body: Array = []
 	while _check("NEWLINE"):
 		_advance()
-	if _check_ident("else"):
+	if _check_ident("elif"):
+		else_body = [_parse_if()]
+	elif _check_ident("else"):
 		_advance()
 		_expect_op(":", line)
 		else_body = _parse_block()
 	return {"type": "if", "cond": condition, "body": body, "else": else_body, "line": line}
+
+
+## for_each(<目标表达式>) [as <名称>]: <块>
+## 对表达式求值得到的每个目标逐个执行块；块内 <名称> 是当前目标句柄（可直接传给原语），
+## 同时把该目标的事实（攻击/生命/防御/费用/流派/词缀/…）注入为可直接读取的变量，
+## 因此可以在块里用 if / elif / else 按每个目标自己的数值分流。
+func _parse_for_each() -> Dictionary:
+	var line: int = _peek_line()
+	_advance()  # for_each
+	var targets: Dictionary = {}
+	if _check_op("("):
+		_advance()
+		targets = _parse_expression()
+		_expect_op(")", line)
+	else:
+		_error("for_each 需要括号里的目标表达式，例如 for_each(all_enemies) as e:", line)
+		targets = {"type": "target", "selector": "self"}
+	var loop_name: String = "it"
+	if _check_ident("as"):
+		_advance()
+		if _check("IDENT"):
+			loop_name = str(_advance().get("value", ""))
+			_validate_loop_name(loop_name, line)
+		else:
+			_error("as 后需要循环变量名", line)
+	elif not _check_op(":"):
+		_error("for_each 的循环变量应写成 as <名称>:", line)
+	_expect_op(":", line)
+	var body: Array = _parse_block()
+	return {"type": "for_each", "targets": targets, "var": loop_name, "body": body, "line": line}
+
+
+func _validate_loop_name(loop_name: String, line: int) -> void:
+	if loop_name.is_empty():
+		return
+	if loop_name in RESERVED_NAMES:
+		_error("循环变量名不能使用关键字：%s" % loop_name, line)
+	elif SELECTORS.has(loop_name):
+		_error("循环变量名不能与选择器重名：%s（如 self / event / chosen / all_enemies）" % loop_name, line)
+	elif FACT_NAMES.has(loop_name):
+		_error("循环变量名不能与目标事实变量重名：%s" % loop_name, line)
 
 
 func _parse_repeat() -> Dictionary:

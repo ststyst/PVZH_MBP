@@ -41,7 +41,10 @@ func resolve_selector(_selector: String) -> Array:
 	return []
 
 
-## 返回实体事实（side/class/tribes/attack/health/shield），供条件判断。
+## 返回实体事实，供事件过滤、条件目标与 for_each 循环体使用。
+## 至少应包含：side / class / tribes / keywords / keyword_values / buffs /
+## attack / health / max_health / shield（defense 为 shield 别名）/ cost /
+## column / column_abs / turn / entered_this_turn。
 func describe_entity(_handle) -> Dictionary:
 	push_warning("EffectContext.describe_entity 未实现：需要战斗层提供")
 	return {}
