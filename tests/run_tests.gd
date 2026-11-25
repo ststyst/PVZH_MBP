@@ -31,6 +31,7 @@ const TEST_SCRIPTS: Array[String] = [
 func _initialize() -> void:
 	var total_tests: int = 0
 	var failed_tests: int = 0
+	var empty_tests: int = 0
 	var total_assertions: int = 0
 	for script_path: String in TEST_SCRIPTS:
 		var script: GDScript = load(script_path) as GDScript
@@ -62,8 +63,20 @@ func _initialize() -> void:
 			if suite._failed:
 				failed_tests += 1
 				printerr("[%s] %s 失败：%s" % [current_suite_name, method_name, suite._message])
+			elif suite._assertion_count == 0:
+				# 空跑守卫：一条断言都没执行，通常意味着 setup() 里 new()/初始化报错后
+				# 用例静默中断（历史上因此让整个 effect_runner 套件空跑过 26 小时）。
+				empty_tests += 1
+				failed_tests += 1
+				printerr(
+					"[%s] %s 空跑：0 条断言（检查 setup() 是否报错、或用例是否漏写断言）"
+					% [current_suite_name, method_name]
+				)
 			else:
 				print("[%s] %s 通过（%d 断言）" % [current_suite_name, method_name, suite._assertion_count])
 		suite.suite_teardown()
-	print("测试完成：%d 个用例，%d 个断言，%d 个失败" % [total_tests, total_assertions, failed_tests])
+	print(
+		"测试完成：%d 个用例，%d 个断言，%d 个失败（其中空跑 %d）"
+		% [total_tests, total_assertions, failed_tests, empty_tests]
+	)
 	quit(1 if failed_tests > 0 else 0)
