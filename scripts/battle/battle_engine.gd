@@ -1975,8 +1975,14 @@ func _clear_column_combat_buffs(column: int) -> void:
 		if entity.column != column or not entity.alive:
 			continue
 		for buff_id: Variant in entity.buffs.keys():
-			if CardBuffs.clear_after_combat(str(buff_id)):
-				remove_buff_handle(entity, str(buff_id))
+			var id: String = str(buff_id)
+			if not CardBuffs.clear_after_combat(id):
+				continue
+			# 解除该列实体的“战斗后解除”Buff：需要清掉全部叠加层数，
+			# 只移除一层会留下残余的冰冻/无敌。
+			while entity.has_buff(id):
+				if not remove_buff_handle(entity, id):
+					break
 
 
 func _apply_instance_stats(entity: BattleEntity, instance: BattleCardInstance) -> void:
@@ -2811,7 +2817,8 @@ func force_entity_attack(attacker: BattleEntity) -> bool:
 		return false
 	_execute_attack_action(attacker, true)
 	_flush_column_deaths(attacker.column)
-	_clear_column_combat_buffs(attacker.column)
+	# 注意：不在这里清理冰冻/无敌。它们只在战斗阶段每一列的战斗结算完成后解除；
+	# 战斗阶段之外的强制攻击不属于列结算，不应改变这些状态。
 	return true
 
 

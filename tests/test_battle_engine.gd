@@ -2529,3 +2529,34 @@ func test_hero_damaged_exposes_source_and_amount() -> void:
 	var attacker: BattleEntity = engine.summon_card("z", attacker_card, 2, 0)
 	assert_true(engine.force_entity_attack(attacker), "该列没有 p 实体，应攻击 p 英雄")
 	assert_true(attacker.has_keyword("armored"), "hero_damaged 应能拿到伤害来源并施加效果")
+
+
+func test_force_attack_outside_combat_keeps_combat_buffs() -> void:
+	var engine: BattleEngine = _started_engine()
+	engine.phase = BattleEngine.PHASE_HAND
+	var attacker_card: CardData = _make_test_card("pvzh:test_force_keep_attacker", "")
+	attacker_card.attack = 2
+	attacker_card.health = 8
+	var attacker: BattleEntity = engine.summon_card("p", attacker_card, 1, 0)
+	var victim_card: CardData = _make_test_card("pvzh:test_force_keep_victim", "")
+	victim_card.health = 10
+	var victim: BattleEntity = engine.summon_card("z", victim_card, 1, 0)
+	engine.apply_buff_handle(victim, "frozen", 1)
+	engine.apply_buff_handle(victim, "invincible", 2)
+	assert_true(engine.force_entity_attack(attacker), "战斗阶段之外也应允许强制攻击")
+	assert_true(victim.has_buff("frozen"), "战斗阶段之外的强制攻击不应解除冰冻")
+	assert_true(victim.has_buff("invincible"), "战斗阶段之外的强制攻击不应解除无敌")
+	assert_eq(int(victim.buffs.get("invincible", 0)), 2, "无敌层数也不应被清")
+	assert_eq(victim.health, 10, "无敌使本次攻击不造成伤害")
+
+
+func test_column_combat_clear_removes_all_stacks() -> void:
+	var engine: BattleEngine = _started_engine()
+	var card: CardData = _make_test_card("pvzh:test_clear_stacks", "")
+	card.health = 5
+	var entity: BattleEntity = engine.summon_card("p", card, 1, 0)
+	engine.apply_buff_handle(entity, "frozen", 2)
+	engine.apply_buff_handle(entity, "invincible", 2)
+	engine._clear_column_combat_buffs(1)
+	assert_false(entity.has_buff("frozen"), "冰冻应被全部清除")
+	assert_false(entity.has_buff("invincible"), "无敌的每一层都应被清除")
