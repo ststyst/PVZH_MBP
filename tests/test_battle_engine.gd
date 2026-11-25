@@ -292,8 +292,24 @@ func test_draw_matching_cards_fatigue_and_draw_event() -> void:
 	state.deck.clear()
 	engine.draw_cards("p", 1)
 	assert_eq(state.marker_count(BattleEngine.MARKER_FATIGUE), 1)
+	assert_eq(state.marker_count("drawn_event"), 1, "牌库为空的抽牌失败不应触发 drawn")
 	engine._resolve_fatigue()
 	assert_eq(state.hero_health, 29, "1 层疲劳应在回合开始造成 1 点伤害")
+
+
+func test_creation_to_hand_fires_drawn_per_card() -> void:
+	var engine: BattleEngine = _started_engine()
+	var watcher_card: CardData = _make_test_card(
+		"pvzh:test_create_drawn_watcher",
+		"when drawn(side == 'ally'): add_marker('drawn', 1)"
+	)
+	engine.summon_card("p", watcher_card, 1, 0)
+	var state: BattlePlayerState = engine.players["p"]
+	state.hand.clear()
+	assert_eq(engine.add_random_cards("p", "hand", 2, "kind == 'entity'", 0), 2)
+	assert_eq(state.marker_count("drawn"), 2, "创造到手每张都应触发 drawn")
+	assert_eq(engine.add_random_cards("p", "deck", 1, "kind == 'entity'", 0), 1)
+	assert_eq(state.marker_count("drawn"), 2, "创造到牌库不应触发 drawn")
 
 
 func test_heal_target_candidates_require_missing_health() -> void:

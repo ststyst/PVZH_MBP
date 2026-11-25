@@ -321,6 +321,9 @@ func add_random_cards(
 		else:
 			state.deck.insert(rng.randi_range(0, state.deck.size()), instance)
 		added += 1
+		if zone == "hand":
+			# 创造到手牌视作“获得了一张牌”，触发 drawn；创造到牌库不触发。
+			_fire_event("drawn", hero_handle(side))
 	if added > 0:
 		_log("%s 随机塞入 %d 张卡牌到%s。" % [
 			side.to_upper(), added, "手牌" if zone == "hand" else "牌库",
@@ -686,7 +689,6 @@ func draw_cards(side: String, count: int, cost_delta: int = 0) -> int:
 			_log("%s 牌库已空，抽牌失败并获得疲劳（%d）" % [
 				side.to_upper(), state.marker_count(MARKER_FATIGUE),
 			])
-			_fire_event("drawn", hero_handle(side))
 			break
 		var instance: BattleCardInstance = state.deck.back()
 		_move_top_deck_to_hand(state)
@@ -707,7 +709,6 @@ func draw_matching_cards(side: String, count: int, filter_text: String, cost_del
 		_log("%s 牌库已空，搜寻抽牌失败并获得疲劳（%d）" % [
 			side.to_upper(), state.marker_count(MARKER_FATIGUE),
 		])
-		_fire_event("drawn", hero_handle(side))
 		return 0
 	var filter := CardFilter.new()
 	if not filter_text.strip_edges().is_empty() and not filter.parse(filter_text):

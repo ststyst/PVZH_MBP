@@ -1,4 +1,4 @@
-# 卡牌能力 DSL（已定稿：方案 D）
+﻿# 卡牌能力 DSL（已定稿：方案 D）
 
 > 采用**函数调用 + 缩进块**的混合语法；支持变量、四则运算、条件、循环、条件目标与事件块。
 > 解析器：`scripts/data/effects/effect_parser.gd`；执行器：`effect_runner.gd`；
@@ -1180,7 +1180,7 @@ add_random_cards_to_hand(hero, 2, "kind == 'entity'", 0, "", 1, 2, 0)
 - `summon`：从卡牌数据库召唤实体，不走手牌/牌库
 - `transform` / `transform_hand`：把已有实体或手牌替换为随机卡牌，不是新增复制
 - 创造到手的牌受手牌上限约束：手牌已满时该张创造失败，不触发任何事件
-- 创造牌不会触发 `drawn`（它不是抽牌），只发 `changed` 界面信号
+- 创造到手每成功一张触发 `drawn`；创造到牌库 / 牌库顶不触发 `drawn`，只发 `changed` 界面信号
 
 ### 创造牌可施加的效果
 
@@ -1224,7 +1224,7 @@ draw_matching_cards(enemy_hero, 1, "class == 'guardian'", -1)
 - 不创建新牌，只移动已有牌
 - 抽到的牌进入手牌
 - 每张都触发 `drawn` 事件
-- 牌库为空时视为抽牌失败，增加 1 层疲劳，并仍触发一次 `drawn`
+- 牌库为空时视为抽牌失败，增加 1 层疲劳，不触发 `drawn`
 - 手牌已满时停止抽牌，且不触发 `drawn`
 - 牌库有牌但没有符合条件的牌时不会增加疲劳
 
@@ -1274,11 +1274,11 @@ when drawn(side == 'ally'):
 	...
 ```
 
-- `draw_cards` 和 `draw_matching_cards` 都会触发
-- 事件目标是抽牌阵营的英雄
-- 手牌已满导致的抽牌失败不触发 `drawn`；牌库为空导致的疲劳失败仍触发一次
-- 创造牌到牌库/手牌不会触发 `drawn`
-- 可以使用 `side == 'ally'` / `side == 'enemy'`
+- `draw_cards` / `draw_matching_cards` / 创造到手牌（每张）都会触发
+- 事件目标是抽牌方英雄句柄
+- 手牌已满、牌库为空导致的失败都不触发 `drawn`
+- 用 `side` 事实区分 `side == 'ally'`（我方）/ `'enemy'`（敌方）/ `'neutral'`（中立视角）
+- 创造到牌库 / 牌库顶不触发 `drawn`
 - 手牌/牌库中带 `in_hand()` / `in_deck()` 作用域的能力也可以响应
 
 ### 同列前后位置伤害
