@@ -2375,3 +2375,30 @@ func test_damage_dealt_includes_hero_targets() -> void:
 		engine.players["p"].marker_count("dealt"), 1,
 		"damage_dealt 的 damage_targets 应包含英雄目标"
 	)
+
+
+func test_multi_target_damage_callbacks_split_by_type() -> void:
+	var engine: BattleEngine = _started_engine()
+	var p_state: BattlePlayerState = engine.players["p"]
+	var z_state: BattlePlayerState = engine.players["z"]
+	z_state.hero_health = 20
+	var enemy_card: CardData = _make_test_card("pvzh:test_callback_enemy", "")
+	enemy_card.health = 10
+	var enemy: BattleEntity = engine.summon_card("z", enemy_card, 1, 0)
+	var source_card: CardData = _make_test_card(
+		"pvzh:test_callback_source",
+		"when enter:\n"
+		+ "    deal_damage(enemy_hero_or_entities, 2)\n"
+		+ "when damage_dealt:\n"
+		+ "    for_each(damage_targets) as t:\n"
+		+ "        if class == 'hero':\n"
+		+ "            add_marker('hero_hit', 1)\n"
+		+ "        else:\n"
+		+ "            add_marker('entity_hit', 1)"
+	)
+	var source: BattleEntity = engine.summon_card("p", source_card, 2, 0)
+	engine._fire_event("enter", source)
+	assert_eq(z_state.hero_health, 18, "英雄应受到 2 点伤害")
+	assert_eq(enemy.health, 8, "敌方实体应受到 2 点伤害")
+	assert_eq(p_state.marker_count("hero_hit"), 1, "回调里应识别出英雄目标")
+	assert_eq(p_state.marker_count("entity_hit"), 1, "回调里应识别出实体目标")

@@ -1400,6 +1400,45 @@ deal_damage_each(damage_targets, 1)
 - 不写循环时，对数组逐个执行原语依赖原语自身的目标数组展开
 - `damage_dealt` 内部再次造成伤害会继续产生新的 `damage_dealt`，受到连锁上限保护
 
+### 多目标伤害后按类型分流（英雄 / 实体）
+
+典型需求：一张实体牌入场时对**敌方所有实体和英雄**造成伤害，并且只对**英雄**造成有效伤害时才触发后续能力。
+
+```text
+when enter:
+    deal_damage(enemy_hero_or_entities, 2)
+
+when damage_dealt:
+    for_each(damage_targets) as t:
+        if class == 'hero':
+            gain_energy(1)
+        else:
+            give_keyword(t, 'frost')
+```
+
+要点：
+
+- `damage_targets` 是**本次结算里造成有效伤害的目标数组**，实体句柄与英雄句柄混在同一个数组里。
+- 判定"命中英雄"用 `class == 'hero'`。英雄句柄的事实：`attack == 0`、`health` 是英雄当前生命、
+  `side` 是相对来源的 `ally` / `enemy` / `neutral`；英雄没有 `tribes` / `keywords`。
+- **没造成有效伤害的目标根本不会进数组**（护盾/免疫/充能免伤挡下的都不算），所以循环体里不需要再判一次"有没有伤害"。
+- 一次结算汇总成**一个** `damage_dealt` 事件（不是每个目标触发一次）：英雄 + 3 个实体只触发一次能力、循环 4 轮。
+- `damage_dealt` **只在伤害来源是实体时触发**：锦囊、环境、以及没有来源实体的效果伤害都不会触发它，
+  这类要写在该锦囊/环境自己的能力里。
+- 循环内再次造成伤害会继续产生新的 `damage_dealt`，受连锁上限保护。
+
+只针对敌方英雄的写法：
+
+```text
+when damage_dealt:
+    for_each(damage_targets) as t:
+        if class == 'hero' and side == 'enemy':
+            draw_cards(1)
+```
+
+想对实体目标套用卡牌筛选语法，可以配合 `entities_matching` 再用英雄事实分流；
+英雄句柄不是卡牌，`entities_matching` 不会返回英雄，这正好可以用来区分两类目标。
+
 ### 与 `damaged` 的区别
 
 - `damaged`：受到伤害的实体触发，事件目标是受伤者
