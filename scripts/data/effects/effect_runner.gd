@@ -419,7 +419,7 @@ func _exec_target_primitive(primitive_name: String, arguments: Array, line: int)
 					_as_string(extra_values[2])
 				)
 			"destroy":
-				context.destroy(handle)
+				context.destroy(handle, context.is_spell_effect_source())
 			_:
 				_error("未知原语：%s" % primitive_name, line)
 

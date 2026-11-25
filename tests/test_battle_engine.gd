@@ -2560,3 +2560,70 @@ func test_column_combat_clear_removes_all_stacks() -> void:
 	engine._clear_column_combat_buffs(1)
 	assert_false(entity.has_buff("frozen"), "冰冻应被全部清除")
 	assert_false(entity.has_buff("invincible"), "无敌的每一层都应被清除")
+
+
+func test_spell_immunity_only_blocks_spell_sources() -> void:
+	var engine: BattleEngine = _started_engine()
+	var keyword_card: CardData = _make_test_card("pvzh:test_spell_immune_keyword", "")
+	keyword_card.health = 6
+	keyword_card.keywords = ["spell_immune"]
+	var buffed_card: CardData = _make_test_card("pvzh:test_spell_immune_buff", "")
+	buffed_card.health = 6
+	var keyword_target: BattleEntity = engine.summon_card("z", keyword_card, 1, 0)
+	var buffed_target: BattleEntity = engine.summon_card("z", buffed_card, 2, 0)
+	assert_true(engine.apply_buff_handle(buffed_target, "spell_immune", 1))
+	# 锦囊来源的消灭：两个目标都应免疫
+	var spell: CardData = _make_test_card(
+		"pvzh:test_spell_immune_destroy_spell",
+		"destroy(enemy_entities)"
+	)
+	spell.kind = "spell"
+	spell.cost = 1
+	_set_hand(engine, "p", [spell.card_id])
+	engine.players["p"].energy = 10
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "p"
+	assert_true(bool(engine.play_card("p", 0, {}).get("ok", false)))
+	engine._flush_deaths()
+	assert_true(keyword_target.alive, "锦囊消灭不应影响锦囊免疫词缀实体")
+	assert_true(buffed_target.alive, "锦囊消灭不应影响临时锦囊免疫实体")
+	# 实体特殊能力的消灭：应正常生效
+	var killer_card: CardData = _make_test_card(
+		"pvzh:test_spell_immune_killer",
+		"when enter: destroy(enemy_entities)"
+	)
+	var killer: BattleEntity = engine.summon_card("p", killer_card, 3, 0)
+	engine._fire_event("enter", killer)
+	engine._flush_deaths()
+	assert_false(keyword_target.alive, "实体能力消灭应能消灭锦囊免疫词缀实体")
+	assert_false(buffed_target.alive, "实体能力消灭应能消灭临时锦囊免疫实体")
+
+
+func test_invincible_keyword_only_grants_buff() -> void:
+	var engine: BattleEngine = _started_engine()
+	var card: CardData = _make_test_card("pvzh:test_invincible_keyword", "")
+	card.health = 5
+	card.keywords = ["invincible"]
+	var entity: BattleEntity = engine.summon_card("p", card, 1, 0)
+	assert_true(entity.has_buff("invincible"), "无敌词缀应在入场时给一层无敌 Buff")
+	engine.damage_entity(entity, 3, [])
+	assert_eq(entity.health, 5, "无敌 Buff 应免疫伤害")
+	assert_true(engine.remove_buff_handle(entity, "invincible"))
+	assert_false(entity.is_invincible(), "Buff 移除后词缀本身不应继续提供无敌")
+	engine.damage_entity(entity, 3, [])
+	assert_eq(entity.health, 2, "Buff 移除后应正常受伤")
+
+
+func test_bounce_death_check_only_resolves_itself() -> void:
+	var engine: BattleEngine = _started_engine()
+	var bounced_card: CardData = _make_test_card("pvzh:test_bounce_self_a", "")
+	bounced_card.health = 3
+	var other_card: CardData = _make_test_card("pvzh:test_bounce_self_b", "")
+	other_card.health = 3
+	var bounced: BattleEntity = engine.summon_card("p", bounced_card, 1, 0)
+	var other: BattleEntity = engine.summon_card("p", other_card, 2, 0)
+	bounced.health = 0
+	other.health = 0
+	engine.apply_buff_handle(bounced, "bounce")
+	assert_false(bounced.alive, "被弹回的实体应先结算自身死亡")
+	assert_true(other.alive, "其他 0 血实体不应被弹回顺带结算")

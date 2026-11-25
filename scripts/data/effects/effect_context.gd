@@ -148,8 +148,15 @@ func environment_grant_stats(_attack: int, _health: int, _shield: int, _side_fil
 	push_warning("EffectContext.environment_grant_stats 未实现：需要战斗层提供")
 
 
-func destroy(_target) -> void:
+## 消灭目标。from_spell 表示效果来源是锦囊牌——锦囊免疫只针对锦囊来源，
+## 实体/环境等来源的消灭应当正常生效。
+func destroy(_target, _from_spell: bool = false) -> void:
 	push_warning("EffectContext.destroy 未实现：需要战斗层提供")
+
+
+## 当前效果来源是否为锦囊（用于判断“锦囊免疫”是否生效）。
+func is_spell_effect_source() -> bool:
+	return false
 
 
 ## 把实体移动到指定列/位置（0=普通，1=组队）；成功会触发 position_changed。

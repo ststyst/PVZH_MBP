@@ -499,6 +499,10 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 - `hero_ward` 英雄壁垒：`damage_hero` 在护盾吸收之后把本次伤害压到「英雄生命 - 1」，
   因此不会触发基于致命伤害的充能与致命保护；英雄已在 1 点时伤害归零
 - `BattleEngine.has_side_keyword(side, keyword)` 判断某阵营是否有在场实体拥有该词缀（持续效果用）
+- `destroy_handle(handle, from_spell = false)`：锦囊免疫只拦 `from_spell = true` 的消灭；
+  实体能力 / 环境等来源的消灭照常生效
+- `BattleEntity.is_invincible()` 只看无敌 **Buff**；`invincible` 词缀只在入场时给一层 Buff
+- 弹回的死亡判定只结算自身（走 `_flush_single_death`），不牵连其他血量不足的实体
 - 伤害类事件上下文：`EffectContext.set_damage_source/get_damage_source`、`set_damage_amount/get_damage_amount`、
   `is_entity_handle(handle)`；战斗层在发 `damaged` / `hero_damaged` 时写入并还原
 - `damage_source` 选择器与 `is_entity()` 查询：让 `damaged` 能反制伤害来源，且无来源时安全

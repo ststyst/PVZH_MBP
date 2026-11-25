@@ -194,7 +194,8 @@ func is_frozen() -> bool:
 
 
 func is_invincible() -> bool:
-	return has_buff("invincible") or has_keyword("invincible")
+	# 词缀本身不参与结算：无敌词缀只在入场时给一层无敌 Buff，免伤完全由 Buff 决定。
+	return has_buff("invincible")
 
 
 func is_spell_immune() -> bool:

@@ -1936,7 +1936,8 @@ func _apply_bounce(entity: BattleEntity) -> bool:
 	if entity == null or not entity.alive:
 		return false
 	if entity.health < 1:
-		_flush_deaths()
+		# 只结算被弹回的实体自身的死亡，不牵连其他血量不足的实体。
+		_flush_single_death(entity)
 		return false
 	var card_id: String = entity.card.card_id if entity.card != null else ""
 	var side: String = entity.side
@@ -2584,9 +2585,10 @@ func give_keyword_to_hand_card(side: String, hand_index: int, keyword: String, v
 	return true
 
 
-func destroy_handle(handle: Variant) -> void:
+func destroy_handle(handle: Variant, from_spell: bool = false) -> void:
 	if handle is BattleEntity:
-		if handle.is_spell_immune():
+		# 锦囊免疫只挡锦囊来源的消灭；实体/环境等效果照常生效。
+		if from_spell and handle.is_spell_immune():
 			return
 		if handle.has_buff("invincible"):
 			handle.remove_buff("invincible")
@@ -3029,6 +3031,23 @@ func _death_effect_repeat_count(dead: BattleEntity) -> int:
 		if source.card != null and source.card.ability_script != null and source.card.ability_script.doubles_death_effects:
 			return 2
 	return 1
+
+
+## 只结算指定实体自身的死亡（不扫描其他实体），供“弹回”等只判定自身的场合使用。
+func _flush_single_death(entity: BattleEntity) -> void:
+	if entity == null or not entity.alive or entity.health > 0:
+		return
+	entity.alive = false
+	_log("%s 死亡" % entity.display_name())
+	_emit_animation_cue("die", entity, null)
+	var repeat_count: int = _death_effect_repeat_count(entity)
+	for _repeat: int in range(repeat_count):
+		_fire_event("die", entity)
+		_trigger_zone_ally_death(entity)
+	entities.erase(entity)
+	_refresh_all_counter_bonuses()
+	_refresh_auras()
+	_check_game_over()
 
 
 func _flush_column_deaths(column: int) -> void:

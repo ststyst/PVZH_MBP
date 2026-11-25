@@ -459,8 +459,8 @@ when buff_removed:
 
 - Buff 不是词缀，只存在于战场实体上；可在代码中解除
 - `frozen`：不能攻击；所在列战斗结算完成后解除
-- `invincible`：免疫伤害和直接消灭；所在列战斗结算完成后解除
-- `spell_immune`：不作为锦囊目标，锦囊效果/伤害不生效
+- `invincible`：词缀**只在入场时给一层无敌 Buff**，Buff 免疫伤害（**不**阻止消灭），所在列战斗结算完成后解除
+- `spell_immune`：只拦**锦囊来源**——不作为锦囊目标、锦囊效果/伤害不生效、锦囊消灭被拒绝；实体能力/环境等效果正常生效
 - 相关实体词缀：双重打击、狂热、锦囊免疫、克制英雄、穿透、致命、无敌、捕猎、两栖、溅射、寒霜、反伤、免疫负面
 - `debuff_immune` 会阻止冰冻等 Debuff 被施加
 - 词缀定义在 `scripts/data/card_keywords.gd`，Buff 定义在 `scripts/data/card_buffs.gd`，战斗实现在 `scripts/battle/battle_engine.gd`
@@ -590,7 +590,7 @@ apply_buff(target, 'bounce', 1)
 
 `bounce` 是 Debuff：
 
-1. 先进行死亡判定
+1. 先判定**自身**死亡（只结算被弹回的实体，不牵连其他实体）
 2. 存活则移除实体（不触发死亡/亡语）
 3. 将原卡牌以数据库原始数据加入所属玩家手牌
 4. 手牌已满时插入牌库第 0 位

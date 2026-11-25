@@ -196,9 +196,9 @@ damage == 0 = 未造成有效伤害
 | 寒霜 `frost` | 有效伤害后附加冻结 |
 | 反伤 `thorns` | 被普通攻击命中且受到有效伤害时反击 |
 | 隐形 `invisible` | 没有必中时免疫伤害；回合结束数值 -1 |
-| 无敌 `invincible` | 免疫伤害；仍可被消灭效果正常消灭 |
-| 锦囊免疫 `spell_immune` | 不会被锦囊选中，锦囊伤害无效 |
-| 免疫锦囊 `untrickable` | 与锦囊免疫相同的不可选中效果 |
+| 无敌 `invincible` | 入场时获得一层无敌 Buff（词缀本身不参与任何结算） |
+| 锦囊免疫 `spell_immune` | 不会被锦囊选中，锦囊效果/伤害无效（只针对锦囊来源） |
+| 免疫锦囊 `untrickable` | 与锦囊免疫相同的不可选中效果（只针对锦囊来源） |
 | 免疫负面 `debuff_immune` | 不会获得 Debuff |
 | 墓碑 `tombstone` | 入场时埋入墓碑，按阶段揭示 |
 | 组队 `team_up` | 允许同列第二个实体，并可挤开现有实体 |
@@ -464,7 +464,7 @@ apply_buff(lowest(enemy_entities, 'defense'), 'frozen')
 - **并列**：所有并列最高 / 最低的实体都会成为目标（两张实体攻击力同为 7，就都吃这次效果）。
 - **只接受单个目标的原语**：`apply_buff` / `remove_buff` / `force_attack` / `move_entity` / `remove_entity` 这类原语在并列时会结算失败（记录运行错误、不生效）。
 - **空范围**：范围内没有实体时什么都不发生，也不报错。
-- **免疫权限**：挑选本身不看锦囊免疫 / 隐形，但效果真正生效时仍按原语自身的规则过滤（锦囊伤害依旧打不到锦囊免疫的实体）。
+- **免疫权限**：挑选本身不看锦囊免疫 / 隐形，但效果真正生效时仍按原语自身的规则过滤（锦囊伤害/消灭打不到锦囊免疫实体；实体能力的伤害/消灭照常生效）。
 
 完整语法与数值名列表见 `docs/EffectDsl.md`「按数值挑选目标」。
 
@@ -496,27 +496,36 @@ deal_damage(entities_matching(enemy_entities, "keyword == 'frost'"), 1)
 | Buff | 类型 | 施加途径 | 生效逻辑 | 解除条件 |
 |---|---|---|---|---|
 | `frozen` 冰冻 | debuff | `apply_buff`、寒霜命中、光环 | 无法攻击（战斗阶段跳过、`force_attack` 失败、攻击动作直接返回） | **战斗阶段**每列结算完成时清除该列全部层数；免疫负面阻止施加 |
-| `invincible` 无敌 | buff | 词缀 `invincible` 入场自动获得 1 层、`apply_buff` | 免疫伤害（`damage_entity` 直接返回）；**不**阻止被 `destroy`（消灭时先移除 1 层再把生命归零） | 战斗阶段列结算后清空全部层数；被 `destroy` 消耗 1 层 |
-| `spell_immune` 临时锦囊免疫 | buff | `apply_buff`、光环（保护伞） | 锦囊来源的伤害与效果无法影响；`can_target` 对锦囊来源返回 false | 光环来源离场时按来源移除；无战斗后清除 |
+| `invincible` 无敌 | buff | 词缀 `invincible` **只在入场时给 1 层 Buff**（词缀本身不参与任何结算）、`apply_buff` | 无敌 **Buff** 免疫伤害（`damage_entity` 直接返回）；**不**阻止被 `destroy`（消灭时先移除 1 层再把生命归零） | 战斗阶段列结算后清空全部层数；被 `destroy` 消耗 1 层 |
+| `spell_immune` 临时锦囊免疫 | buff | `apply_buff`、光环（保护伞） | **只**拦锦囊来源：`can_target` 对锦囊来源返回 false、`damage_entity(from_spell)` 免伤、`destroy(from_spell)` 拒绝；实体能力 / 环境等来源的伤害、消灭、Buff 正常生效 | 光环来源离场时按来源移除；无战斗后清除 |
 | `hatred` 仇恨 | buff | 光环（带刺玫瑰）、`apply_buff` | 受到**敌方实体来源**的有效伤害后，消灭该来源 | 光环来源离场 / `remove_buff` |
 | `life_force` 生命力量 | buff | `apply_buff` | 攻击伤害改用当前生命值（主攻击与穿透；先攻仍按先攻数值，溅射仍按溅射数值） | `remove_buff` |
 | `buried` 埋入墓碑 | buff | 词缀 `tombstone` 入场自动埋入、`apply_buff` | 无法被伤害 / 指定；对敌方隐藏信息与费用 | Z 方锦囊阶段**开始**时按列揭示（随后触发 `tombstone_reveal` 与 `enter`） |
-| `bounce` 弹回 | debuff | `apply_buff` | 施加瞬间生效：先死亡判定，存活则移回手牌（手牌满则放牌库顶）；不作为持续状态保存 | 立即结算，不留下 Buff |
+| `bounce` 弹回 | debuff | `apply_buff` | 施加瞬间生效：先**只判定自身**死亡（不牵连其他实体），存活则移回手牌（手牌满则放牌库顶）；不作为持续状态保存 | 立即结算，不留下 Buff |
 | `frozen_tombstone` 冻结墓碑 | debuff | `apply_buff` | 揭示时：移除 `buried` 后立刻获得 `frozen`，再移除此 Debuff（在入场结算之前） | 揭示时自动移除 |
 | `temp_<词缀>` | buff | 环境 / 光环临时赋予词缀 | 使实体临时拥有该词缀（数值叠加） | 离开该列 / 来源离场时按层移除 |
 
 补充：Buff 可叠加层数；`debuff_immune` 只阻止 debuff；光环 Buff 按来源追踪，来源离场只移除该来源提供的那份。
 
-### 待确认的口径
+### 逐个 Buff 的实现细节
 
-以下行为在实现里存在，但可能不符合设计预期：
+- **`frozen` 冰冻**：判定用 `is_frozen()`；战斗阶段列结算、`force_attack` 与攻击动作本身都会因它跳过；施加时被 `debuff_immune` 拦下；解除只发生在战斗阶段某列结算完成（一次清空全部层），并触发 `buff_removed`。
+- **`invincible` 无敌**：`invincible` **词缀**只在入场时调用一次 `apply_buff_handle` 给 1 层 Buff，之后所有判定只看 Buff（`is_invincible()` 不再看词缀）；`damage_entity` 因 Buff 返回 0；`destroy_handle` 先移除 1 层再把生命归零（无敌**不**阻止消灭）；列结算完成清空全部层。
+- **`spell_immune` 临时锦囊免疫**：三层拦截都以“来源是锦囊”为前提——`can_target`（锦囊来源不可选）、`damage_entity(from_spell)`、`destroy_handle(from_spell)`；实体能力、环境、反伤、仇恨等非锦囊来源不受影响。没有战斗后清除，靠光环来源追踪或 `remove_buff` 解除。
+- **`hatred` 仇恨**：在 `damage_entity` 内、有效伤害 > 0 后检查；要求来源是**存活的敌方实体**；用 `destroy_handle` 消灭来源（来源带无敌 Buff 时先消耗其 1 层）。
+- **`life_force` 生命力量**：`_attack_power()` 用它替换攻击力，所有攻击动作共用；先攻仍按先攻数值、溅射仍按溅射数值。
+- **`buried` 埋入墓碑**：`damage_entity` 返回 0、`can_target` 返回 false、对敌方隐藏身份与费用；揭示在 Z 方锦囊阶段**开始**时按列进行，先 `tombstone_reveal` 再 `enter`，并清空双方的隐藏费用显示。
+- **`bounce` 弹回**：不作为持续状态，施加即触发；先**只判定自身**死亡（`_flush_single_death`），存活则移除实体并把原始卡牌放回手牌/牌库顶，不触发抽牌事件。
+- **`frozen_tombstone` 冻结墓碑**：只在揭示流程里消费；顺序为移除 `buried` → 移除本 Debuff → 施加 `frozen` → `tombstone_reveal` → `enter`。
+- **`temp_<词缀>` 临时词缀**：`add_buff` 同时累加 `temporary_keyword_bonus`，`has_keyword` / `keyword_value_for` 把临时数值叠加到词缀上；环境按列记录授予层数，实体离开该列或环境被替换时按层移除。
 
-1. **无敌词缀的永久性**：`is_invincible()` = 有 `invincible` Buff **或** 有 `invincible` 词缀。临时 Buff 被战斗后清除后，带词缀的实体仍永久免疫伤害。按“词缀 = 入场时获得一次无敌 Buff”的描述，这里可能应该只看 Buff。
-2. **消灭与锦囊免疫**：`destroy_handle` 只要 `is_spell_immune()` 为真就直接拒绝，**不区分来源**；按“锦囊免疫”语义应只拒绝锦囊来源（否则实体能力也消灭不掉）。
-3. **`buried` 描述过期**：定义里写着“Z 方锦囊阶段结束时揭示”，实际是**阶段开始时**揭示。
-4. **弹回的死亡判定**：`_apply_bounce` 调用全局 `_flush_deaths()`，会把其他列/其他延迟死亡一起结算，而不是只判定目标自身。
-5. **冰冻的施加时机**：若在某列已经结算完之后才被冰冻，本回合不会清除，要留到下一回合战斗阶段。
-6. **环境临时词缀的移除**：走 `entity.remove_buff()` 直接调用，不触发 `buff_removed` 事件与显示刷新，与其他移除路径不一致。
+### 仍保留的口径
+
+以下行为经确认保留，不是缺陷：
+
+1. **`buried` 的描述文字**写着“Z 方锦囊阶段结束时揭示”，实际是阶段开始时揭示（仅描述过期）。
+2. **冰冻的施加时机**：若在某列已经结算完之后才被冰冻，本回合不会清除，留到下一回合战斗阶段。
+3. **环境临时词缀的移除**走 `entity.remove_buff()` 直接调用，不触发 `buff_removed` 事件与显示刷新。
 
 ## 英雄受伤事件
 

@@ -237,8 +237,16 @@ func transform_hand(side_filter: String, old_filter: String, new_filter: String)
 	})
 
 
-func destroy(target) -> void:
-	_record("destroy", {"target": target})
+func destroy(target, from_spell: bool = false) -> void:
+	_record("destroy", {"target": target, "from_spell": from_spell})
+
+
+## 测试里可切换“效果来源是锦囊”，用于断言消灭的来源判定。
+var spell_source: bool = false
+
+
+func is_spell_effect_source() -> bool:
+	return spell_source
 
 
 func move_entity(target, column: int, slot: int) -> bool:

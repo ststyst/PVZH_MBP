@@ -402,10 +402,12 @@ func environment_grant_stats(attack: int, health: int, shield: int, side_filter:
 	engine.grant_environment_stats(base_column, caster_side, attack, health, shield, side_filter)
 
 
-func destroy(target) -> void:
-	if target is BattleEntity and is_spell_source and target.is_spell_immune():
-		return
-	engine.destroy_handle(target)
+func destroy(target, from_spell: bool = false) -> void:
+	engine.destroy_handle(target, from_spell)
+
+
+func is_spell_effect_source() -> bool:
+	return is_spell_source
 
 
 func move_entity(target, column: int, slot: int) -> bool:
