@@ -50,7 +50,7 @@ english_name,chinese_name,kind,cost,attack,health,shield,class,rarity,keywords,t
 | `kind` | string | `entity`（召唤实体）/ `spell`（锦囊）/ `environment`（环境牌，打出后改变一列环境） |
 | `cost` | int | 费用 |
 | `attack` / `health` | int | 攻击力 / 生命值（锦囊、环境牌填 0） |
-| `shield` | int | 防御力（护甲） |
+| `shield` | int | 防御力 |
 | `class` | string | 职业，必须是 `config.csv` 中的 class 之一 |
 | `rarity` | string | 稀有度，必须是 `config.csv` 中的 rarity 之一 |
 | `keywords` | string | 词缀，逗号分隔；带数值的写 `id:数值`（如 `first_strike:2`）；未知词缀或该卡牌种类不允许获得的词缀会被忽略/报错。`bullseye` 表示伤害类型为必中，不增加充能护盾充能 |
@@ -75,7 +75,7 @@ english_name,chinese_name,kind,cost,attack,health,shield,class,rarity,keywords,t
 
 ### 词缀（由代码决定）
 
-`charge` 冲锋、`taunt` 嘲讽、`deadly` 致命、`armored` 护甲、`strikethrough` 穿透、
+`deadly` 致命、`strikethrough` 穿透、
 `bullseye` 必中、`double_strike` 双重打击、`overshoot` 溅射、`frenzy` 狂热、`untrickable` 免疫锦囊、
 `spell_immune` 锦囊免疫、`hero_counter` 克制英雄、`invincible` 无敌、`hunt` 捕猎、`amphibious` 两栖、
 `debuff_immune` 免疫负面、`frost` 寒霜、`thorns` 反伤、`team_up` 组队、

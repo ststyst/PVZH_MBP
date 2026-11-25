@@ -208,14 +208,6 @@ damage == 0 = 未造成有效伤害
 | 守护英雄 `hero_guard` | 在场时，我方英雄受到的伤害改由该实体承受（多个时选当前生命最高者） |
 | 英雄壁垒 `hero_ward` | 在场时，我方英雄生命值不会低于 1 |
 
-### 已注册但当前未接入战斗结算的词缀
-
-- 冲锋 `charge`
-- 嘲讽 `taunt`
-- 护甲 `armored`
-
-这些词缀目前只存在于词缀表和卡面展示，不会改变战斗行为。
-
 ## 八、攻击与事件顺序
 
 ### 战斗阶段的整轮流程
@@ -271,7 +263,6 @@ damage == 0 = 未造成有效伤害
   在其他阶段被强制攻击时不再触发先攻
 - 三连打、穿透、溅射、反伤、狂热、`attack` / `attacked` / `after_attack` / `damage_dealt` 照常生效
 - 目标选择与战斗阶段共用同一套逻辑（同列第一个存活敌方实体，否则英雄）
-- 嘲讽 `taunt`、冲锋 `charge` 尚未接入结算，所以不存在“嘲讽优先”或“入场立刻攻击”
 
 ### 生命力量
 
@@ -468,7 +459,7 @@ apply_buff(lowest(enemy_entities, 'defense'), 'frozen')
 玩法语义：
 
 - **范围**：任意目标集合——全部敌方 / 全部友方 / 敌我全体 / 某列实体 / 受伤友方 / 随机若干 / 事件回调数组（如 `damage_targets`）等。
-- **可先收窄范围**：可以附加一个逐目标条件，只有满足条件的候选才参与比较（例如“只看当前生命 ≥ 5 的敌方”“只看带嘲讽的友方”）。
+- **可先收窄范围**：可以附加一个逐目标条件，只有满足条件的候选才参与比较（例如“只看当前生命 ≥ 5 的敌方”“只看带寒霜的友方”）。
 - **数值**：攻击力、当前生命值、生命上限、防御值、费用；都是**结算后的当前值**（已包含 Buff、光环、环境修正），不是数据库里的原始数值。
 - **并列**：所有并列最高 / 最低的实体都会成为目标（两张实体攻击力同为 7，就都吃这次效果）。
 - **只接受单个目标的原语**：`apply_buff` / `remove_buff` / `force_attack` / `move_entity` / `remove_entity` 这类原语在并列时会结算失败（记录运行错误、不生效）。
@@ -484,7 +475,7 @@ apply_buff(lowest(enemy_entities, 'defense'), 'frozen')
 ```text
 destroy(entities_matching("class == 'soldier' and cost <= 3"))
 heal(entities_matching(all_allies, "tribe == 'pea'"), 2)
-deal_damage(entities_matching(enemy_entities, "keyword == 'taunt'"), 1)
+deal_damage(entities_matching(enemy_entities, "keyword == 'frost'"), 1)
 ```
 
 玩法语义：

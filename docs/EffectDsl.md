@@ -35,7 +35,7 @@
 | `draw_cards(count)` | 数值 | 抽牌 |
 | `deal_damage(target, amount)` | 目标、数值 | 造成伤害 |
 | `heal(target, amount)` | 目标、数值 | 治疗 |
-| `gain_shield(target, amount)` | 目标、数值 | 加护甲 |
+| `gain_shield(target, amount)` | 目标、数值 | 加防御 |
 | `buff_stats(target, attack, health)` | 目标、两个增减值 | 修改攻/血 |
 | `gain_energy(amount)` | 数值 | 获得费用 |
 | `give_keyword(target, keyword, value = 0)` | 目标、词缀 id、数值 | 赋予词缀；已有同词缀则累加数值（如先攻 2 + 先攻 3 = 先攻 5）；受卡牌种类白名单限制 |
@@ -64,7 +64,7 @@
 - 变量：`x = 2 + 3 * 2`（后续语句可用 `x`）
 - 四则运算：`+ - * /`（整数运算，除数为 0 会记录运行错误）
 - 比较：`== != < <= > >=`；逻辑：`and` `or` `not`
-- 查询函数：`attack(target)`、`health(target)`、`max_health(target)`、`shield(target)`、`defense(target)`、`cost(target)`、`highest(目标集合, 数值名[, 条件])`、`lowest(目标集合, 数值名[, 条件])`、`entities_matching(筛选)`、`entities_matching(范围, 筛选)`、`min(a,b)`、`max(a,b)`、`has_tribe("pea")`、`has_tribe("pea", target)`、`has_keyword("taunt")`、`has_keyword("taunt", target)`、`keyword_value("first_strike", target)`、`has_buff("frozen", target)`、`is_entity(target)`、`marker_count("名字")`（`marker_count` 用于玩家特殊标志物数量）
+- 查询函数：`attack(target)`、`health(target)`、`max_health(target)`、`shield(target)`、`defense(target)`、`cost(target)`、`highest(目标集合, 数值名[, 条件])`、`lowest(目标集合, 数值名[, 条件])`、`entities_matching(筛选)`、`entities_matching(范围, 筛选)`、`min(a,b)`、`max(a,b)`、`has_tribe("pea")`、`has_tribe("pea", target)`、`has_keyword("frost")`、`has_keyword("frost", target)`、`keyword_value("first_strike", target)`、`has_buff("frozen", target)`、`is_entity(target)`、`marker_count("名字")`（`marker_count` 用于玩家特殊标志物数量）
 - 单参数形式读“当前作用域目标”（事件触发者 / `for_each` 当前目标），双参数形式显式指定实体；`defense` 与 `shield` 等价
 - 字符串可用单引号或双引号：`side == 'enemy'` / `side == "enemy"`
 
@@ -719,7 +719,7 @@ for_each(highest(all_enemies, 'health')) as e: gain_energy(1)
 
 ```text
 deal_damage(highest(all_enemies, 'attack', health >= 5), 3)
-apply_buff(lowest(all_allies, 'cost', has_keyword('taunt')), 'frozen')
+apply_buff(lowest(all_allies, 'cost', has_keyword('frost')), 'frozen')
 ```
 
 - `<目标集合>`：任何能得到句柄数组的表达式——选择器（`all_enemies` / `all_allies` / `enemy_entities` …）、`entities_in_column(...)`、`random_targets(...)`、`damage_targets`、循环变量等。
@@ -749,8 +749,8 @@ destroy(entities_matching("class == 'soldier' and cost <= 3"))
 # 限定范围：只在我方实体里挑豆族
 heal(entities_matching(all_allies, "tribe == 'pea'"), 2)
 
-# 敌方里所有带嘲讽的
-deal_damage(entities_matching(enemy_entities, "keyword == 'taunt'"), 1)
+# 敌方里所有带寒霜的
+deal_damage(entities_matching(enemy_entities, "keyword == 'frost'"), 1)
 ```
 
 - 形式：`entities_matching(<筛选>)` / `entities_matching(<范围>, <筛选>)`
@@ -827,7 +827,7 @@ when enter:
     for_each(all_enemies) as e:
         if health <= 2:
             destroy(e)
-        elif has_keyword('taunt'):
+        elif has_keyword('frost'):
             deal_damage(e, 1)
         else:
             gain_energy(1)
@@ -949,7 +949,7 @@ class_category,growth,成长系,"grow,bloom"
 ```text
 transform(chosen, "cost == 2 and category == 'growth'")
 transform(all_enemies, "kind == 'entity' and cost <= 3")
-transform(random_enemy, "keyword == 'taunt'")
+transform(random_enemy, "keyword == 'frost'")
 ```
 
 - 第一个参数是实体选择器
@@ -1037,7 +1037,7 @@ when evolved:
 `add_random_cards_to_hand` / `add_random_cards_to_deck` 支持在创建时对**每一张新创建的牌**施加同样的效果：
 
 ```text
-add_random_cards_to_hand(hero, 2, "kind == 'entity'", 0, "taunt", 1, 2, 1, 0)
+add_random_cards_to_hand(hero, 2, "kind == 'entity'", 0, "frost", 1, 2, 1, 0)
 ```
 
 参数顺序：
@@ -1061,8 +1061,8 @@ add_random_cards_to_hand(hero, 3, "kind == 'entity' and cost == 1", 0, "first_st
 # 创建 2 张锦囊并减 1 费，不赋予词缀
 add_random_cards_to_hand(hero, 2, "kind == 'spell'", -1)
 
-# 将随机一张牌放到牌库顶，并赋予嘲讽、攻击 +1、生命 +2、防御 +1
-put_card_on_deck_top(hero, "kind == 'entity'", "taunt", 1, 2, 1, 0)
+# 将随机一张牌放到牌库顶，并赋予寒霜、攻击 +1、生命 +2、防御 +1
+put_card_on_deck_top(hero, "kind == 'entity'", "frost", 1, 2, 1, 0)
 ```
 
 规则：
@@ -1103,7 +1103,7 @@ add_random_cards_to_deck(
 	3,
 	"kind == 'entity'",
 	0,
-	"taunt",
+	"frost",
 	1,
 	2,
 	1,
@@ -1111,7 +1111,7 @@ add_random_cards_to_deck(
 )
 ```
 
-以上表示：创造 3 张实体，全部随机插入牌库，全部获得嘲讽、攻击 +1、生命 +2、防御 +1。
+以上表示：创造 3 张实体，全部随机插入牌库，全部获得寒霜、攻击 +1、生命 +2、防御 +1。
 
 ### 放到牌库顶
 
@@ -1562,7 +1562,7 @@ for_each(<目标表达式>) as <名称>:
 for_each(all_enemies) as e:
     if health <= 3:
         destroy(e)
-    elif has_keyword('taunt'):
+    elif has_keyword('frost'):
         buff_stats(e, 0, 2)
     else:
         deal_damage(e, 1)
@@ -1596,7 +1596,7 @@ for_each(all_enemies) as e:
 ### 嵌套与遮蔽
 
 - 内层 `for_each` 的变量与事实**遮蔽**外层：块内 `attack` 永远指最内层当前目标。
-- 读外层目标请用双参数查询：`attack(outer_var)`、`cost(outer_var)`、`has_keyword('taunt', outer_var)`。
+- 读外层目标请用双参数查询：`attack(outer_var)`、`cost(outer_var)`、`has_keyword('frost', outer_var)`。
 - 循环结束后循环变量的旧绑定会恢复，不会破坏同名变量。
 
 ```text

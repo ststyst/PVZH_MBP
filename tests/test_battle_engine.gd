@@ -319,10 +319,10 @@ func test_heal_target_candidates_require_missing_health() -> void:
 
 func test_keyword_and_tribe_filters_use_membership() -> void:
 	var card: CardData = _make_test_card("pvzh:test_filter_membership", "")
-	card.keywords = ["taunt", "armored"]
+	card.keywords = ["frost", "thorns"]
 	card.tribes = ["pet", "robot"]
 	var filter := CardFilter.new()
-	assert_true(filter.parse("keyword == 'taunt'"))
+	assert_true(filter.parse("keyword == 'frost'"))
 	assert_true(filter.matches(card))
 	assert_true(filter.parse("tribe == 'pet'"))
 	assert_true(filter.matches(card))
@@ -471,11 +471,11 @@ func test_created_cards_apply_inline_keyword_and_stats() -> void:
 	var engine: BattleEngine = _started_engine()
 	engine.players["p"].hand.clear()
 	var added: int = engine.add_random_cards(
-		"p", "hand", 2, "cost == 1", 0, "taunt", 2, 3, 1
+		"p", "hand", 2, "cost == 1", 0, "frost", 2, 3, 1
 	)
 	assert_eq(added, 2)
 	for instance: BattleCardInstance in engine.players["p"].hand:
-		assert_true(instance.has_keyword("taunt"))
+		assert_true(instance.has_keyword("frost"))
 		assert_eq(instance.attack_bonus, 2)
 		assert_eq(instance.health_bonus, 3)
 		assert_eq(instance.shield_bonus, 1)
@@ -483,9 +483,9 @@ func test_created_cards_apply_inline_keyword_and_stats() -> void:
 
 func test_created_card_on_deck_top_gets_inline_effects() -> void:
 	var engine: BattleEngine = _started_engine()
-	assert_true(engine.put_random_card_on_deck_top("p", "cost == 1", "taunt", 1, 2, 3))
+	assert_true(engine.put_random_card_on_deck_top("p", "cost == 1", "frost", 1, 2, 3))
 	var instance: BattleCardInstance = engine.players["p"].deck[0]
-	assert_true(instance.has_keyword("taunt"))
+	assert_true(instance.has_keyword("frost"))
 	assert_eq(instance.attack_bonus, 1)
 	assert_eq(instance.health_bonus, 2)
 	assert_eq(instance.shield_bonus, 3)
@@ -947,7 +947,7 @@ func test_keyword_values_stack_and_respect_whitelist() -> void:
 	assert_true(entity.add_keyword("first_strike", 2))
 	assert_true(entity.add_keyword("first_strike", 3))
 	assert_eq(entity.keyword_value("first_strike"), 5, "同词缀数值应相加")
-	assert_eq(entity.keyword_value("taunt"), 0, "不同词缀数值不互通")
+	assert_eq(entity.keyword_value("frost"), 0, "不同词缀数值不互通")
 
 	var spell_card: CardData = _make_test_card("pvzh:test_keyword_spell", "")
 	spell_card.kind = "spell"
@@ -2190,18 +2190,18 @@ func test_entities_matching_uses_current_board_state() -> void:
 	zombie_card.card_class = "zombie"
 	zombie_card.cost = 5
 	zombie_card.health = 4
-	var taunted_card: CardData = _make_test_card("pvzh:test_match_taunted", "")
-	taunted_card.card_class = "zombie"
-	taunted_card.cost = 1
-	taunted_card.health = 4
+	var frosted_card: CardData = _make_test_card("pvzh:test_match_frosted", "")
+	frosted_card.card_class = "zombie"
+	frosted_card.cost = 1
+	frosted_card.health = 4
 	var soldier: BattleEntity = engine.summon_card("z", soldier_card, 1, 0)
 	var zombie: BattleEntity = engine.summon_card("z", zombie_card, 2, 0)
-	var taunted: BattleEntity = engine.summon_card("z", taunted_card, 3, 0)
-	taunted.add_keyword("taunt")
+	var frosted: BattleEntity = engine.summon_card("z", frosted_card, 3, 0)
+	frosted.add_keyword("frost")
 	var spell: CardData = _make_test_card(
 		"pvzh:test_match_spell",
 		"destroy(entities_matching(\"class == 'soldier' and cost <= 3\"))\n"
-		+ "destroy(entities_matching(\"keyword == 'taunt'\"))"
+		+ "destroy(entities_matching(\"keyword == 'frost'\"))"
 	)
 	spell.kind = "spell"
 	spell.cost = 1
@@ -2212,7 +2212,7 @@ func test_entities_matching_uses_current_board_state() -> void:
 	assert_true(bool(engine.play_card("p", 0, {}).get("ok", false)))
 	engine._flush_deaths()
 	assert_false(soldier.is_alive(), "符合 class + cost 的士兵应被消灭")
-	assert_false(taunted.is_alive(), "运行期获得的嘲讽词缀也应参与筛选")
+	assert_false(frosted.is_alive(), "运行期获得的寒霜词缀也应参与筛选")
 	assert_true(zombie.is_alive(), "不符合条件的僵尸应存活")
 
 
@@ -2520,7 +2520,7 @@ func test_hero_damaged_exposes_source_and_amount() -> void:
 	var watcher_card: CardData = _make_test_card(
 		"pvzh:test_hero_damaged_source",
 		"when hero_damaged(side == 'ally' and is_entity(damage_source) and damage_amount >= 3):\n"
-		+ "    give_keyword(damage_source, 'armored')"
+		+ "    give_keyword(damage_source, 'deadly')"
 	)
 	engine.summon_card("p", watcher_card, 1, 0)
 	var attacker_card: CardData = _make_test_card("pvzh:test_hero_damaged_attacker", "")
@@ -2528,7 +2528,7 @@ func test_hero_damaged_exposes_source_and_amount() -> void:
 	attacker_card.health = 5
 	var attacker: BattleEntity = engine.summon_card("z", attacker_card, 2, 0)
 	assert_true(engine.force_entity_attack(attacker), "该列没有 p 实体，应攻击 p 英雄")
-	assert_true(attacker.has_keyword("armored"), "hero_damaged 应能拿到伤害来源并施加效果")
+	assert_true(attacker.has_keyword("deadly"), "hero_damaged 应能拿到伤害来源并施加效果")
 
 
 func test_force_attack_outside_combat_keeps_combat_buffs() -> void:

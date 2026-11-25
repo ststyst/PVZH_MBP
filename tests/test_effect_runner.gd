@@ -190,12 +190,12 @@ func test_for_each_branches_per_target_facts() -> void:
 
 func test_for_each_reads_tribe_and_keyword_of_target() -> void:
 	context.selector_results["all_allies"] = ["ally_taunt", "ally_plain"]
-	context.entity_facts["ally_taunt"] = {"tribes": ["pea"], "keywords": ["taunt"]}
+	context.entity_facts["ally_taunt"] = {"tribes": ["pea"], "keywords": ["frost"]}
 	context.entity_facts["ally_plain"] = {"tribes": ["zombie"], "keywords": []}
 	_run(
 		"for_each(all_allies) as a:\n"
-		+ "    if has_tribe('pea') and has_keyword('taunt'):\n"
-		+ "        give_keyword(a, 'armored')"
+		+ "    if has_tribe('pea') and has_keyword('frost'):\n"
+		+ "        give_keyword(a, 'deadly')"
 	)
 	assert_eq(context.calls.size(), 1, "只有豆族嘲讽友方获得护甲")
 	if not context.calls.is_empty():
@@ -237,10 +237,10 @@ func test_for_each_over_variable_array() -> void:
 
 func test_event_filter_can_read_cost_and_keywords() -> void:
 	var script: CardEffectScript = CardEffectScript.parse(
-		"when enter(cost >= 5 and has_keyword('taunt')): gain_energy(1)"
+		"when enter(cost >= 5 and has_keyword('frost')): gain_energy(1)"
 	)
 	assert_false(script.has_errors(), "事件过滤应可读费用与词缀：%s" % [script.errors])
-	context.entity_facts["pending"] = {"cost": 6, "keywords": ["taunt"]}
+	context.entity_facts["pending"] = {"cost": 6, "keywords": ["frost"]}
 	script.run_event(context, "enter", "pending")
 	assert_eq(context.calls.size(), 1, "满足费用与词缀条件的入场应触发")
 
@@ -333,14 +333,14 @@ func test_gain_max_health_per_target() -> void:
 
 func test_put_card_on_deck_top_full_args() -> void:
 	context.selector_results["hero"] = ["hero:p"]
-	_run("put_card_on_deck_top(hero, \"kind == 'entity'\", 'taunt', 1, 2, 1, 3)")
+	_run("put_card_on_deck_top(hero, \"kind == 'entity'\", 'frost', 1, 2, 1, 3)")
 	assert_eq(context.calls.size(), 1)
 	if context.calls.is_empty():
 		return
 	var call: Dictionary = context.calls[0]
 	assert_eq(str(call.get("op", "")), "put_card_on_deck_top")
 	assert_eq(str(call.get("filter", "")), "kind == 'entity'")
-	assert_eq(str(call.get("keyword", "")), "taunt")
+	assert_eq(str(call.get("keyword", "")), "frost")
 	assert_eq(int(call.get("attack_bonus", 0)), 1)
 	assert_eq(int(call.get("health_bonus", 0)), 2)
 	assert_eq(int(call.get("shield_bonus", 0)), 1)
@@ -375,7 +375,7 @@ func test_environment_grant_keyword_persistent() -> void:
 
 
 func test_environment_grant_keyword_and_stats() -> void:
-	_run("environment_grant_keyword('taunt', 0, 'enemy')\nenvironment_grant_stats(1, 0, 0, 'ally')")
+	_run("environment_grant_keyword('frost', 0, 'enemy')\nenvironment_grant_stats(1, 0, 0, 'ally')")
 	assert_eq(context.calls.size(), 2)
 	if context.calls.size() == 2:
 		assert_eq(str(context.calls[0].get("op", "")), "environment_grant_keyword")
@@ -419,7 +419,7 @@ func test_damage_column_relative_variants() -> void:
 func test_add_random_cards_inline_bonuses() -> void:
 	context.selector_results["hero"] = ["hero:p"]
 	_run(
-		"add_random_cards_to_deck(hero, 2, \"kind == 'entity'\", -1, 'taunt', 1, 2, 1, 3)\n"
+		"add_random_cards_to_deck(hero, 2, \"kind == 'entity'\", -1, 'frost', 1, 2, 1, 3)\n"
 		+ "add_random_cards_to_hand(hero, 1, \"kind == 'spell'\")"
 	)
 	assert_eq(context.calls.size(), 2)
@@ -427,7 +427,7 @@ func test_add_random_cards_inline_bonuses() -> void:
 		return
 	var deck_call: Dictionary = context.calls[0]
 	assert_eq(str(deck_call.get("zone", "")), "deck")
-	assert_eq(str(deck_call.get("keyword", "")), "taunt")
+	assert_eq(str(deck_call.get("keyword", "")), "frost")
 	assert_eq(int(deck_call.get("attack_bonus", 0)), 1)
 	assert_eq(int(deck_call.get("health_bonus", 0)), 2)
 	assert_eq(int(deck_call.get("shield_bonus", 0)), 1)
@@ -573,8 +573,8 @@ func test_highest_by_defense_and_lowest_by_cost() -> void:
 	context.entity_facts["e2"] = {"shield": 4, "cost": 5}
 	context.entity_facts["e3"] = {"shield": 2, "cost": 2}
 	_run(
-		"give_keyword(highest(all_enemies, 'defense'), 'taunt')\n"
-		+ "give_keyword(lowest(all_enemies, 'cost'), 'armored')"
+		"give_keyword(highest(all_enemies, 'defense'), 'frost')\n"
+		+ "give_keyword(lowest(all_enemies, 'cost'), 'deadly')"
 	)
 	assert_eq(context.calls.size(), 2)
 	if context.calls.size() == 2:
@@ -627,10 +627,10 @@ func test_highest_with_predicate_narrows_scope() -> void:
 
 func test_lowest_with_keyword_predicate() -> void:
 	context.selector_results["all_allies"] = ["a", "b", "c"]
-	context.entity_facts["a"] = {"cost": 1, "keywords": ["taunt"]}
+	context.entity_facts["a"] = {"cost": 1, "keywords": ["frost"]}
 	context.entity_facts["b"] = {"cost": 3, "keywords": []}
-	context.entity_facts["c"] = {"cost": 2, "keywords": ["taunt"]}
-	_run("apply_buff(lowest(all_allies, 'cost', has_keyword('taunt')), 'frozen')")
+	context.entity_facts["c"] = {"cost": 2, "keywords": ["frost"]}
+	_run("apply_buff(lowest(all_allies, 'cost', has_keyword('frost')), 'frozen')")
 	assert_eq(context.calls.size(), 1)
 	if not context.calls.is_empty():
 		assert_eq(str(context.calls[0].get("target", "")), "a", "无嘲讽的 b 即使费用更低也被排除")
@@ -651,10 +651,10 @@ func test_entities_matching_default_scope_is_all_entities() -> void:
 
 func test_entities_matching_scoped_by_selector() -> void:
 	context.selector_results["enemy_entities"] = ["e1", "e2"]
-	context.filter_facts["e1"] = {"tribes": ["pea"], "keywords": ["taunt"], "deck_includable": true}
+	context.filter_facts["e1"] = {"tribes": ["pea"], "keywords": ["frost"], "deck_includable": true}
 	context.filter_facts["e2"] = {"tribes": ["zombie"], "keywords": [], "deck_includable": true}
 	_run(
-		"give_keyword(entities_matching(enemy_entities, \"tribe == 'pea' and keyword == 'taunt'\"), 'armored')"
+		"give_keyword(entities_matching(enemy_entities, \"tribe == 'pea' and keyword == 'frost'\"), 'deadly')"
 	)
 	assert_eq(context.calls.size(), 1)
 	if not context.calls.is_empty():
@@ -671,7 +671,7 @@ func test_entities_matching_implicit_deck_includable() -> void:
 func test_damage_source_selector_and_is_entity() -> void:
 	context.entity_handles = ["source_entity"]
 	context.set_damage_source("source_entity")
-	_run("if is_entity(damage_source):\n    give_keyword(damage_source, 'armored')")
+	_run("if is_entity(damage_source):\n    give_keyword(damage_source, 'deadly')")
 	assert_eq(context.calls.size(), 1, "有实体来源时应能对其施加效果")
 	if not context.calls.is_empty():
 		assert_eq(str(context.calls[0].get("target", "")), "source_entity")
@@ -742,7 +742,7 @@ func test_declaration_primitives_are_noop_at_runtime() -> void:
 	var errors: Array[String] = _run(
 		"evolve(\"name == 'gnoll'\")\n"
 		+ "base()\n"
-		+ "aura_buff(self, 'taunt', 0, 0, false)\n"
+		+ "aura_buff(self, 'frost', 0, 0, false)\n"
 		+ "aura_hand_cost('ally', \"kind == 'spell'\", -1)\n"
 		+ "aura_spell_cost('enemy', 1)\n"
 		+ "double_death_effects()\n"

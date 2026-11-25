@@ -94,8 +94,8 @@ func test_keywords_and_tribes_are_valid() -> void:
 	assert_true(turtle != null)
 	if turtle == null:
 		return
-	assert_true(turtle.has_keyword("taunt"))
-	assert_eq(turtle.get_keywords_text(), "嘲讽")
+	assert_true(turtle.keywords.is_empty(), "铁甲龟不应再有嘲讽词缀")
+	assert_eq(turtle.get_keywords_text(), "")
 	assert_false(turtle.has_keyword("not_a_keyword"))
 
 

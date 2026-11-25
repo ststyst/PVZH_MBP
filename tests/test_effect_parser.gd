@@ -179,8 +179,8 @@ func test_for_each_body_allows_if_elif_else() -> void:
 func test_for_each_supports_cost_and_keyword_queries() -> void:
 	var source: String = (
 		"for_each(all_enemies) as e:\n"
-		+ "    if cost(e) >= 4 and has_keyword('taunt', e):\n"
-		+ "        give_keyword(e, 'armored')\n"
+		+ "    if cost(e) >= 4 and has_keyword('frost', e):\n"
+		+ "        give_keyword(e, 'deadly')\n"
 		+ "    elif keyword_value('first_strike', e) > 0:\n"
 		+ "        heal(e, 1)"
 	)

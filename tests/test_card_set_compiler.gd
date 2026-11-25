@@ -68,7 +68,7 @@ func _compile(folder: String, card_namespace: String = "testmod") -> Dictionary:
 
 func test_valid_pack_compiles_and_loads() -> void:
 	_make_pack("valid", [
-		'test_pawn,测试兵,entity,1,1,2,0,neutral,normal,taunt,pea,"when enter: gain_energy(2)","测试用随从。"',
+		'test_pawn,测试兵,entity,1,1,2,0,neutral,normal,deadly,pea,"when enter: gain_energy(2)","测试用随从。"',
 		'test_bolt,测试弹,spell,2,0,0,0,neutral,normal,"","","deal_damage(chosen, 3)","测试用法术。"',
 	])
 	var result: Dictionary = _compile("valid")

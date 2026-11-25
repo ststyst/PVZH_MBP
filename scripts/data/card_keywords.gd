@@ -10,22 +10,10 @@ const DEFINITIONS: Dictionary = {
 		"value": true,
 		"allowed_kinds": ["entity"],
 	},
-	"charge": {
-		"label": "冲锋",
-		"description": "打出后召唤的实体可以立刻发起一次攻击。",
-	},
-	"taunt": {
-		"label": "嘲讽",
-		"description": "敌方必须先攻击它，才能攻击其他目标。",
-	},
 	"deadly": {
 		"label": "致命",
 		"description": "伤害类型增加致命；命中没有无敌的实体时直接消灭。",
 		"allowed_kinds": ["entity"],
-	},
-	"armored": {
-		"label": "护甲",
-		"description": "受到的伤害减少 1 点。",
 	},
 	"strikethrough": {
 		"label": "穿透",
