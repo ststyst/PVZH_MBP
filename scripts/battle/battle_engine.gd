@@ -470,6 +470,9 @@ func _finish_special_turn() -> void:
 		if not end_resolved:
 			_clear_hero_shields()
 			_resolve_turn_end()
+			# 特殊回合内补结算的“回合结束阶段”同样属于一个阶段的结束：
+			# 回合结束效果可能重新施加“中止抽牌”，必须在进入下一回合前清掉。
+			clear_draw_block_markers()
 		if winner == "":
 			_start_next_turn()
 	else:

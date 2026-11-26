@@ -841,6 +841,45 @@ func test_charge_shield_immunity_and_special_offer() -> void:
 	assert_eq(p_state.hand.size(), hand_count_before, "移入手牌后牌仍在手中")
 
 
+func test_draw_block_marker_clears_after_special_turn() -> void:
+	var engine: BattleEngine = _started_engine()
+	var p_state: BattlePlayerState = engine.players["p"]
+	p_state.add_marker("中止抽牌", 1)
+	p_state.charge_shield = 7
+	p_state.charge_shield_durability = 1
+	engine.damage_hero("p", 2, [])
+	assert_true(engine._maybe_begin_special_turn(BattleEngine.PHASE_HAND))
+	assert_eq(engine.phase, BattleEngine.PHASE_SPECIAL)
+	assert_eq(p_state.marker_count("中止抽牌"), 1)
+	var result: Dictionary = engine.special_resolve_hand("p")
+	assert_true(bool(result.get("ok", false)))
+	assert_eq(p_state.marker_count("中止抽牌"), 0, "特殊回合阶段结束时中止抽牌应清零")
+
+
+func test_draw_block_marker_clears_after_special_turn_turn_end() -> void:
+	var engine: BattleEngine = _started_engine()
+	var p_state: BattlePlayerState = engine.players["p"]
+	var env_card: CardData = _make_test_card(
+		"pvzh:test_turn_end_draw_block",
+		"when turn_end:\n    add_marker('中止抽牌', 1)"
+	)
+	env_card.kind = "environment"
+	env_card.english_name = "test_turn_end_draw_block"
+	env_card.chinese_name = "测试回合结束中止抽牌"
+	env_card.cost = 1
+	assert_true(engine._place_environment("p", 2, env_card), "应能放置环境")
+	p_state.add_marker("中止抽牌", 1)
+	engine._special_resume_phase = BattleEngine.PHASE_TURN_END
+	engine._special_resume_active_side = ""
+	engine._special_turn_end_resolved = false
+	engine._special_pending_sides.clear()
+	engine._special_pending_sides.append("p")
+	engine.phase = BattleEngine.PHASE_SPECIAL
+	engine.active_side = ""
+	engine._finish_special_turn()
+	assert_eq(p_state.marker_count("中止抽牌"), 0, "特殊回合内补结算回合结束阶段后也应清零")
+
+
 func test_charge_shield_emergency_lethal_protection() -> void:
 	var engine: BattleEngine = _started_engine()
 	var p_state: BattlePlayerState = engine.players["p"]
