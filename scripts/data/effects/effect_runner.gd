@@ -176,11 +176,26 @@ func _exec_primitive(statement: Dictionary) -> void:
 				summon_max_column = _eval(arguments[2], {})
 			context.summon(card_name, summon_column, summon_max_column)
 		"draw_cards":
-			var draw_count: int = _as_int(_eval(arguments[0], {}))
+			# 两种写法：
+			# - draw_cards(count[, cost_delta])：由施放者阵营抽牌；
+			# - draw_cards(target, count[, cost_delta])：target 为 hero / enemy_hero 等英雄句柄。
+			var draw_tokens: Array = _resolve_argument_target(arguments[0], {})
+			var draw_target: Variant = null
+			var draw_count: int = 0
 			var draw_cost_delta: int = 0
-			if arguments.size() > 1:
-				draw_cost_delta = _as_int(_eval(arguments[1], {}))
-			context.draw_cards(draw_count, draw_cost_delta)
+			if draw_tokens.size() == 1 and _is_hero_handle(draw_tokens[0]):
+				draw_target = draw_tokens[0]
+				if arguments.size() < 2:
+					_error("draw_cards(target, count) 缺少抽牌数量", line)
+					return
+				draw_count = _as_int(_eval(arguments[1], {}))
+				if arguments.size() > 2:
+					draw_cost_delta = _as_int(_eval(arguments[2], {}))
+			else:
+				draw_count = _as_int(draw_tokens[0]) if not draw_tokens.is_empty() else 0
+				if arguments.size() > 1:
+					draw_cost_delta = _as_int(_eval(arguments[1], {}))
+			context.draw_cards(draw_count, draw_cost_delta, draw_target)
 		"draw_matching_cards":
 			var search_targets: Array = _resolve_argument_target(arguments[0])
 			if search_targets.size() != 1:
@@ -238,17 +253,31 @@ func _exec_primitive(statement: Dictionary) -> void:
 		"add_marker":
 			var marker_name: String = _as_string(_eval(arguments[0], {}))
 			var marker_amount: int = _as_int(_eval(arguments[1], {}))
+			var marker_target: Variant = null
+			if arguments.size() > 2:
+				var marker_handles: Array = _resolve_argument_target(arguments[2])
+				if marker_handles.size() == 1:
+					marker_target = marker_handles[0]
+				else:
+					_error("add_marker 的英雄目标无效", line)
 			if marker_name.is_empty():
 				_error("特殊标志物名字不能为空", line)
 			else:
-				context.add_marker(marker_name, marker_amount)
+				context.add_marker(marker_name, marker_amount, marker_target)
 		"remove_marker":
 			var remove_name: String = _as_string(_eval(arguments[0], {}))
 			var remove_amount: int = _as_int(_eval(arguments[1], {}))
+			var remove_target: Variant = null
+			if arguments.size() > 2:
+				var remove_handles: Array = _resolve_argument_target(arguments[2])
+				if remove_handles.size() == 1:
+					remove_target = remove_handles[0]
+				else:
+					_error("remove_marker 的英雄目标无效", line)
 			if remove_name.is_empty():
 				_error("特殊标志物名字不能为空", line)
 			else:
-				context.remove_marker(remove_name, remove_amount)
+				context.remove_marker(remove_name, remove_amount, remove_target)
 		"move_entity":
 			var move_targets: Array = _resolve_argument_target(arguments[0])
 			if move_targets.size() != 1:
@@ -525,7 +554,15 @@ func _eval_call(expression: Dictionary, facts: Dictionary) -> Variant:
 		"max":
 			return maxi(_as_int(_eval(arguments[0], facts)), _as_int(_eval(arguments[1], facts)))
 		"marker_count":
-			return context.marker_count(_as_string(_eval(arguments[0], facts)))
+			var marker_query_name: String = _as_string(_eval(arguments[0], facts))
+			var marker_query_target: Variant = null
+			if arguments.size() > 1:
+				var marker_query_handles: Array = _resolve_argument_target(arguments[1], facts)
+				if marker_query_handles.size() != 1:
+					_error("marker_count 的英雄目标无效", _line_of(expression))
+					return 0
+				marker_query_target = marker_query_handles[0]
+			return context.marker_count(marker_query_name, marker_query_target)
 		"entities_in_column":
 			var first_offset: int = _as_int(_eval(arguments[0], facts))
 			var last_offset: int = _as_int(_eval(arguments[1], facts))
@@ -785,6 +822,11 @@ func _as_string(value: Variant) -> String:
 	if value == null:
 		return ""
 	return str(value)
+
+
+## 英雄句柄是 "hero:<side>" 字符串（BattleEffectContext.hero_handle 的格式）。
+func _is_hero_handle(value: Variant) -> bool:
+	return value is String and (value as String).begins_with("hero:")
 
 
 # ----- 目标 -----

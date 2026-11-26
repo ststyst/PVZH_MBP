@@ -62,6 +62,12 @@ func set_cost(value: int) -> void:
 	cost_label.text = str(maxi(value, 0))
 
 
+## 覆盖攻击/生命显示（用于手牌实例加成，如“军阀点数”）。
+func set_stats(attack: int, health: int) -> void:
+	attack_label.text = str(maxi(attack, 0))
+	health_label.text = str(maxi(health, 1))
+
+
 func _build_meta_text(card: CardData) -> String:
 	return "%s · %s" % [card.get_rarity_text(), card.get_class_text()]
 

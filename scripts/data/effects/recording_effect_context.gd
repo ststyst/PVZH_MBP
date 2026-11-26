@@ -174,8 +174,8 @@ func summon(card_name: String, column: Variant = null, max_column: Variant = nul
 	return []
 
 
-func draw_cards(count: int, cost_delta: int = 0) -> int:
-	_record("draw_cards", {"count": count, "cost_delta": cost_delta})
+func draw_cards(count: int, cost_delta: int = 0, target: Variant = null) -> int:
+	_record("draw_cards", {"count": count, "cost_delta": cost_delta, "target": target})
 	return count
 
 
@@ -368,17 +368,18 @@ func reduce_cost(amount: int) -> void:
 
 # ----- 标志物 -----
 
-func add_marker(marker_name: String, amount: int) -> void:
-	_record("add_marker", {"name": marker_name, "amount": amount})
+func add_marker(marker_name: String, amount: int, target: Variant = null) -> void:
+	_record("add_marker", {"name": marker_name, "amount": amount, "target": target})
 	markers[marker_name] = int(markers.get(marker_name, 0)) + amount
 
 
-func remove_marker(marker_name: String, amount: int) -> void:
-	_record("remove_marker", {"name": marker_name, "amount": amount})
+func remove_marker(marker_name: String, amount: int, target: Variant = null) -> void:
+	_record("remove_marker", {"name": marker_name, "amount": amount, "target": target})
 	markers[marker_name] = int(markers.get(marker_name, 0)) - amount
 
 
-func marker_count(marker_name: String) -> int:
+func marker_count(marker_name: String, target: Variant = null) -> int:
+	_record_query("marker_count", {"name": marker_name, "target": target})
 	return int(markers.get(marker_name, 0))
 
 

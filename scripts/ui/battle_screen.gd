@@ -1133,6 +1133,14 @@ func _rebuild_hand() -> void:
 		current_column.add_child(tile)
 		tile.setup(card, 0, "", false, true)
 		tile.set_cost(engine.effective_hand_cost(player_side, index))
+		# 手牌实例加成（例如“军阀点数”）实时显示在攻击/生命上。
+		var instance: BattleCardInstance = state.hand[index]
+		var display_stats: Dictionary = engine.get_display_stats(instance)
+		if not display_stats.is_empty():
+			tile.set_stats(
+				int(display_stats.get("attack", card.attack)),
+				int(display_stats.get("health", card.health))
+			)
 		tile.pressed.connect(_on_hand_pressed.bind(index))
 		tile.gui_input.connect(_on_hand_tile_gui_input.bind(index))
 		var disabled: bool = not _can_player_act()

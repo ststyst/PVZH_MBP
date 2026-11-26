@@ -317,8 +317,11 @@ func summon(card_name: String, column: Variant = null, max_column: Variant = nul
 	return []
 
 
-func draw_cards(count: int, cost_delta: int = 0) -> int:
-	return engine.draw_cards(caster_side, count, cost_delta)
+func draw_cards(count: int, cost_delta: int = 0, target = null) -> int:
+	var draw_side: String = _side_of(target) if target != null else caster_side
+	if draw_side.is_empty():
+		return 0
+	return engine.draw_cards(draw_side, count, cost_delta)
 
 
 func draw_matching_cards(target, count: int, filter_text: String, cost_delta: int = 0) -> int:
@@ -674,21 +677,29 @@ func reduce_cost(_amount: int) -> void:
 	pass
 
 
-func add_marker(marker_name: String, amount: int) -> void:
+func add_marker(marker_name: String, amount: int, target = null) -> void:
 	if marker_name.is_empty() or amount == 0:
 		return
-	var state: BattlePlayerState = engine.players.get(caster_side, null)
+	var marker_side: String = _side_of(target) if target != null else caster_side
+	if marker_side.is_empty():
+		return
+	var state: BattlePlayerState = engine.players.get(marker_side, null)
 	if state == null:
 		return
 	state.add_marker(marker_name, amount)
+	# 标志物可能影响手牌展示（如“军阀点数”），通知界面刷新。
+	engine.changed.emit()
 
 
-func remove_marker(marker_name: String, amount: int) -> void:
-	add_marker(marker_name, -abs(amount))
+func remove_marker(marker_name: String, amount: int, target = null) -> void:
+	add_marker(marker_name, -abs(amount), target)
 
 
-func marker_count(marker_name: String) -> int:
-	var state: BattlePlayerState = engine.players.get(caster_side, null)
+func marker_count(marker_name: String, target = null) -> int:
+	var marker_side: String = _side_of(target) if target != null else caster_side
+	if marker_side.is_empty():
+		return 0
+	var state: BattlePlayerState = engine.players.get(marker_side, null)
 	return state.marker_count(marker_name) if state != null else 0
 
 

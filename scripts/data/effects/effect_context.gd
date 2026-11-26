@@ -102,7 +102,7 @@ func summon(_card_name: String, _column: Variant = null, _max_column: Variant = 
 	return []
 
 
-func draw_cards(_count: int, _cost_delta: int = 0) -> int:
+func draw_cards(_count: int, _cost_delta: int = 0, _target: Variant = null) -> int:
 	push_warning("EffectContext.draw_cards 未实现：需要战斗层提供")
 	return 0
 
@@ -269,13 +269,14 @@ func reduce_cost(_amount: int) -> void:
 
 # ----- 玩家特殊标志物（字符串名字，数量允许负数） -----
 
-func add_marker(_marker_name: String, _amount: int) -> void:
+## 玩家特殊标志物（字符串名字，数量允许负数）；target 为英雄句柄，缺省为施放者。
+func add_marker(_marker_name: String, _amount: int, _target: Variant = null) -> void:
 	push_warning("EffectContext.add_marker 未实现：需要战斗层提供")
 
 
-func remove_marker(_marker_name: String, _amount: int) -> void:
+func remove_marker(_marker_name: String, _amount: int, _target: Variant = null) -> void:
 	push_warning("EffectContext.remove_marker 未实现：需要战斗层提供")
 
 
-func marker_count(_marker_name: String) -> int:
+func marker_count(_marker_name: String, _target: Variant = null) -> int:
 	return 0

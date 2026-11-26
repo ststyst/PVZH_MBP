@@ -27,6 +27,10 @@ const SLOT_NORMAL: int = 0
 const SLOT_TEAM_UP: int = 1
 ## 英雄特殊标志物：疲劳（每回合开始按数量受到伤害）
 const MARKER_FATIGUE: String = "fatigue"
+## 军阀点数：我方手牌中的实体牌获得等同于层数的攻击/生命加成。
+const MARKER_WARLORD: String = "军阀点数"
+## 中止抽牌：层数 > 0 时，该阵营在当前阶段无法抽牌/创造牌到手牌；每个阶段结束清零。
+const MARKER_DRAW_BLOCK: String = "中止抽牌"
 
 const PHASE_MULLIGAN: String = "mulligan"
 const PHASE_HAND: String = "hand"
@@ -291,6 +295,9 @@ func add_random_cards(
 	var state: BattlePlayerState = players.get(side, null)
 	if state == null or count <= 0 or card_database == null:
 		return 0
+	if zone == "hand" and is_draw_blocked(side):
+		_log("%s 的“%s”生效，本次创造牌到手牌失败" % [side.to_upper(), MARKER_DRAW_BLOCK])
+		return 0
 	var filter := CardFilter.new()
 	if not filter.parse(filter_text):
 		_log("随机塞牌筛选条件错误：%s" % "；".join(filter.errors))
@@ -449,6 +456,8 @@ func _special_waits_for_priority(side: String) -> bool:
 
 
 func _finish_special_turn() -> void:
+	# 特殊回合（独立阶段）结束：清“中止抽牌”。
+	clear_draw_block_markers()
 	var resume_phase: String = _special_resume_phase
 	var resume_side: String = _special_resume_active_side
 	var end_resolved: bool = _special_turn_end_resolved
@@ -598,6 +607,8 @@ func advance_phase() -> void:
 		return
 	if winner != "":
 		return
+	# 当前阶段结束：清掉“中止抽牌”（每阶段结束时清零）。
+	clear_draw_block_markers()
 	match phase:
 		PHASE_HAND:
 			if active_side == SIDE_Z:
@@ -615,6 +626,8 @@ func advance_phase() -> void:
 			active_side = ""
 			_log("对战回合：开始逐列结算")
 			_resolve_combat()
+			# 战斗阶段结束：清“中止抽牌”。
+			clear_draw_block_markers()
 			if winner == "" and not _special_pending_sides.is_empty():
 				if _maybe_begin_special_turn(PHASE_TURN_END):
 					return
@@ -622,6 +635,8 @@ func advance_phase() -> void:
 				phase = PHASE_TURN_END
 				_log("回合结束效果结算")
 				_resolve_turn_end()
+				# 回合结束阶段结束：清“中止抽牌”。
+				clear_draw_block_markers()
 			_clear_hero_shields()
 			if winner == "" and not _special_pending_sides.is_empty():
 				if _maybe_begin_special_turn(PHASE_TURN_END, true):
@@ -638,6 +653,29 @@ func _clear_hero_shields() -> void:
 		var state: BattlePlayerState = players.get(side, null)
 		if state != null:
 			state.hero_shield = 0
+
+
+## 军阀点数加成：等于该阵营英雄当前的“军阀点数”层数（允许为负，由调用方负责下限）。
+func warlord_hand_bonus(side: String) -> int:
+	var state: BattlePlayerState = players.get(side, null)
+	return state.marker_count(MARKER_WARLORD) if state != null else 0
+
+
+## “中止抽牌”是否正在封锁该阵营的抽牌 / 创造牌到手牌。
+func is_draw_blocked(side: String) -> bool:
+	var state: BattlePlayerState = players.get(side, null)
+	return state != null and state.marker_count(MARKER_DRAW_BLOCK) > 0
+
+
+## 每个回合阶段结束时调用：把双方大于 0 的“中止抽牌”清零。
+func clear_draw_block_markers() -> void:
+	for side: String in [SIDE_P, SIDE_Z]:
+		var state: BattlePlayerState = players.get(side, null)
+		if state == null:
+			continue
+		if state.marker_count(MARKER_DRAW_BLOCK) > 0:
+			state.markers[MARKER_DRAW_BLOCK] = 0
+			_log("%s 的“%s”在阶段结束时清零" % [side.to_upper(), MARKER_DRAW_BLOCK])
 
 
 func _start_next_turn() -> void:
@@ -679,6 +717,9 @@ func draw_cards(side: String, count: int, cost_delta: int = 0) -> int:
 	var state: BattlePlayerState = players.get(side, null)
 	if state == null or count <= 0:
 		return 0
+	if is_draw_blocked(side):
+		_log("%s 的“%s”生效，本次抽牌失败" % [side.to_upper(), MARKER_DRAW_BLOCK])
+		return 0
 	var drawn: int = 0
 	for _index: int in range(count):
 		if state.hand.size() >= mode.hand_limit:
@@ -703,6 +744,9 @@ func draw_cards(side: String, count: int, cost_delta: int = 0) -> int:
 func draw_matching_cards(side: String, count: int, filter_text: String, cost_delta: int = 0) -> int:
 	var state: BattlePlayerState = players.get(side, null)
 	if state == null or count <= 0:
+		return 0
+	if is_draw_blocked(side):
+		_log("%s 的“%s”生效，本次搜寻抽牌失败" % [side.to_upper(), MARKER_DRAW_BLOCK])
 		return 0
 	if state.deck.is_empty():
 		state.add_marker(MARKER_FATIGUE, 1)
@@ -2004,8 +2048,11 @@ func _clear_column_combat_buffs(column: int) -> void:
 func _apply_instance_stats(entity: BattleEntity, instance: BattleCardInstance) -> void:
 	if entity == null or instance == null:
 		return
-	entity.max_health = maxi(entity.max_health + instance.health_bonus, 1)
-	entity.health = clampi(entity.health + instance.health_bonus, 1, entity.max_health)
+	# 军阀点数：我方所有实体手牌在打出时把层数加到攻击与生命上。
+	var warlord: int = warlord_hand_bonus(entity.side)
+	entity.attack = maxi(entity.attack + warlord, 0)
+	entity.max_health = maxi(entity.max_health + instance.health_bonus + warlord, 1)
+	entity.health = clampi(entity.health + instance.health_bonus + warlord, 1, entity.max_health)
 	entity.shield = maxi(entity.shield + instance.shield_bonus, 0)
 
 
@@ -2449,12 +2496,16 @@ func get_display_stats(handle: Variant) -> Dictionary:
 			var hand_index: int = _hand_index(instance.owner_side, instance)
 			if hand_index >= 0:
 				cost = effective_hand_cost(instance.owner_side, hand_index)
+		# 军阀点数：手牌中的实体牌实时获得等同层数的攻击/生命加成。
+		var warlord: int = 0
+		if instance.zone == "hand" and card.is_entity():
+			warlord = warlord_hand_bonus(instance.owner_side)
 		return {
 			"zone": instance.zone,
 			"side": instance.owner_side,
-			"attack": maxi(card.attack + instance.attack_bonus, 0),
-			"health": maxi(card.health + instance.health_bonus, 1),
-			"max_health": maxi(card.health + instance.health_bonus, 1),
+			"attack": maxi(card.attack + instance.attack_bonus + warlord, 0),
+			"health": maxi(card.health + instance.health_bonus + warlord, 1),
+			"max_health": maxi(card.health + instance.health_bonus + warlord, 1),
 			"shield": maxi(card.shield + instance.shield_bonus, 0),
 			"cost": maxi(cost, 0),
 		}

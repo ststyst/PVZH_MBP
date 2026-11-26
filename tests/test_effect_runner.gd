@@ -322,6 +322,42 @@ func test_markers_add_remove_and_query() -> void:
 	assert_eq(context.calls.size(), 1, "标志物数量应能驱动条件分支")
 
 
+func test_markers_can_target_enemy_hero() -> void:
+	context.selector_results["enemy_hero"] = ["hero:z"]
+	_run("add_marker('军阀点数', 2, enemy_hero)")
+	assert_eq(context.calls.size(), 1)
+	if not context.calls.is_empty():
+		assert_eq(str(context.calls[0].get("target", "")), "hero:z")
+	context.calls.clear()
+	context.query_calls.clear()
+	_run("if marker_count('军阀点数', enemy_hero) > 1:\n    draw_cards(1)")
+	assert_eq(context.calls.size(), 1, "带目标的标志物查询应驱动分支")
+	if not context.query_calls.is_empty():
+		assert_eq(str(context.query_calls[0].get("target", "")), "hero:z")
+
+
+func test_draw_cards_can_target_hero() -> void:
+	context.selector_results["enemy_hero"] = ["hero:z"]
+	_run("draw_cards(enemy_hero, 2)")
+	assert_eq(context.calls.size(), 1)
+	if not context.calls.is_empty():
+		assert_eq(str(context.calls[0].get("op", "")), "draw_cards")
+		assert_eq(str(context.calls[0].get("target", "")), "hero:z")
+		assert_eq(int(context.calls[0].get("count", 0)), 2)
+	context.calls.clear()
+	_run("draw_cards(1)")
+	assert_eq(context.calls.size(), 1)
+	if not context.calls.is_empty():
+		assert_true(context.calls[0].get("target") == null, "旧写法仍由施放者抽牌")
+
+
+func test_draw_cards_arity_validation() -> void:
+	var missing_count: CardEffectScript = CardEffectScript.parse("draw_cards()")
+	assert_true(missing_count.has_errors(), "缺少抽牌数量应报解析错误")
+	var three_args: CardEffectScript = CardEffectScript.parse("draw_cards(enemy_hero, 1, 2)")
+	assert_false(three_args.has_errors(), "目标 + 数量 + 费用修正应可解析")
+
+
 func test_gain_max_health_per_target() -> void:
 	context.selector_results["all_allies"] = ["a1", "a2"]
 	_run("gain_max_health(all_allies, 2)")

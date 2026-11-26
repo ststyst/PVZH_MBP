@@ -32,22 +32,41 @@
 | `add_random_cards_to_hand(target, count, filter)` | 目标、数量、筛选条件 | 从卡牌数据库筛选随机牌，塞入目标阵营手牌随机位置 |
 | `choose_column()` | — | 锦囊打出时要求玩家选择一列；`chosen_column` 生效 |
 | `entities_in_column(min, max, side, min_attack = 0)` | 相对偏移、偏移、阵营、最低攻击 | 返回基准列偏移范围内的实体数组 |
-| `draw_cards(count)` | 数值 | 抽牌 |
+| `draw_cards(count[, cost_delta])` | 数量、可选费用修正 | 由施放者阵营从牌库顶抽牌 |
+| `draw_cards(target, count[, cost_delta])` | 英雄、数量、可选费用修正 | 指定 `hero` / `enemy_hero` 抽牌 |
+| `draw_matching_cards(target, count, filter[, cost_delta])` | 英雄、数量、筛选、可选费用修正 | 从目标牌库随机搜寻符合筛选的牌 |
 | `deal_damage(target, amount)` | 目标、数值 | 造成伤害 |
 | `heal(target, amount)` | 目标、数值 | 治疗 |
 | `gain_shield(target, amount)` | 目标、数值 | 加防御 |
 | `buff_stats(target, attack, health)` | 目标、两个增减值 | 修改攻/血 |
+| `gain_max_health(target, delta)` | 目标、增减值 | 修改实体/英雄生命上限 |
+| `deal_damage_each(target, d1[, d2…])` | 目标数组、伤害序列 | 目标逐个承受对应伤害；伤害不足时重复最后一个 |
+| `damage_column_relative(amount, direction[, offset])` | 数值、方向、可选偏移 | 以基准列为原点向某方向逐列造成伤害 |
 | `gain_energy(amount)` | 数值 | 获得费用 |
 | `give_keyword(target, keyword, value = 0)` | 目标、词缀 id、数值 | 赋予词缀；已有同词缀则累加数值（如先攻 2 + 先攻 3 = 先攻 5）；受卡牌种类白名单限制 |
 | `give_keyword` 的 `bullseye` | — | 伤害类型变为必中；必中伤害不增加充能护盾充能 |
 | `destroy(target)` | 目标 | 消灭 |
+| `transform(target, filter)` | 实体、筛选条件 | 移除目标实体，在原位置召唤符合筛选的随机实体 |
+| `transform_hand(side, old_filter, new_filter)` | 阵营、旧筛选、新筛选 | 把符合旧筛选的手牌替换为新筛选的随机牌 |
 | `choose(count, selector)` | 数量、选择器 | 声明最多选择 N 个目标（玩家选择；`chosen` 为目标数组） |
 | `gain_attack(amount)` | 数值 | 修改当前卡牌实例的攻击（用于牌库/手牌被动，打出后转为实体攻击） |
 | `reduce_cost(amount)` | 数值 | 修改当前卡牌实例的费用（最低 0，用于手牌被动） |
-| `add_marker(name, amount)` | 标志物名、增减值 | 修改玩家特殊标志物数量（允许负数） |
-| `remove_marker(name, amount)` | 标志物名、数量 | 减少玩家特殊标志物（等价于负数 add_marker） |
+| `add_marker(name, amount[, target])` | 标志物名、增减值、可选英雄 | 修改英雄特殊标志物数量（允许负数）；缺省我方，可指定敌方 |
+| `remove_marker(name, amount[, target])` | 标志物名、数量、可选英雄 | 减少英雄特殊标志物（等价于负数 add_marker） |
 | `move_entity(target)` | 实体 | 玩家在出牌时选择目标实体的移动位置；只能在该实体所属阵营半场，且排除当前位置 |
 | `move_entity(target, column, slot)` | 实体、列(0-4)、位置(0普通/1组队) | 直接移动到固定位置；成功触发 `position_changed` |
+| `environment_grant_keyword(keyword, value, side_filter)` | 词缀、数值、阵营过滤 | 当前环境临时授予同列实体词缀 |
+| `environment_grant_keyword_persistent(keyword, value, side_filter)` | 词缀、数值、阵营过滤 | 同上，但为持久词缀 |
+| `environment_grant_stats(attack, health, shield, side_filter)` | 三项数值、阵营过滤 | 当前环境临时授予同列实体数值 |
+| `aura_buff(side, buff_id, min_offset, max_offset, exclude_self)` | 阵营、Buff、列偏移范围、是否排除自身 | 光环：给范围内友方附着 Buff |
+| `aura_hand_cost(side, filter, delta)` | 阵营、筛选、费用修正 | 光环：修改手牌费用 |
+| `aura_spell_cost(side, delta)` | 阵营、费用修正 | 光环：修改锦囊费用 |
+| `double_death_effects()` | — | 自身存活时，同阵营实体死亡触发两次 `die`（双亡语） |
+| `put_card_on_deck_top(target, filter[, keyword, attack, health, shield, keyword_value])` | 英雄、筛选、可选内联加成 | 创造一张符合条件的牌放到目标牌库顶 |
+| `put_hand_card_on_deck_top(target, filter)` | 英雄、筛选 | 把目标手牌中符合筛选的一张移到牌库顶 |
+| `shuffle_buried_positions(target)` | 英雄 | 随机打乱该阵营墓碑的列位置 |
+| `in_hand()` | — | 实体牌声明：能力在手牌中生效 |
+| `in_deck()` | — | 实体牌声明：能力在牌库中生效 |
 
 多目标选择器（`all_enemies` / `all_allies` / `other_allies`）会被解释器**逐个**调用原语。
 
@@ -64,7 +83,7 @@
 - 变量：`x = 2 + 3 * 2`（后续语句可用 `x`）
 - 四则运算：`+ - * /`（整数运算，除数为 0 会记录运行错误）
 - 比较：`== != < <= > >=`；逻辑：`and` `or` `not`
-- 查询函数：`attack(target)`、`health(target)`、`max_health(target)`、`shield(target)`、`defense(target)`、`cost(target)`、`highest(目标集合, 数值名[, 条件])`、`lowest(目标集合, 数值名[, 条件])`、`entities_matching(筛选)`、`entities_matching(范围, 筛选)`、`min(a,b)`、`max(a,b)`、`has_tribe("pea")`、`has_tribe("pea", target)`、`has_keyword("frost")`、`has_keyword("frost", target)`、`keyword_value("first_strike", target)`、`has_buff("frozen", target)`、`environment_kind([target])`、`environment_owner([target])`、`is_entity(target)`、`marker_count("名字")`（`marker_count` 用于玩家特殊标志物数量）
+- 查询函数：`attack(target)`、`health(target)`、`max_health(target)`、`shield(target)`、`defense(target)`、`cost(target)`、`highest(目标集合, 数值名[, 条件])`、`lowest(目标集合, 数值名[, 条件])`、`entities_matching(筛选)`、`entities_matching(范围, 筛选)`、`min(a,b)`、`max(a,b)`、`has_tribe("pea")`、`has_tribe("pea", target)`、`has_keyword("frost")`、`has_keyword("frost", target)`、`keyword_value("first_strike", target)`、`has_buff("frozen", target)`、`environment_kind([target])`、`environment_owner([target])`、`is_entity(target)`、`marker_count("名字"[, target])`（`marker_count` 用于玩家特殊标志物数量，可指定敌方英雄）
 - 单参数形式读“当前作用域目标”（事件触发者 / `for_each` 当前目标），双参数形式显式指定实体；`defense` 与 `shield` 等价
 - `environment_kind` / `environment_owner` 的 0 参数形式读当前基准列（实体自身列 / 锦囊选中的列），1 参数形式读指定实体所在列；详见“列、实体事件与环境”一节
 - 字符串可用单引号或双引号：`side == 'enemy'` / `side == "enemy"`
@@ -1214,13 +1233,15 @@ add_random_cards_to_hand(hero, 2, "kind == 'entity'", 0, "", 1, 2, 0)
 ### 创造牌与抽牌的区别
 
 - `draw_cards(count)`：从当前牌库顶抽已有牌，不创建新牌
-- `add_random_cards_to_hand`：从卡牌数据库创造新牌，随机插入手牌
-- `add_random_cards_to_deck`：从卡牌数据库创造新牌，随机插入牌库
-- `put_card_on_deck_top`：从卡牌数据库创造新牌，放到牌库顶
+- `draw_cards(target, count[, cost_delta])`：指定 `hero` / `enemy_hero` 抽牌
+- `add_random_cards_to_hand`：从卡牌数据库创造新牌，随机插入目标手牌
+- `add_random_cards_to_deck`：从卡牌数据库创造新牌，随机插入目标牌库
+- `put_card_on_deck_top`：从卡牌数据库创造新牌，放到目标牌库顶
 - `summon`：从卡牌数据库召唤实体，不走手牌/牌库
 - `transform` / `transform_hand`：把已有实体或手牌替换为随机卡牌，不是新增复制
 - 创造到手的牌受手牌上限约束：手牌已满时该张创造失败，不触发任何事件
 - 创造到手每成功一张触发 `drawn`；创造到牌库 / 牌库顶不触发 `drawn`，只发 `changed` 界面信号
+- 目标的“中止抽牌”标志物 > 0 时，`draw_cards` / `draw_matching_cards` / 创造牌到手牌都会失败（创造到牌库不受影响）
 
 ### 创造牌可施加的效果
 
@@ -1285,18 +1306,37 @@ add_marker('fatigue', 1)
 
 标志物目前存储在玩家英雄上，不支持实体标志物。
 
+### 军阀点数标志物
+
+- 名称：`军阀点数`
+- 效果：该阵营英雄的层数 > 0 时，该阵营**手牌中的实体牌**实时获得等同于层数的攻击力与生命值加成（生命加成同时作用于当前生命与生命上限）
+- 加成在实体打出时结算进实体数值；层数变化后手牌展示立即更新
+- 层数为负时视为减益：攻击力下限 0、生命值下限 1
+
+### 中止抽牌标志物
+
+- 名称：`中止抽牌`
+- 效果：该阵营层数 > 0 时，**当前回合阶段**内该阵营的以下行为全部失败：
+  - `draw_cards`（常规抽牌）
+  - `draw_matching_cards`（牌库筛选抽牌）
+  - `add_random_cards_to_hand`（创造牌到手牌）
+- 不受影响：创造牌到牌库 / 牌库顶、充能护盾免伤后获得的超能力牌、弹回效果把牌放回手牌、疲劳结算
+- 每个回合阶段结束时（进入下一阶段前），若层数 > 0 则清零；层数 ≤ 0 时保持不变
+
 ### 标志物伪代码能力
 
 ```text
 add_marker('fatigue', 1)
 remove_marker('fatigue', 1)
 marker_count('fatigue')
+add_marker('军阀点数', 2, enemy_hero)   # 作用于敌方英雄
+marker_count('fatigue', enemy_hero)     # 查询敌方英雄
 ```
 
 - 标志物名字是任意字符串，不需要预先注册
 - 数量允许为负
-- `add_marker` / `remove_marker` 默认作用于施放者所在阵营的英雄
-- `marker_count` 查询施放者阵营英雄的标志物
+- `add_marker` / `remove_marker` 默认作用于施放者所在阵营的英雄；第 3 个参数可指定 `hero` / `enemy_hero`（或实体句柄，取其阵营）
+- `marker_count` 默认查询施放者阵营英雄；第 2 个参数可指定查询目标
 - 可用于条件、循环和伤害数值
 
 示例：

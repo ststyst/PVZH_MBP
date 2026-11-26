@@ -93,7 +93,7 @@ const FACT_NAMES: Array[String] = [
 ## 原语（只能作为语句调用）
 const PRIMITIVES: Dictionary = {
 	"summon": {"min": 1, "max": 3},
-	"draw_cards": {"min": 1, "max": 2},
+	"draw_cards": {"min": 1, "max": 3},
 	"draw_matching_cards": {"min": 3, "max": 4},
 	"deal_damage": {"min": 2, "max": 2},
 	"heal": {"min": 2, "max": 2},
@@ -110,8 +110,8 @@ const PRIMITIVES: Dictionary = {
 	"choose": {"min": 2, "max": 2},
 	"gain_attack": {"min": 1, "max": 1},
 	"reduce_cost": {"min": 1, "max": 1},
-	"add_marker": {"min": 2, "max": 2},
-	"remove_marker": {"min": 2, "max": 2},
+	"add_marker": {"min": 2, "max": 3},
+	"remove_marker": {"min": 2, "max": 3},
 	"move_entity": {"min": 1, "max": 3},
 	"add_random_cards_to_deck": {"min": 3, "max": 9},
 	"add_random_cards_to_hand": {"min": 3, "max": 9},
@@ -157,7 +157,7 @@ const QUERIES: Dictionary = {
 	"environment_owner": {"min": 0, "max": 1},
 	"min": {"min": 2, "max": 2},
 	"max": {"min": 2, "max": 2},
-	"marker_count": {"min": 1, "max": 1},
+	"marker_count": {"min": 1, "max": 2},
 	"entities_in_column": {"min": 3, "max": 4},
 	"random_targets": {"min": 2, "max": 2},
 	"count_buff_in_columns": {"min": 4, "max": 4},

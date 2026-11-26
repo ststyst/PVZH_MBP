@@ -2313,6 +2313,157 @@ func test_special_markers_are_string_names_with_int_values() -> void:
 	assert_eq(state.marker_count("special_marker_3"), -1)
 
 
+func test_marker_targets_enemy_hero() -> void:
+	var engine: BattleEngine = _started_engine()
+	var p_state: BattlePlayerState = engine.players["p"]
+	var z_state: BattlePlayerState = engine.players["z"]
+	var add_card: CardData = _make_test_card(
+		"pvzh:test_marker_enemy_add",
+		"add_marker('军阀点数', 2, enemy_hero)"
+	)
+	add_card.kind = "spell"
+	add_card.cost = 1
+	_set_hand(engine, "p", [add_card.card_id])
+	p_state.energy = 10
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "p"
+	assert_true(bool(engine.play_card("p", 0, {}).get("ok", false)))
+	assert_eq(z_state.marker_count("军阀点数"), 2, "应给敌方英雄加标志物")
+	assert_eq(p_state.marker_count("军阀点数"), 0, "不应给施放者加标志物")
+	var remove_card: CardData = _make_test_card(
+		"pvzh:test_marker_enemy_remove",
+		"remove_marker('军阀点数', 1, enemy_hero)"
+	)
+	remove_card.kind = "spell"
+	remove_card.cost = 1
+	_set_hand(engine, "p", [remove_card.card_id])
+	p_state.energy = 10
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "p"
+	assert_true(bool(engine.play_card("p", 0, {}).get("ok", false)))
+	assert_eq(z_state.marker_count("军阀点数"), 1, "应减少敌方英雄的标志物")
+	var query_card: CardData = _make_test_card(
+		"pvzh:test_marker_enemy_query",
+		"if marker_count('军阀点数', enemy_hero) == 1:\n    add_marker('测试标记', 5, enemy_hero)"
+	)
+	query_card.kind = "spell"
+	query_card.cost = 1
+	_set_hand(engine, "p", [query_card.card_id])
+	p_state.energy = 10
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "p"
+	assert_true(bool(engine.play_card("p", 0, {}).get("ok", false)))
+	assert_eq(z_state.marker_count("测试标记"), 5, "应能查询敌方英雄的标志物")
+
+
+func test_marker_warlord_bonus_on_hand_and_play() -> void:
+	var engine: BattleEngine = _started_engine()
+	var state: BattlePlayerState = engine.players["p"]
+	var base_card: CardData = cards.get_card("pvzh:gnoll")
+	state.markers["军阀点数"] = 2
+	_set_hand(engine, "p", ["pvzh:gnoll"])
+	var instance: BattleCardInstance = state.hand[0]
+	var hand_stats: Dictionary = engine.get_display_stats(instance)
+	assert_eq(int(hand_stats.get("attack", 0)), base_card.attack + 2, "手牌攻击应 +2")
+	assert_eq(int(hand_stats.get("health", 0)), base_card.health + 2, "手牌生命应 +2")
+	state.energy = 10
+	engine.phase = BattleEngine.PHASE_HAND
+	engine.active_side = "p"
+	var result: Dictionary = engine.play_card("p", 0, {"column": 0, "slot": 0})
+	assert_true(bool(result.get("ok", false)), str(result))
+	var entity: BattleEntity = engine._entity_at(0, "p", 0)
+	assert_true(entity != null)
+	assert_eq(entity.attack, base_card.attack + 2, "打出后攻击应 +2")
+	assert_eq(entity.max_health, base_card.health + 2, "打出后生命上限应 +2")
+	assert_eq(entity.health, base_card.health + 2, "打出后当前生命应 +2")
+
+
+func test_draw_block_marker_blocks_draws_and_creates() -> void:
+	var engine: BattleEngine = _started_engine()
+	var p_state: BattlePlayerState = engine.players["p"]
+	var z_state: BattlePlayerState = engine.players["z"]
+	p_state.add_marker("中止抽牌", 1)
+	var hand_before: int = p_state.hand.size()
+	var deck_before: int = p_state.deck.size()
+	assert_eq(engine.draw_cards("p", 1), 0, "中止抽牌应阻止常规抽牌")
+	assert_eq(engine.draw_matching_cards("p", 1, ""), 0, "中止抽牌应阻止筛选抽牌")
+	assert_eq(engine.add_random_cards("p", "hand", 1, ""), 0, "中止抽牌应阻止创造牌到手牌")
+	assert_eq(p_state.hand.size(), hand_before, "手牌数量不应变化")
+	assert_eq(p_state.deck.size(), deck_before, "牌库数量不应变化")
+	assert_eq(engine.add_random_cards("p", "deck", 1, "kind == entity"), 1, "创造牌到牌库不受影响")
+	var z_hand_before: int = z_state.hand.size()
+	assert_eq(engine.draw_cards("z", 1), 1, "敌方不应被阻止")
+	assert_eq(z_state.hand.size(), z_hand_before + 1)
+	engine.end_phase("z")
+	assert_eq(p_state.marker_count("中止抽牌"), 0, "阶段结束时“中止抽牌”应清零")
+
+
+func test_draw_cards_can_target_enemy_hero() -> void:
+	var engine: BattleEngine = _started_engine()
+	var p_state: BattlePlayerState = engine.players["p"]
+	var z_state: BattlePlayerState = engine.players["z"]
+	var spell: CardData = _make_test_card(
+		"pvzh:test_draw_enemy_spell",
+		"draw_cards(enemy_hero, 2)"
+	)
+	spell.kind = "spell"
+	spell.cost = 1
+	_set_hand(engine, "p", [spell.card_id])
+	p_state.energy = 10
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "p"
+	var p_hand: int = p_state.hand.size()
+	var z_hand: int = z_state.hand.size()
+	var result: Dictionary = engine.play_card("p", 0, {})
+	assert_true(bool(result.get("ok", false)), str(result))
+	assert_eq(z_state.hand.size(), z_hand + 2, "应让敌方英雄抽 2 张")
+	assert_eq(p_state.hand.size(), p_hand - 1, "施放者只少一张打出的锦囊")
+	assert_eq(z_state.marker_count("fatigue"), 0, "正常抽牌不应产生疲劳")
+
+
+func test_draw_cards_targeted_with_filtered_draw() -> void:
+	var engine: BattleEngine = _started_engine()
+	var p_state: BattlePlayerState = engine.players["p"]
+	var z_state: BattlePlayerState = engine.players["z"]
+	var spell: CardData = _make_test_card(
+		"pvzh:test_draw_matching_enemy_spell",
+		"draw_matching_cards(enemy_hero, 1, 'kind == entity')"
+	)
+	spell.kind = "spell"
+	spell.cost = 1
+	_set_hand(engine, "p", [spell.card_id])
+	p_state.energy = 10
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "p"
+	var z_hand: int = z_state.hand.size()
+	var result: Dictionary = engine.play_card("p", 0, {})
+	assert_true(bool(result.get("ok", false)), str(result))
+	assert_eq(z_state.hand.size(), z_hand + 1, "应让敌方英雄筛选抽牌 1 张")
+
+
+func test_create_cards_can_target_enemy_hero() -> void:
+	var engine: BattleEngine = _started_engine()
+	var p_state: BattlePlayerState = engine.players["p"]
+	var z_state: BattlePlayerState = engine.players["z"]
+	var spell: CardData = _make_test_card(
+		"pvzh:test_create_enemy_spell",
+		"add_random_cards_to_hand(enemy_hero, 1, 'kind == spell')\n"
+		+ "add_random_cards_to_deck(enemy_hero, 2, 'kind == entity')"
+	)
+	spell.kind = "spell"
+	spell.cost = 1
+	_set_hand(engine, "p", [spell.card_id])
+	p_state.energy = 10
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "p"
+	var z_hand: int = z_state.hand.size()
+	var z_deck: int = z_state.deck.size()
+	var result: Dictionary = engine.play_card("p", 0, {})
+	assert_true(bool(result.get("ok", false)), str(result))
+	assert_eq(z_state.hand.size(), z_hand + 1, "应给敌方手牌创造 1 张锦囊")
+	assert_eq(z_state.deck.size(), z_deck + 2, "应给敌方牌库创造 2 张实体")
+
+
 func test_team_up_placement_rule() -> void:
 	var engine: BattleEngine = _started_engine()
 	var team_card: CardData = cards.get_card("pvzh:hound").duplicate()
