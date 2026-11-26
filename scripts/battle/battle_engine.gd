@@ -456,8 +456,7 @@ func _special_waits_for_priority(side: String) -> bool:
 
 
 func _finish_special_turn() -> void:
-	# 特殊回合（独立阶段）结束：清“中止抽牌”。
-	clear_draw_block_markers()
+	# 规则：特殊回合阶段结束**不**清“中止抽牌”，层数保留到下一个非特殊阶段结束时再清零。
 	var resume_phase: String = _special_resume_phase
 	var resume_side: String = _special_resume_active_side
 	var end_resolved: bool = _special_turn_end_resolved
@@ -470,6 +469,8 @@ func _finish_special_turn() -> void:
 		if not end_resolved:
 			_clear_hero_shields()
 			_resolve_turn_end()
+			# 补结算的“回合结束阶段”不是特殊回合阶段，结束时照常清零。
+			clear_draw_block_markers()
 		if winner == "":
 			_start_next_turn()
 	else:
