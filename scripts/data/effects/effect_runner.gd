@@ -501,6 +501,19 @@ func _eval_call(expression: Dictionary, facts: Dictionary) -> Variant:
 			if entity_candidates.size() != 1:
 				return false
 			return context != null and context.is_entity_handle(entity_candidates[0])
+		"environment_kind", "environment_owner":
+			# 0 个参数：读当前基准列（实体自身列 / 锦囊选择列）；
+			# 1 个参数：显式指定实体，读该实体所在列。
+			var environment_target: Variant = null
+			if not arguments.is_empty():
+				var environment_handles: Array = _resolve_argument_target(arguments[0], facts)
+				if environment_handles.size() != 1:
+					_error("查询函数 %s 需要单个实体目标" % function_name, _line_of(expression))
+					return ""
+				environment_target = environment_handles[0]
+			if function_name == "environment_owner":
+				return context.environment_owner(environment_target)
+			return context.environment_kind(environment_target)
 		"keyword_value":
 			return _eval_keyword_value(arguments, facts, expression)
 		"highest", "lowest":

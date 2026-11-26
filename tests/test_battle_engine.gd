@@ -1692,6 +1692,142 @@ func test_place_environment_in_relative_column() -> void:
 	assert_eq(str(engine.environment_owners[1]), "p")
 
 
+func test_environment_query_kind_and_owner() -> void:
+	var engine: BattleEngine = _started_engine()
+	var env_card: CardData = cards.get_card("pvzh:sunny_field")
+	assert_true(engine._place_environment("p", 2, env_card), "应能放置环境")
+	assert_true(engine._place_environment("p", 3, env_card), "应能放置第二处环境")
+	var owner_card: CardData = _make_test_card(
+		"pvzh:test_env_owner_entity",
+		"when enter:\n    if environment_owner(self) == 'ally':\n        buff_stats(self, 2, 0)"
+	)
+	var on_owned: BattleEntity = engine.summon_card_in_column("p", owner_card, 2)
+	assert_true(on_owned != null)
+	assert_eq(on_owned.attack, owner_card.attack + 2, "我方环境列应 +2 攻击")
+	var on_neutral: BattleEntity = engine.summon_card_in_column("p", owner_card, 0)
+	assert_true(on_neutral != null)
+	assert_eq(on_neutral.attack, owner_card.attack, "中立环境不应触发")
+	var enemy_view: BattleEntity = engine.summon_card_in_column("z", owner_card, 2)
+	assert_true(enemy_view != null)
+	assert_eq(enemy_view.attack, owner_card.attack, "环境属于对方，不应触发")
+	var kind_card: CardData = _make_test_card(
+		"pvzh:test_env_kind_entity",
+		"when enter:\n    if environment_kind(self) == 'sunny_field':\n        buff_stats(self, 3, 0)"
+	)
+	var on_sunny: BattleEntity = engine.summon_card_in_column("p", kind_card, 3)
+	assert_true(on_sunny != null)
+	assert_eq(on_sunny.attack, kind_card.attack + 3, "环境种类应为 sunny_field")
+	var default_kind_card: CardData = _make_test_card(
+		"pvzh:test_env_kind_default",
+		"when enter:\n    if environment_kind(self) == 'default':\n        buff_stats(self, 1, 0)"
+	)
+	assert_eq(engine.environment_id_at(1), "default")
+	var on_default: BattleEntity = engine.summon_card_in_column("p", default_kind_card, 1)
+	assert_true(on_default != null)
+	assert_eq(on_default.attack, default_kind_card.attack + 1, "默认环境种类应为 default")
+
+
+func test_environment_query_spell_on_chosen_entity() -> void:
+	var engine: BattleEngine = _started_engine()
+	var env_card: CardData = cards.get_card("pvzh:sunny_field")
+	assert_true(engine._place_environment("p", 2, env_card), "应能放置环境")
+	var spell: CardData = _make_test_card(
+		"pvzh:test_env_query_spell",
+		"choose(1, 'enemy_entities')\n"
+		+ "if environment_kind(chosen) == 'highground' or environment_kind(chosen) == 'water' or environment_kind(chosen) == 'default':\n"
+		+ "    buff_stats(chosen, -2, 0)\n"
+		+ "else:\n"
+		+ "    buff_stats(chosen, -4, 0)"
+	)
+	spell.kind = "spell"
+	spell.cost = 1
+	var enemy: BattleEntity = engine.summon_card("z", cards.get_card("pvzh:gnoll"), 2, 0)
+	var base_attack: int = enemy.attack
+	_set_hand(engine, "p", [spell.card_id])
+	engine.players["p"].energy = 10
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "p"
+	var result: Dictionary = engine.play_card("p", 0, {"handles": [enemy]})
+	assert_true(bool(result.get("ok", false)), str(result))
+	assert_eq(enemy.attack, maxi(base_attack - 4, 0), "非初始环境应 -4 攻击")
+	var default_spell: CardData = _make_test_card(
+		"pvzh:test_env_query_spell_default",
+		"choose(1, 'enemy_entities')\n"
+		+ "if environment_kind(chosen) == 'highground' or environment_kind(chosen) == 'water' or environment_kind(chosen) == 'default':\n"
+		+ "    buff_stats(chosen, -2, 0)\n"
+		+ "else:\n"
+		+ "    buff_stats(chosen, -4, 0)"
+	)
+	default_spell.kind = "spell"
+	default_spell.cost = 1
+	var neutral_enemy: BattleEntity = engine.summon_card("z", cards.get_card("pvzh:gnoll"), 1, 0)
+	var neutral_attack: int = neutral_enemy.attack
+	_set_hand(engine, "p", [default_spell.card_id])
+	engine.players["p"].energy = 10
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "p"
+	var neutral_result: Dictionary = engine.play_card("p", 0, {"handles": [neutral_enemy]})
+	assert_true(bool(neutral_result.get("ok", false)), str(neutral_result))
+	assert_eq(neutral_enemy.attack, maxi(neutral_attack - 2, 0), "默认环境应 -2 攻击")
+
+
+func test_column_spell_can_place_environment() -> void:
+	var engine: BattleEngine = _started_engine()
+	var spell: CardData = _make_test_card(
+		"pvzh:test_choose_column_env_spell",
+		"choose_column()\nplace_environment(0, 'sunny_field')"
+	)
+	spell.kind = "spell"
+	spell.cost = 1
+	_set_hand(engine, "p", [spell.card_id])
+	engine.players["p"].energy = 10
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "p"
+	var result: Dictionary = engine.play_card("p", 0, {"column": 3})
+	assert_true(bool(result.get("ok", false)), str(result))
+	assert_eq(engine.environment_id_at(3), "sunny_field")
+	assert_eq(engine.environment_owner_at(3), "p")
+	var blocked_spell: CardData = _make_test_card(
+		"pvzh:test_choose_column_env_blocked",
+		"choose_column()\nplace_environment(0, 'sunny_field')"
+	)
+	blocked_spell.kind = "spell"
+	blocked_spell.cost = 1
+	_set_hand(engine, "p", [blocked_spell.card_id])
+	engine.players["p"].energy = 10
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "p"
+	var blocked: Dictionary = engine.play_card("p", 0, {"column": 0})
+	assert_true(bool(blocked.get("ok", false)), "锦囊本身仍应打出")
+	assert_eq(engine.environment_id_at(0), "highground", "受保护环境不应被覆盖")
+
+
+func test_environment_query_zero_argument_uses_base_column() -> void:
+	var engine: BattleEngine = _started_engine()
+	assert_true(engine._place_environment("p", 2, cards.get_card("pvzh:sunny_field")), "应能放置环境")
+	var entity_card: CardData = _make_test_card(
+		"pvzh:test_env_zero_arg_entity",
+		"when enter:\n    if environment_kind() == 'sunny_field':\n        buff_stats(self, 1, 0)"
+	)
+	var entity: BattleEntity = engine.summon_card_in_column("p", entity_card, 2)
+	assert_true(entity != null)
+	assert_eq(entity.attack, entity_card.attack + 1, "无参数查询应读实体自身列")
+	var spell: CardData = _make_test_card(
+		"pvzh:test_env_zero_arg_spell",
+		"choose_column()\nif environment_owner() == 'ally':\n    deal_damage(enemy_hero, 2)"
+	)
+	spell.kind = "spell"
+	spell.cost = 1
+	_set_hand(engine, "p", [spell.card_id])
+	engine.players["p"].energy = 10
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "p"
+	var hero_health: int = engine.players["z"].hero_health
+	var result: Dictionary = engine.play_card("p", 0, {"column": 2})
+	assert_true(bool(result.get("ok", false)), str(result))
+	assert_eq(engine.players["z"].hero_health, hero_health - 2, "无参数查询应读锦囊选中的列")
+
+
 func test_protected_environment_cannot_be_replaced() -> void:
 	var engine: BattleEngine = _started_engine()
 	var state: BattlePlayerState = engine.players["p"]

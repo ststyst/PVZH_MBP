@@ -49,6 +49,9 @@ var remove_entity_succeeds: bool = true
 var deck_top_succeeds: bool = true
 var shuffle_succeeds: bool = true
 var place_environment_succeeds: bool = true
+## environment_kind / environment_owner 查询的返回值，供用例切换分支。
+var environment_kind_result: String = ""
+var environment_owner_result: String = "neutral"
 
 ## can_target() 返回 false 的目标句柄。
 var blocked_targets: Array = []
@@ -80,6 +83,8 @@ func reset() -> void:
 	deck_top_succeeds = true
 	shuffle_succeeds = true
 	place_environment_succeeds = true
+	environment_kind_result = ""
+	environment_owner_result = "neutral"
 
 
 func _record(op: String, data: Dictionary = {}) -> void:
@@ -291,6 +296,16 @@ func entities_in_column(min_offset: int, max_offset: int, side_filter: String, m
 func place_environment(column_offset: int, card_name: String) -> bool:
 	_record("place_environment", {"column_offset": column_offset, "card": card_name})
 	return place_environment_succeeds
+
+
+func environment_kind(target: Variant = null) -> String:
+	_record_query("environment_kind", {"target": target})
+	return environment_kind_result
+
+
+func environment_owner(target: Variant = null) -> String:
+	_record_query("environment_owner", {"target": target})
+	return environment_owner_result
 
 
 func apply_buff(target, buff_id: String, amount: int = 1) -> bool:

@@ -547,6 +547,41 @@ func place_environment(column_offset: int, card_name: String) -> bool:
 	return engine.place_environment_by_name(caster_side, reference_column + column_offset, card_name)
 
 
+## 目标所在列的环境种类（环境 id）。不带参数时读当前基准列：
+## 实体异能读自身列，锦囊读打出时选择的列。
+func environment_kind(target = null) -> String:
+	var column: int = _environment_column_of(target)
+	if column < 0:
+		return ""
+	return engine.environment_id_at(column)
+
+
+## 目标所在列的环境归属方，相对技能拥有者返回 ally / enemy / neutral。
+func environment_owner(target = null) -> String:
+	var column: int = _environment_column_of(target)
+	if column < 0:
+		return ""
+	var owner: String = engine.environment_owner_at(column)
+	if owner.is_empty():
+		return "neutral"
+	return "ally" if owner == caster_side else "enemy"
+
+
+## 目标实体所在列；没给目标时回退到基准列（实体自身列 / 锦囊选择列）。
+func _environment_column_of(target) -> int:
+	if target is BattleEntity:
+		var entity: BattleEntity = target
+		return entity.column if entity.alive else -1
+	var column: int = base_column
+	if column < 0 and _self_handle is BattleEntity:
+		column = _self_handle.column
+	if column < 0:
+		column = chosen_column
+	if column < 0 or column >= BattleEngine.COLUMN_COUNT:
+		return -1
+	return column
+
+
 func apply_buff(target, buff_id: String, amount: int = 1) -> bool:
 	if not target is BattleEntity:
 		return false

@@ -1,4 +1,4 @@
-﻿# 战斗结算规则
+# 战斗结算规则
 
 本文件描述当前已经实现的玩法层面规则，不讨论伪代码语法。伪代码写法见 `EffectDsl.md`。
 
@@ -320,6 +320,10 @@ damage == 0 = 未造成有效伤害
 - 实体进入环境列时重新应用
 - 环境被覆盖时移除旧环境赋予的临时效果
 - 默认环境词缀是临时的；`environment_grant_keyword_persistent` 为持久赋予
+- 能力可以读取任意实体所在列的环境：`environment_kind(target)` 返回环境 id（`highground` / `water` / `default` / 环境牌英文名），`environment_owner(target)` 按与技能拥有者的关系返回 `ally` / `enemy` / `neutral`
+- 初始环境（高地/水池/默认）没有打出者，归属方为 `neutral`；只有被玩家打出的环境牌才有 `ally` / `enemy` 归属
+- 不带参数的查询读当前基准列：实体能力读自身列，`choose_column()` 锦囊读选中的列
+- 实体/锦囊可以按列尝试放置环境（`place_environment`）；目标列受 `protected_environments` 保护时静默失败，不中断脚本
 
 ### 底座与进化
 

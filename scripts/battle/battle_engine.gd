@@ -1117,6 +1117,20 @@ func can_change_environment(column: int) -> bool:
 	return not protected_environments.has(str(environments[column]))
 
 
+## 该列当前环境 id（如 highground / water / default / sunny_field）；列非法返回空字符串。
+func environment_id_at(column: int) -> String:
+	if column < 0 or column >= COLUMN_COUNT:
+		return ""
+	return str(environments[column])
+
+
+## 该列环境的打出方（p / z）；初始环境没有打出者，返回空字符串。
+func environment_owner_at(column: int) -> String:
+	if column < 0 or column >= COLUMN_COUNT:
+		return ""
+	return str(environment_owners.get(column, ""))
+
+
 func _place_environment(side: String, column: int, card: CardData) -> bool:
 	if card == null or not card.is_environment() or not can_change_environment(column):
 		return false

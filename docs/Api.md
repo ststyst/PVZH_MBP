@@ -438,6 +438,8 @@ CSV 的 `ability` 列在载入时编译为 `CardData.ability_script`（语法见
 | `summon_card_in_column(side, card, column)` | 在合法列召唤一个实体 |
 | `add_random_cards(side, zone, count, filter_text)` | 从卡牌数据库筛选并随机插入牌库/手牌；返回插入数量 |
 | `place_environment_by_name(side, column, card_name)` | 尝试放置环境；受保护环境不可覆盖 |
+| `environment_id_at(column)` | 该列环境 id（`highground` / `water` / `default` / 环境牌英文名） |
+| `environment_owner_at(column)` | 该列环境打出方（`p` / `z`）；初始环境返回空字符串 |
 | `can_change_environment(column)` | 该列环境是否允许被改变 |
 | `entities_in_column(min, max, side, min_attack)` | 相对基准列范围查询实体数组 |
 | `apply_buff_handle(entity, buff_id, amount)` / `remove_buff_handle` | 施加/解除内置 Buff/Debuff |

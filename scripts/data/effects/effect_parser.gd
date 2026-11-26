@@ -153,6 +153,8 @@ const QUERIES: Dictionary = {
 	"lowest": {"min": 2, "max": 3},
 	"entities_matching": {"min": 1, "max": 2},
 	"is_entity": {"min": 1, "max": 1},
+	"environment_kind": {"min": 0, "max": 1},
+	"environment_owner": {"min": 0, "max": 1},
 	"min": {"min": 2, "max": 2},
 	"max": {"min": 2, "max": 2},
 	"marker_count": {"min": 1, "max": 1},

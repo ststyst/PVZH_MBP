@@ -1,4 +1,4 @@
-﻿# 卡牌能力 DSL（已定稿：方案 D）
+# 卡牌能力 DSL（已定稿：方案 D）
 
 > 采用**函数调用 + 缩进块**的混合语法；支持变量、四则运算、条件、循环、条件目标与事件块。
 > 解析器：`scripts/data/effects/effect_parser.gd`；执行器：`effect_runner.gd`；
@@ -64,8 +64,9 @@
 - 变量：`x = 2 + 3 * 2`（后续语句可用 `x`）
 - 四则运算：`+ - * /`（整数运算，除数为 0 会记录运行错误）
 - 比较：`== != < <= > >=`；逻辑：`and` `or` `not`
-- 查询函数：`attack(target)`、`health(target)`、`max_health(target)`、`shield(target)`、`defense(target)`、`cost(target)`、`highest(目标集合, 数值名[, 条件])`、`lowest(目标集合, 数值名[, 条件])`、`entities_matching(筛选)`、`entities_matching(范围, 筛选)`、`min(a,b)`、`max(a,b)`、`has_tribe("pea")`、`has_tribe("pea", target)`、`has_keyword("frost")`、`has_keyword("frost", target)`、`keyword_value("first_strike", target)`、`has_buff("frozen", target)`、`is_entity(target)`、`marker_count("名字")`（`marker_count` 用于玩家特殊标志物数量）
+- 查询函数：`attack(target)`、`health(target)`、`max_health(target)`、`shield(target)`、`defense(target)`、`cost(target)`、`highest(目标集合, 数值名[, 条件])`、`lowest(目标集合, 数值名[, 条件])`、`entities_matching(筛选)`、`entities_matching(范围, 筛选)`、`min(a,b)`、`max(a,b)`、`has_tribe("pea")`、`has_tribe("pea", target)`、`has_keyword("frost")`、`has_keyword("frost", target)`、`keyword_value("first_strike", target)`、`has_buff("frozen", target)`、`environment_kind([target])`、`environment_owner([target])`、`is_entity(target)`、`marker_count("名字")`（`marker_count` 用于玩家特殊标志物数量）
 - 单参数形式读“当前作用域目标”（事件触发者 / `for_each` 当前目标），双参数形式显式指定实体；`defense` 与 `shield` 等价
+- `environment_kind` / `environment_owner` 的 0 参数形式读当前基准列（实体自身列 / 锦囊选中的列），1 参数形式读指定实体所在列；详见“列、实体事件与环境”一节
 - 字符串可用单引号或双引号：`side == 'enemy'` / `side == "enemy"`
 
 ### 变量赋值示例
@@ -421,6 +422,16 @@ when enter:
 	place_environment(-1, "sunny_field")
 ```
 
+锦囊选择一列后在该列放置环境（`place_environment` 的基准列就是选中的列）：
+
+```text
+choose_column()
+place_environment(0, "sunny_field")
+```
+
+- 环境归属方是打出它的锦囊/实体/环境的拥有者；被覆盖或无法覆盖时 `place_environment` 静默失败（返回 false，不中断脚本）
+- 初始环境（高地/水池/默认）不可被覆盖，见下方 `protected_environments`
+
 环境牌的事件能力就是该环境所在列的效果：
 
 ```text
@@ -436,6 +447,33 @@ when enter(side == 'enemy'):
 - `place_environment` 和普通环境打出都受服务器 `protected_environments` 限制
 - `column` 对实体/环境以自身所在列为 0；对无基准的上下文回退为绝对 1~5 列
 - 初始环境没有打出者，视为中立；中立环境不能执行需要判断 ally/enemy 的效果
+
+### 读取列的环境（种类 / 归属方）
+
+- `environment_kind()`：当前基准列的环境种类；实体能力读自身列，`choose_column()` 锦囊读选中的列
+- `environment_kind(target)`：指定实体所在列的环境种类（环境 id，如 `highground` / `water` / `default` / 环境牌英文名）
+- `environment_owner()` / `environment_owner(target)`：该列环境的归属方，相对技能拥有者返回 `ally` / `enemy` / `neutral`；初始环境没有打出者，返回 `neutral`
+- 目标不是实体、或实体已离场时返回空字符串
+
+锦囊选择一个敌方实体，按目标实体所在列的环境种类改变攻击力：
+
+```text
+choose(1, 'enemy_entities')
+if environment_kind(chosen) == 'highground' or environment_kind(chosen) == 'water' or environment_kind(chosen) == 'default':
+	buff_stats(chosen, -2, 0)
+else:
+	buff_stats(chosen, -4, 0)
+```
+
+上例：目标在初始环境（高地/水池/默认）时攻击力 -2，否则 -4。
+
+实体入场时若自身所在列的环境属于我方，则获得攻击力 +2（初始环境为中立，不会触发）：
+
+```text
+when enter:
+	if environment_owner(self) == 'ally':
+		buff_stats(self, 2, 0)
+```
 
 ### Buff / Debuff 与新增词缀
 
@@ -463,6 +501,8 @@ when buff_removed:
 - `spell_immune`：只拦**敌方锦囊**——敌方锦囊不能选它、伤害/消灭无效；我方锦囊、实体能力、环境等效果正常生效（不判断效果有益或有害）
 - 相关实体词缀：双重打击、狂热、锦囊免疫、克制英雄、穿透、致命、无敌、捕猎、两栖、溅射、寒霜、反伤、免疫负面
 - `debuff_immune` 会阻止冰冻等 Debuff 被施加
+- 战斗阶段中，每一列的战斗**完全结束**（两轮攻击 + 死亡结算之后）时，只清除该列**存活**实体的 `frozen` 与 `invincible`（清掉全部叠加层数）；其余 Buff（`spell_immune` / `hatred` / `life_force` / `buried` / `bounce` / `frozen_tombstone`）与临时词缀 Buff 不会在战斗结束时清除
+- 已被消灭或已移出该列的实体不参与这次清除；战斗阶段之外的强制攻击不触发该清除
 - 词缀定义在 `scripts/data/card_keywords.gd`，Buff 定义在 `scripts/data/card_buffs.gd`，战斗实现在 `scripts/battle/battle_engine.gd`
 
 ### 进化、底座与额外攻击

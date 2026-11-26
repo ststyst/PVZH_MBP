@@ -513,6 +513,63 @@ func test_choose_column_is_declaration_only() -> void:
 	assert_eq(context.calls.size(), 1, "choose_column 本身不产生原语调用")
 
 
+# ===== 环境查询：环境种类 / 环境归属方 =====
+
+
+func test_environment_kind_query_branches() -> void:
+	context.selector_results["chosen"] = ["e1"]
+	context.environment_kind_result = "highground"
+	var source: String = (
+		"choose(1, 'enemy_entities')\n"
+		+ "if environment_kind(chosen) == 'highground' or environment_kind(chosen) == 'water' or environment_kind(chosen) == 'default':\n"
+		+ "    buff_stats(chosen, -2, 0)\n"
+		+ "else:\n"
+		+ "    buff_stats(chosen, -4, 0)"
+	)
+	var errors: Array[String] = _run(source)
+	assert_eq(errors.size(), 0, "不应有运行错误：%s" % [errors])
+	assert_eq(context.calls.size(), 2, "choose + buff_stats")
+	if context.calls.size() == 2:
+		assert_eq(str(context.calls[1].get("op", "")), "buff_stats")
+		assert_eq(int(context.calls[1].get("attack", 0)), -2, "高地/水池/默认应为 -2 攻击")
+	assert_gt(context.query_calls.size(), 0, "应记录 environment_kind 查询")
+	context.calls.clear()
+	context.query_calls.clear()
+	context.environment_kind_result = "sunny_field"
+	errors = _run(source)
+	assert_eq(errors.size(), 0, "不应有运行错误：%s" % [errors])
+	if context.calls.size() == 2:
+		assert_eq(int(context.calls[1].get("attack", 0)), -4, "其他环境应为 -4 攻击")
+
+
+func test_environment_owner_query_by_self() -> void:
+	context.environment_owner_result = "ally"
+	var script: CardEffectScript = CardEffectScript.parse(
+		"when enter:\n    if environment_owner(self) == 'ally':\n        buff_stats(self, 2, 0)"
+	)
+	assert_false(script.has_errors(), "脚本应可解析：%s" % [script.errors])
+	script.run_event(context, "enter", "self_handle")
+	assert_eq(context.calls.size(), 1)
+	if not context.calls.is_empty():
+		assert_eq(str(context.calls[0].get("op", "")), "buff_stats")
+		assert_eq(int(context.calls[0].get("attack", 0)), 2)
+	if not context.query_calls.is_empty():
+		assert_eq(str(context.query_calls[0].get("target", "")), "self_handle", "环境查询应带自身目标")
+	context.calls.clear()
+	context.environment_owner_result = "neutral"
+	script.run_event(context, "enter", "self_handle")
+	assert_eq(context.calls.size(), 0, "中立环境不应触发")
+
+
+func test_environment_kind_query_without_target() -> void:
+	context.environment_kind_result = "water"
+	var errors: Array[String] = _run("x = environment_kind()\nif x == 'water':\n    draw_cards(1)")
+	assert_eq(errors.size(), 0, "不应有运行错误：%s" % [errors])
+	assert_eq(context.calls.size(), 1)
+	assert_eq(str(context.query_calls[0].get("op", "")), "environment_kind")
+	assert_true(context.query_calls[0].get("target") == null, "无参数查询应记录空目标")
+
+
 func test_untargetable_target_is_skipped() -> void:
 	context.selector_results["all_enemies"] = ["hidden", "visible"]
 	context.blocked_targets = ["hidden"]

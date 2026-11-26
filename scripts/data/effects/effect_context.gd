@@ -83,6 +83,18 @@ func is_entity_handle(_handle) -> bool:
 	return false
 
 
+## 目标所在列的环境种类（环境 id，如 highground / water / default / sunny_field）。
+## 目标不是实体、或实体不在场时返回空字符串。
+func environment_kind(_target: Variant = null) -> String:
+	return ""
+
+
+## 目标所在列的环境归属方，相对技能拥有者：ally / enemy / neutral（初始环境无主）。
+## 目标不是实体、或实体不在场时返回空字符串。
+func environment_owner(_target: Variant = null) -> String:
+	return ""
+
+
 # ----- 原语（以单个实体句柄为参数） -----
 
 func summon(_card_name: String, _column: Variant = null, _max_column: Variant = null) -> Array:
