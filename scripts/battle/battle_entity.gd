@@ -72,6 +72,9 @@ func add_keyword(keyword: String, value: int = 0) -> bool:
 	var old_value: int = keyword_value_for(normalized)
 	if not keywords.has(normalized):
 		keywords.append(normalized)
+	if normalized == "team_up":
+		# 组队是放置规则用的缓存字段，赋予词缀后必须同步，否则仍会被当成非组队。
+		team_up = true
 	if CardKeywords.has_value(normalized):
 		keyword_values[normalized] = int(keyword_values.get(normalized, 0)) + value
 	var new_value: int = keyword_value_for(normalized)

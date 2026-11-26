@@ -212,7 +212,14 @@ func clear_environment(_column_offset: int = 0) -> bool:
 
 
 ## 在自身位置（实体能力为自身列/格；锦囊为选择的列/格）尝试召唤一个符合筛选条件的实体。
-func summon_matching(_filter_text: String) -> void:
+## column/max_column 为可选列/范围（实体：相对自身列；锦囊：绝对 1~5），
+## keyword_text 为可选逗号分隔词缀（在入场前赋予并参与放置判定）。
+func summon_matching(
+	_filter_text: String,
+	_column: Variant = null,
+	_max_column: Variant = null,
+	_keyword_text: String = "",
+) -> void:
 	push_warning("EffectContext.summon_matching 未实现：需要战斗层提供")
 
 

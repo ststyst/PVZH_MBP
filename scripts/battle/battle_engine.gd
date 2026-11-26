@@ -1410,11 +1410,21 @@ func _run_script(card: CardData, side: String, chosen: Variant, position: Dictio
 
 # ----- 场地 -----
 
-func summon_card(side: String, card: CardData, column: int, slot: int, attack_bonus: int = 0) -> BattleEntity:
+func summon_card(
+	side: String,
+	card: CardData,
+	column: int,
+	slot: int,
+	attack_bonus: int = 0,
+	extra_keywords: Array = [],
+) -> BattleEntity:
 	var entity := BattleEntity.new()
 	entity.entity_id = _next_entity_id
 	_next_entity_id += 1
 	entity.setup(card, side, column, slot)
+	# 先算词缀再入场：附加词缀在入场事件与入场词缀结算（无敌/墓碑等）之前生效。
+	for keyword: Variant in extra_keywords:
+		entity.add_keyword(str(keyword), 0)
 	entity.entered_turn = turn
 	if attack_bonus != 0:
 		entity.attack = maxi(entity.attack + attack_bonus, 0)
@@ -1487,26 +1497,69 @@ func summon_card_in_column(side: String, card: CardData, column: int) -> BattleE
 	return summoned
 
 
-## 在指定列/格尝试召唤一个符合筛选条件的随机实体；位置被占用或没有匹配牌时返回 null。
-## 供“死亡时于自身位置召唤”等能力使用：死亡实体已 alive=false，不占用 _entity_at。
-func summon_matching_at(side: String, column: int, slot: int, filter_text: String) -> BattleEntity:
-	if column < 0 or column >= COLUMN_COUNT or slot < SLOT_NORMAL or slot > SLOT_TEAM_UP:
-		return null
-	if _entity_at(column, side, slot) != null:
-		return null
+## 按列顺序尝试召唤一个符合筛选条件的随机实体；每列先找合法格子再创建。
+## granted_keyword_text 支持逗号分隔的多个词缀：这些词缀在**入场事件之前**赋予，
+## 并参与“该列能否放置”的判定（如两栖进水池、组队与友方同列）。
+func summon_matching_in_columns(
+	side: String,
+	columns: Array,
+	preferred_slot: int,
+	filter_text: String,
+	granted_keyword_text: String = "",
+) -> BattleEntity:
+	var granted: Array = []
+	for raw_keyword: String in granted_keyword_text.split(","):
+		var normalized: String = CardKeywords.normalize(raw_keyword)
+		if normalized.is_empty() or not CardKeywords.has(normalized) or granted.has(normalized):
+			continue
+		granted.append(normalized)
 	var card: CardData = _random_entity_card(filter_text)
 	if card == null:
 		return null
-	if not _keywords_allowed_in_column(card.keywords, column):
-		return null
-	var entity: BattleEntity = summon_card(side, card, column, slot)
-	if entity == null:
-		return null
-	if not entity.has_buff("buried"):
-		_fire_event("enter", entity)
-	_apply_enter_keywords(entity)
-	changed.emit()
-	return entity
+	var merged_keywords: Array = card.keywords.duplicate()
+	for keyword: Variant in granted:
+		if not merged_keywords.has(str(keyword)):
+			merged_keywords.append(str(keyword))
+	for column_value: Variant in columns:
+		var column: int = int(column_value)
+		var slot: int = _find_summon_slot(side, column, preferred_slot, merged_keywords)
+		if slot < 0:
+			continue
+		var entity: BattleEntity = summon_card(side, card, column, slot, 0, granted)
+		if entity == null:
+			continue
+		if not entity.has_buff("buried"):
+			_fire_event("enter", entity)
+		changed.emit()
+		return entity
+	return null
+
+
+## 在指定列寻找一个可召唤的格子；返回 -1 表示不可召唤。
+## 规则与普通放置一致：环境词缀限制、空列任选、已有 1 个友方时需要组队。
+func _find_summon_slot(side: String, column: int, preferred_slot: int, keywords: Array) -> int:
+	if column < 0 or column >= COLUMN_COUNT:
+		return -1
+	if not _keywords_allowed_in_column(keywords, column):
+		return -1
+	var occupants: Array[BattleEntity] = []
+	for entity: BattleEntity in entities:
+		if entity.alive and entity.side == side and entity.column == column:
+			occupants.append(entity)
+	if occupants.size() >= 2:
+		return -1
+	if occupants.size() == 1:
+		var occupant: BattleEntity = occupants[0]
+		var other_slot: int = SLOT_NORMAL if occupant.slot == SLOT_TEAM_UP else SLOT_TEAM_UP
+		if _entity_at(column, side, other_slot) != null:
+			return -1
+		if not (keywords.has("team_up") or occupant.team_up):
+			return -1
+		return other_slot
+	if _entity_at(column, side, preferred_slot) == null:
+		return preferred_slot
+	var alternate_slot: int = SLOT_NORMAL if preferred_slot == SLOT_TEAM_UP else SLOT_TEAM_UP
+	return alternate_slot if _entity_at(column, side, alternate_slot) == null else -1
 
 
 func summon_card_by_name_in_column(side: String, card_name: String, column: int) -> BattleEntity:

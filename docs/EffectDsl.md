@@ -21,7 +21,10 @@
 | `summon(card_name)` | 英文名 | 在合法位置召唤一个实体；每次语句只召唤一个 |
 | `summon(card_name, column)` | 英文名、列 | 法术/环境：绝对列 1~5；实体异能：相对自身列 -4~4（0=本列） |
 | `summon(card_name, min_column, max_column)` | 英文名、范围 | 在范围内随机尝试一个合法列；坐标含义同上 |
-| `summon_matching(filter)` | 卡牌筛选表达式 | 在自身位置（实体列/格；锦囊为选择列/格）尝试召唤一个符合筛选的随机实体；位置被占用则失败 |
+| `summon_matching(filter)` | 卡牌筛选表达式 | 在自身位置（实体：自身列/格；锦囊：选择的列/格）尝试召唤一个符合筛选的随机实体 |
+| `summon_matching(filter, column)` | 筛选、列 | 指定列召唤；实体为相对自身列的偏移（0=本列），锦囊为绝对 1~5 |
+| `summon_matching(filter, min, max)` | 筛选、列范围 | 在列范围内随机顺序尝试召唤 |
+| `summon_matching(filter, …, keyword_text)` | 末尾可选词缀（逗号分隔） | 先赋予词缀再入场：词缀参与放置判定（两栖进水池、组队与友方同列）并持久保留 |
 | `place_environment(offset, card_name)` | 相对列偏移、环境英文名 | 在基准列偏移位置尝试放置环境；受保护环境不可覆盖 |
 | `clear_environment([offset])` | 可选相对列偏移 | 清除基准列偏移位置的环境：仅当环境非中立时恢复为默认的中立环境；不触发 `environment_played` |
 | `apply_buff(target, buff_id, amount = 1)` | 实体、Buff id、层数 | 施加内置 Buff/Debuff |
@@ -323,6 +326,31 @@ when die: heal(hero, 3)
 when die:
 	summon_matching("class == 'guardian' and cost <= 4")
 ```
+
+实体（死亡时在自身相邻列随机尝试召唤；实体能力的列参数是相对自身列的偏移）：
+
+```
+when die:
+	summon_matching("name == 'gnoll'", -1, 1)
+```
+
+实体（先赋予两栖，再尝试在水池列召唤）：
+
+```
+when die:
+	summon_matching("name == 'gnoll'", 1, 'amphibious')
+```
+
+实体（先赋予组队，与自身同列召唤一个队友）：
+
+```
+when enter:
+	summon_matching("name == 'hound'", 'team_up')
+```
+
+- 召唤结算顺序：选卡与选格 → 附加词缀先赋予并参与放置判定 → 入场词缀（无敌/墓碑等）→ 触发 `enter`
+- 因此 `enter` 的过滤条件可以读到预赋予的词缀（如 `when enter(has_keyword('amphibious'))`）
+- 词缀可写多个，逗号分隔：`summon_matching("name == 'gnoll'", 'team_up,amphibious')`
 
 实体（敌方成功打出环境牌时获得 +1 攻击）：
 

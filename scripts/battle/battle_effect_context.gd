@@ -563,20 +563,50 @@ func clear_environment(column_offset: int = 0) -> bool:
 
 
 ## 在自身位置（实体能力：自身列/格；锦囊：选择的列/格）尝试召唤一个符合筛选的实体。
-func summon_matching(filter_text: String) -> void:
-	var column: int = -1
-	var slot: int = BattleEngine.SLOT_NORMAL
-	if _self_handle is BattleEntity:
-		var self_entity: BattleEntity = _self_handle
-		column = self_entity.column
-		slot = self_entity.slot
-	elif chosen_column >= 0:
-		column = chosen_column
-		if chosen_slot >= 0:
-			slot = chosen_slot
-	if column < 0:
+## 不给列参数时默认自身列；实体能力的列参数是相对自身的偏移，锦囊是绝对列 1~5。
+## 可选词缀会在入场事件前赋予，并参与该列能否放置的判定。
+func summon_matching(
+	filter_text: String,
+	column: Variant = null,
+	max_column: Variant = null,
+	keyword_text: String = "",
+) -> void:
+	var self_entity: BattleEntity = _self_handle if _self_handle is BattleEntity else null
+	var preferred_slot: int = BattleEngine.SLOT_NORMAL
+	if self_entity != null:
+		preferred_slot = self_entity.slot
+	elif chosen_slot >= 0:
+		preferred_slot = chosen_slot
+	var columns: Array[int] = []
+	if column == null:
+		if self_entity != null:
+			columns.append(self_entity.column)
+		elif chosen_column >= 0:
+			columns.append(chosen_column)
+	else:
+		var first_value: int = int(column)
+		var last_value: int = int(max_column) if max_column != null else first_value
+		if self_entity != null:
+			var origin: int = self_entity.column
+			var low_offset: int = clampi(mini(first_value, last_value), -4, 4)
+			var high_offset: int = clampi(maxi(first_value, last_value), -4, 4)
+			for offset: int in range(low_offset, high_offset + 1):
+				var target_column: int = origin + offset
+				if target_column >= 0 and target_column < BattleEngine.COLUMN_COUNT:
+					columns.append(target_column)
+		else:
+			for value: int in range(mini(first_value, last_value), maxi(first_value, last_value) + 1):
+				var target_column: int = value - 1
+				if target_column >= 0 and target_column < BattleEngine.COLUMN_COUNT:
+					columns.append(target_column)
+	if columns.is_empty():
 		return
-	engine.summon_matching_at(caster_side, column, slot, filter_text)
+	for index: int in range(columns.size() - 1, 0, -1):
+		var swap_index: int = engine.rng.randi_range(0, index)
+		var swap_value: int = columns[index]
+		columns[index] = columns[swap_index]
+		columns[swap_index] = swap_value
+	engine.summon_matching_in_columns(caster_side, columns, preferred_slot, filter_text, keyword_text)
 
 
 ## 目标所在列的环境种类（环境 id）。不带参数时读当前基准列：

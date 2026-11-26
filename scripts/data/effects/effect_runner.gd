@@ -303,7 +303,33 @@ func _exec_primitive(statement: Dictionary) -> void:
 				clear_offset = _as_int(_eval(arguments[0], {}))
 			context.clear_environment(clear_offset)
 		"summon_matching":
-			context.summon_matching(_as_string(_eval(arguments[0], {})))
+			# 形式：summon_matching(filter[, column][, keyword]) / summon_matching(filter, min, max[, keyword])
+			var sm_filter: String = _as_string(_eval(arguments[0], {}))
+			var sm_optional: Array = []
+			for sm_index: int in range(1, arguments.size()):
+				sm_optional.append(_eval(arguments[sm_index], {}))
+			var sm_column: Variant = null
+			var sm_max_column: Variant = null
+			var sm_keyword: String = ""
+			if sm_optional.size() == 1:
+				if sm_optional[0] is int:
+					sm_column = int(sm_optional[0])
+				else:
+					sm_keyword = _as_string(sm_optional[0])
+			elif sm_optional.size() == 2:
+				if sm_optional[0] is int and sm_optional[1] is int:
+					sm_column = int(sm_optional[0])
+					sm_max_column = int(sm_optional[1])
+				elif sm_optional[0] is int:
+					sm_column = int(sm_optional[0])
+					sm_keyword = _as_string(sm_optional[1])
+				else:
+					_error("summon_matching 的列参数必须是整数", line)
+			elif sm_optional.size() == 3:
+				sm_column = _as_int(sm_optional[0])
+				sm_max_column = _as_int(sm_optional[1])
+				sm_keyword = _as_string(sm_optional[2])
+			context.summon_matching(sm_filter, sm_column, sm_max_column, sm_keyword)
 		"apply_buff", "remove_buff":
 			var buff_targets: Array = _resolve_argument_target(arguments[0])
 			if buff_targets.size() != 1:

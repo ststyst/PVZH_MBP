@@ -305,8 +305,18 @@ func clear_environment(column_offset: int = 0) -> bool:
 	return clear_environment_succeeds
 
 
-func summon_matching(filter_text: String) -> void:
-	_record("summon_matching", {"filter": filter_text})
+func summon_matching(
+	filter_text: String,
+	column: Variant = null,
+	max_column: Variant = null,
+	keyword_text: String = "",
+) -> void:
+	_record("summon_matching", {
+		"filter": filter_text,
+		"column": column,
+		"max_column": max_column,
+		"keyword": keyword_text,
+	})
 
 
 func environment_kind(target: Variant = null) -> String:

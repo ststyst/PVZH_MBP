@@ -556,6 +556,21 @@ func test_clear_environment_and_summon_matching() -> void:
 		assert_eq(str(context.calls[0].get("filter", "")), "class == 'guardian'")
 
 
+func test_summon_matching_argument_forms() -> void:
+	_run("summon_matching(\"name == 'gnoll'\", -1, 'amphibious')")
+	assert_eq(context.calls.size(), 1)
+	if not context.calls.is_empty():
+		assert_eq(int(context.calls[0].get("column", 0)), -1)
+		assert_eq(str(context.calls[0].get("keyword", "")), "amphibious")
+		assert_true(context.calls[0].get("max_column") == null, "单列形式不应产生范围")
+	context.calls.clear()
+	_run("summon_matching(\"name == 'gnoll'\", -1, 1, 'team_up,amphibious')")
+	if not context.calls.is_empty():
+		assert_eq(int(context.calls[0].get("column", 0)), -1)
+		assert_eq(int(context.calls[0].get("max_column", 0)), 1)
+		assert_eq(str(context.calls[0].get("keyword", "")), "team_up,amphibious")
+
+
 func test_choose_column_is_declaration_only() -> void:
 	var script: CardEffectScript = CardEffectScript.parse(
 		"choose_column()\nplace_environment(0, 'water')"

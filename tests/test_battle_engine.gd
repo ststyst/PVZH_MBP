@@ -1772,6 +1772,94 @@ func test_summon_matching_on_death() -> void:
 		assert_eq(spawned.card.card_class, "guardian", "召唤结果应满足筛选条件")
 
 
+func test_summon_matching_adjacent_column() -> void:
+	var engine: BattleEngine = _started_engine()
+	var dying_card: CardData = _make_test_card(
+		"pvzh:test_summon_adjacent",
+		"when die:\n    summon_matching(\"name == 'gnoll'\", -1)"
+	)
+	var dying: BattleEntity = engine.summon_card("p", dying_card, 2, 0)
+	engine.destroy_handle(dying)
+	engine._flush_deaths()
+	assert_true(engine._entity_at(1, "p", 0) != null, "应在自身左侧列召唤")
+	assert_true(engine._entity_at(2, "p", 0) == null, "不应继续占据自身列")
+
+
+func test_summon_matching_range_columns() -> void:
+	var engine: BattleEngine = _started_engine()
+	var dying_card: CardData = _make_test_card(
+		"pvzh:test_summon_range",
+		"when die:\n    summon_matching(\"name == 'gnoll'\", -1, 1)"
+	)
+	var dying: BattleEntity = engine.summon_card("p", dying_card, 2, 0)
+	engine.destroy_handle(dying)
+	engine._flush_deaths()
+	var spawned_count: int = 0
+	for column: int in [1, 2, 3]:
+		if engine._entity_at(column, "p", 0) != null or engine._entity_at(column, "p", 1) != null:
+			spawned_count += 1
+	assert_eq(spawned_count, 1, "应在相邻范围内召唤一个实体")
+
+
+func test_summon_matching_grant_amphibious_for_water() -> void:
+	var engine: BattleEngine = _started_engine()
+	assert_eq(engine.environment_id_at(4), "water")
+	var dying_card: CardData = _make_test_card(
+		"pvzh:test_summon_amphibious",
+		"when die:\n    summon_matching(\"name == 'gnoll'\", 1, 'amphibious')"
+	)
+	var dying: BattleEntity = engine.summon_card("p", dying_card, 3, 0)
+	engine.destroy_handle(dying)
+	engine._flush_deaths()
+	var spawned: BattleEntity = engine._entity_at(4, "p", 0)
+	assert_true(spawned != null, "先赋予两栖后应能在水池列召唤")
+	if spawned != null:
+		assert_true(spawned.has_keyword("amphibious"), "召唤出的实体应持久拥有两栖")
+
+
+func test_summon_matching_without_amphibious_fails_on_water() -> void:
+	var engine: BattleEngine = _started_engine()
+	var dying_card: CardData = _make_test_card(
+		"pvzh:test_summon_no_amphibious",
+		"when die:\n    summon_matching(\"name == 'gnoll'\", 1)"
+	)
+	var dying: BattleEntity = engine.summon_card("p", dying_card, 3, 0)
+	engine.destroy_handle(dying)
+	engine._flush_deaths()
+	assert_true(engine._entity_at(4, "p", 0) == null, "没有两栖时不应能在水池列召唤")
+
+
+func test_summon_matching_grant_team_up() -> void:
+	var engine: BattleEngine = _started_engine()
+	var summoner_card: CardData = _make_test_card(
+		"pvzh:test_summon_team_up",
+		"when enter:\n    summon_matching(\"name == 'hound'\", 'team_up')"
+	)
+	var summoner: BattleEntity = engine.summon_card_in_column("p", summoner_card, 1)
+	assert_true(summoner != null)
+	var partner: BattleEntity = engine._entity_at(1, "p", 1)
+	assert_true(partner != null, "组队词缀应允许与自身同列再召唤")
+	if partner != null:
+		assert_true(partner.has_keyword("team_up"), "召唤物应持久拥有组队")
+		assert_true(partner.team_up, "组队缓存字段应同步")
+
+
+func test_summon_matching_keyword_applied_before_enter() -> void:
+	var engine: BattleEngine = _started_engine()
+	var child_card: CardData = _make_test_card(
+		"pvzh:test_summon_keyword_enter",
+		"when enter(has_keyword('amphibious')):\n    add_marker('词缀先于入场', 1)"
+	)
+	child_card.english_name = "test_summon_keyword_enter"
+	var spawned: BattleEntity = engine.summon_matching_in_columns(
+		"p", [1], 0, "name == 'test_summon_keyword_enter'", "amphibious"
+	)
+	assert_true(spawned != null)
+	if spawned != null:
+		assert_true(spawned.has_keyword("amphibious"))
+	assert_eq(engine.players["p"].marker_count("词缀先于入场"), 1, "入场事件应能读到预先赋予的词缀")
+
+
 func test_environment_query_kind_and_owner() -> void:
 	var engine: BattleEngine = _started_engine()
 	var env_card: CardData = cards.get_card("pvzh:sunny_field")
