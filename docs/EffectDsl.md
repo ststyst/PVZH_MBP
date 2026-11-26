@@ -351,6 +351,14 @@ when enter:
 - 召唤结算顺序：选卡与选格 → 附加词缀先赋予并参与放置判定 → 入场词缀（无敌/墓碑等）→ 触发 `enter`
 - 因此 `enter` 的过滤条件可以读到预赋予的词缀（如 `when enter(has_keyword('amphibious'))`）
 - 词缀可写多个，逗号分隔：`summon_matching("name == 'gnoll'", 'team_up,amphibious')`
+- 锦囊不填列参数时，使用 `choose_column()` 选中的列；填数字是**绝对列 1~5**（与 `summon` 一致），不是相对选中列的偏移
+
+锦囊（让玩家选一列，并在该列尝试召唤）：
+
+```
+choose_column()
+summon_matching("name == 'gnoll'")
+```
 
 实体（敌方成功打出环境牌时获得 +1 攻击）：
 

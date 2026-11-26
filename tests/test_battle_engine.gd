@@ -1772,6 +1772,38 @@ func test_summon_matching_on_death() -> void:
 		assert_eq(spawned.card.card_class, "guardian", "召唤结果应满足筛选条件")
 
 
+func test_column_spell_summon_matching_in_chosen_column() -> void:
+	var engine: BattleEngine = _started_engine()
+	var spell: CardData = _make_test_card(
+		"pvzh:test_column_summon_matching",
+		"choose_column()\nsummon_matching(\"name == 'gnoll'\")"
+	)
+	spell.kind = "spell"
+	spell.cost = 1
+	_set_hand(engine, "p", [spell.card_id])
+	engine.players["p"].energy = 10
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "p"
+	assert_true(spell.ability_script.column_requirement(), "choose_column 应要求玩家选列")
+	var result: Dictionary = engine.play_card("p", 0, {"column": 2})
+	assert_true(bool(result.get("ok", false)), str(result))
+	assert_true(engine._entity_at(2, "p", 0) != null, "应在玩家选中的第 3 列召唤")
+	assert_true(engine._entity_at(0, "p", 0) == null, "不应在未选中的列召唤")
+	var absolute_spell: CardData = _make_test_card(
+		"pvzh:test_column_summon_absolute",
+		"summon_matching(\"name == 'gnoll'\", 1)"
+	)
+	absolute_spell.kind = "spell"
+	absolute_spell.cost = 1
+	_set_hand(engine, "p", [absolute_spell.card_id])
+	engine.players["p"].energy = 10
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "p"
+	var absolute_result: Dictionary = engine.play_card("p", 0, {})
+	assert_true(bool(absolute_result.get("ok", false)), str(absolute_result))
+	assert_true(engine._entity_at(0, "p", 0) != null, "锦囊的列参数是绝对列 1~5")
+
+
 func test_summon_matching_adjacent_column() -> void:
 	var engine: BattleEngine = _started_engine()
 	var dying_card: CardData = _make_test_card(
