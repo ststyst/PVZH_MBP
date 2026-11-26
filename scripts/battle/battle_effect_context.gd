@@ -550,6 +550,35 @@ func place_environment(column_offset: int, card_name: String) -> bool:
 	return engine.place_environment_by_name(caster_side, reference_column + column_offset, card_name)
 
 
+## 清除基准列偏移位置的环境；中立环境保持原样。清除不会触发 environment_played。
+func clear_environment(column_offset: int = 0) -> bool:
+	var reference_column: int = base_column
+	if reference_column < 0 and _self_handle is BattleEntity:
+		reference_column = _self_handle.column
+	if reference_column < 0:
+		reference_column = chosen_column
+	if reference_column < 0:
+		return false
+	return engine.clear_environment_at(reference_column + column_offset)
+
+
+## 在自身位置（实体能力：自身列/格；锦囊：选择的列/格）尝试召唤一个符合筛选的实体。
+func summon_matching(filter_text: String) -> void:
+	var column: int = -1
+	var slot: int = BattleEngine.SLOT_NORMAL
+	if _self_handle is BattleEntity:
+		var self_entity: BattleEntity = _self_handle
+		column = self_entity.column
+		slot = self_entity.slot
+	elif chosen_column >= 0:
+		column = chosen_column
+		if chosen_slot >= 0:
+			slot = chosen_slot
+	if column < 0:
+		return
+	engine.summon_matching_at(caster_side, column, slot, filter_text)
+
+
 ## 目标所在列的环境种类（环境 id）。不带参数时读当前基准列：
 ## 实体异能读自身列，锦囊读打出时选择的列。
 func environment_kind(target = null) -> String:

@@ -539,6 +539,23 @@ func test_place_environment() -> void:
 		assert_eq(str(context.calls[0].get("card", "")), "water")
 
 
+func test_clear_environment_and_summon_matching() -> void:
+	_run("clear_environment()")
+	assert_eq(context.calls.size(), 1)
+	if not context.calls.is_empty():
+		assert_eq(str(context.calls[0].get("op", "")), "clear_environment")
+	context.calls.clear()
+	_run("clear_environment(-1)")
+	if not context.calls.is_empty():
+		assert_eq(int(context.calls[0].get("column_offset", 0)), -1, "可带相对列偏移")
+	context.calls.clear()
+	_run("summon_matching(\"class == 'guardian'\")")
+	assert_eq(context.calls.size(), 1)
+	if not context.calls.is_empty():
+		assert_eq(str(context.calls[0].get("op", "")), "summon_matching")
+		assert_eq(str(context.calls[0].get("filter", "")), "class == 'guardian'")
+
+
 func test_choose_column_is_declaration_only() -> void:
 	var script: CardEffectScript = CardEffectScript.parse(
 		"choose_column()\nplace_environment(0, 'water')"

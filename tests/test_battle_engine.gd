@@ -1692,6 +1692,86 @@ func test_place_environment_in_relative_column() -> void:
 	assert_eq(str(engine.environment_owners[1]), "p")
 
 
+func test_environment_played_event_side_filters() -> void:
+	var engine: BattleEngine = _started_engine()
+	var p_listener_card: CardData = _make_test_card(
+		"pvzh:test_env_played_ally",
+		"when environment_played(side == 'ally'):\n    buff_stats(self, 2, 0)"
+	)
+	var z_listener_card: CardData = _make_test_card(
+		"pvzh:test_env_played_enemy",
+		"when environment_played(side == 'enemy'):\n    buff_stats(self, 1, 0)"
+	)
+	var p_listener: BattleEntity = engine.summon_card("p", p_listener_card, 0, 0)
+	var z_listener: BattleEntity = engine.summon_card("z", z_listener_card, 0, 0)
+	var p_attack: int = p_listener.attack
+	var z_attack: int = z_listener.attack
+	_set_hand(engine, "p", ["pvzh:sunny_field"])
+	engine.players["p"].energy = 10
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "p"
+	var result: Dictionary = engine.play_card("p", 0, {"column": 2})
+	assert_true(bool(result.get("ok", false)), str(result))
+	assert_eq(p_listener.attack, p_attack + 2, "我方打出环境牌应触发 side == ally")
+	assert_eq(z_listener.attack, z_attack + 1, "敌方监听应触发 side == enemy")
+	assert_eq(engine.environment_id_at(2), "sunny_field")
+
+
+func test_clear_environment() -> void:
+	var engine: BattleEngine = _started_engine()
+	var listener_card: CardData = _make_test_card(
+		"pvzh:test_env_played_count",
+		"when environment_played(side == 'ally'):\n    add_marker('环境事件计数', 1)"
+	)
+	engine.summon_card("p", listener_card, 0, 0)
+	assert_true(engine._place_environment("p", 2, cards.get_card("pvzh:sunny_field")))
+	assert_eq(engine.players["p"].marker_count("环境事件计数"), 1, "放置环境应触发一次事件")
+	var spell: CardData = _make_test_card(
+		"pvzh:test_clear_environment_spell",
+		"choose_column()\nclear_environment()"
+	)
+	spell.kind = "spell"
+	spell.cost = 1
+	_set_hand(engine, "p", [spell.card_id])
+	engine.players["p"].energy = 10
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "p"
+	var result: Dictionary = engine.play_card("p", 0, {"column": 2})
+	assert_true(bool(result.get("ok", false)), str(result))
+	assert_eq(engine.environment_id_at(2), "default", "应恢复为默认环境")
+	assert_eq(engine.environment_owner_at(2), "", "应恢复为中立")
+	assert_eq(engine.players["p"].marker_count("环境事件计数"), 1, "清除环境不应再次触发 environment_played")
+	var neutral_spell: CardData = _make_test_card(
+		"pvzh:test_clear_neutral_env_spell",
+		"choose_column()\nclear_environment()"
+	)
+	neutral_spell.kind = "spell"
+	neutral_spell.cost = 1
+	_set_hand(engine, "p", [neutral_spell.card_id])
+	engine.players["p"].energy = 10
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "p"
+	var neutral_result: Dictionary = engine.play_card("p", 0, {"column": 1})
+	assert_true(bool(neutral_result.get("ok", false)), "清除中立环境不应报错")
+	assert_eq(engine.environment_id_at(1), "default")
+
+
+func test_summon_matching_on_death() -> void:
+	var engine: BattleEngine = _started_engine()
+	var dying_card: CardData = _make_test_card(
+		"pvzh:test_death_summon_matching",
+		"when die:\n    summon_matching(\"class == 'guardian'\")"
+	)
+	var dying: BattleEntity = engine.summon_card("p", dying_card, 2, 0)
+	assert_true(dying != null)
+	engine.destroy_handle(dying)
+	engine._flush_deaths()
+	var spawned: BattleEntity = engine._entity_at(2, "p", 0)
+	assert_true(spawned != null, "死亡时应在自身位置召唤符合筛选的实体")
+	if spawned != null:
+		assert_eq(spawned.card.card_class, "guardian", "召唤结果应满足筛选条件")
+
+
 func test_environment_query_kind_and_owner() -> void:
 	var engine: BattleEngine = _started_engine()
 	var env_card: CardData = cards.get_card("pvzh:sunny_field")

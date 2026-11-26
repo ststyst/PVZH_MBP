@@ -205,6 +205,17 @@ func place_environment(_column_offset: int, _card_name: String) -> bool:
 	return false
 
 
+## 清除基准列偏移位置的环境：仅当该列环境不属于中立方时，变为中立的默认环境。
+func clear_environment(_column_offset: int = 0) -> bool:
+	push_warning("EffectContext.clear_environment 未实现：需要战斗层提供")
+	return false
+
+
+## 在自身位置（实体能力为自身列/格；锦囊为选择的列/格）尝试召唤一个符合筛选条件的实体。
+func summon_matching(_filter_text: String) -> void:
+	push_warning("EffectContext.summon_matching 未实现：需要战斗层提供")
+
+
 func apply_buff(_target, _buff_id: String, _amount: int = 1) -> bool:
 	push_warning("EffectContext.apply_buff 未实现：需要战斗层提供")
 	return false

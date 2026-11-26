@@ -50,6 +50,7 @@ const EVENTS: Array[String] = [
 	"drawn",
 	"after_attack",
 	"damage_dealt",
+	"environment_played",
 ]
 const SELECTORS: Array[String] = [
 	"self",
@@ -117,6 +118,8 @@ const PRIMITIVES: Dictionary = {
 	"add_random_cards_to_hand": {"min": 3, "max": 9},
 	"choose_column": {"min": 0, "max": 0},
 	"place_environment": {"min": 2, "max": 2},
+	"clear_environment": {"min": 0, "max": 1},
+	"summon_matching": {"min": 1, "max": 1},
 	"apply_buff": {"min": 2, "max": 3},
 	"remove_buff": {"min": 2, "max": 2},
 	"force_attack": {"min": 1, "max": 1},

@@ -21,7 +21,9 @@
 | `summon(card_name)` | 英文名 | 在合法位置召唤一个实体；每次语句只召唤一个 |
 | `summon(card_name, column)` | 英文名、列 | 法术/环境：绝对列 1~5；实体异能：相对自身列 -4~4（0=本列） |
 | `summon(card_name, min_column, max_column)` | 英文名、范围 | 在范围内随机尝试一个合法列；坐标含义同上 |
+| `summon_matching(filter)` | 卡牌筛选表达式 | 在自身位置（实体列/格；锦囊为选择列/格）尝试召唤一个符合筛选的随机实体；位置被占用则失败 |
 | `place_environment(offset, card_name)` | 相对列偏移、环境英文名 | 在基准列偏移位置尝试放置环境；受保护环境不可覆盖 |
+| `clear_environment([offset])` | 可选相对列偏移 | 清除基准列偏移位置的环境：仅当环境非中立时恢复为默认的中立环境；不触发 `environment_played` |
 | `apply_buff(target, buff_id, amount = 1)` | 实体、Buff id、层数 | 施加内置 Buff/Debuff |
 | `remove_buff(target, buff_id)` | 实体、Buff id | 解除内置 Buff/Debuff |
 | `force_attack(target)` | 实体 | 让实体按当前列目标攻击一次；冰冻时失败；触发额外攻击事件 |
@@ -202,7 +204,7 @@ deal_damage(chosen, x)
 `damage_dealt`（自身造成有效伤害）、`evolved`（进化成功）、`mounted`（底座被放置实体）、
 `tombstone_enter`（埋入墓碑）、`tombstone_reveal`（墓碑揭示）、`transformed`（实体被变形）、
 `hand_transformed`（手牌被变形）、`drawn`（抽到牌）、`hand_played`（手牌被打出）、
-`ally_attack_gained`（友方攻击力提升）。
+`ally_attack_gained`（友方攻击力提升）、`environment_played`（环境牌成功打出/放置）。
 
 ### 事件触发判定
 
@@ -214,6 +216,7 @@ deal_damage(chosen, x)
 - `die`：生命值降至 1 以下后触发；被 `remove_entity` 移除不触发
 - `tombstone_enter`：实体埋入墓碑时触发，不触发 `enter`
 - `tombstone_reveal`：Z 方锦囊阶段结束揭示时触发，随后触发 `enter`
+- `environment_played`：环境牌成功打出（手牌打出或能力放置）并改变某列环境时触发；事件目标是打出/放置方英雄，监听方用 `side` 判断 `'ally'` / `'enemy'`；**`clear_environment` 清除环境不触发**
 - Buff 光环来源离场时只移除该来源提供的 Buff，不重复移除其他来源
 - 事件默认只响应自己；环境/底座监听其所在列/挂载；需要监听其他实体时使用过滤条件
 
@@ -312,6 +315,34 @@ when enter(side == 'enemy' and attack > 3):
 
 ```
 when die: heal(hero, 3)
+```
+
+实体（死亡时于自身位置召唤一个符合筛选的实体；位置被占用或没有匹配牌时静默失败）：
+
+```
+when die:
+	summon_matching("class == 'guardian' and cost <= 4")
+```
+
+实体（敌方成功打出环境牌时获得 +1 攻击）：
+
+```
+when environment_played(side == 'enemy'):
+	buff_stats(self, 1, 0)
+```
+
+锦囊（选择一列，若该列环境非中立则清除为默认环境）：
+
+```
+choose_column()
+clear_environment()
+```
+
+锦囊（清除基准列右侧一列的环境）：
+
+```
+choose_column()
+clear_environment(1)
 ```
 
 锦囊（对选中目标造成 6 点伤害）：

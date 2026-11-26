@@ -1190,6 +1190,28 @@ func _place_environment(side: String, column: int, card: CardData) -> bool:
 	_log("第 %d 列环境变为：%s（%s）" % [column + 1, card.display_name(), side.to_upper()])
 	if card.ability_script != null and card.ability_script.has_effect():
 		_run_script(card, side, [], {"column": column})
+	# 环境牌成功打出/放置：事件目标是打出方英雄，监听者用 side 判断我方/敌方。
+	_fire_event("environment_played", hero_handle(side))
+	return true
+
+
+## 清除某列环境：仅当该列环境属于某一方（非中立）时，恢复为中立的默认环境。
+## 清除不是“打出环境牌”，不会触发 environment_played。
+func clear_environment_at(column: int) -> bool:
+	if column < 0 or column >= COLUMN_COUNT:
+		return false
+	if str(environment_owners.get(column, "")).is_empty():
+		return false
+	_clear_environment_keyword_grants(column)
+	_clear_environment_stat_grants(column)
+	environment_keyword_defs.erase(column)
+	environment_stat_defs.erase(column)
+	environments[column] = ENV_DEFAULT
+	environment_labels[column] = "默认"
+	environment_cards.erase(column)
+	environment_owners[column] = ""
+	_log("第 %d 列环境被清除，恢复为中立默认环境" % [column + 1])
+	changed.emit()
 	return true
 
 
@@ -1463,6 +1485,28 @@ func summon_card_in_column(side: String, card: CardData, column: int) -> BattleE
 		_fire_event("enter", summoned)
 	_apply_enter_keywords(summoned)
 	return summoned
+
+
+## 在指定列/格尝试召唤一个符合筛选条件的随机实体；位置被占用或没有匹配牌时返回 null。
+## 供“死亡时于自身位置召唤”等能力使用：死亡实体已 alive=false，不占用 _entity_at。
+func summon_matching_at(side: String, column: int, slot: int, filter_text: String) -> BattleEntity:
+	if column < 0 or column >= COLUMN_COUNT or slot < SLOT_NORMAL or slot > SLOT_TEAM_UP:
+		return null
+	if _entity_at(column, side, slot) != null:
+		return null
+	var card: CardData = _random_entity_card(filter_text)
+	if card == null:
+		return null
+	if not _keywords_allowed_in_column(card.keywords, column):
+		return null
+	var entity: BattleEntity = summon_card(side, card, column, slot)
+	if entity == null:
+		return null
+	if not entity.has_buff("buried"):
+		_fire_event("enter", entity)
+	_apply_enter_keywords(entity)
+	changed.emit()
+	return entity
 
 
 func summon_card_by_name_in_column(side: String, card_name: String, column: int) -> BattleEntity:

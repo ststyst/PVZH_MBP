@@ -49,6 +49,7 @@ var remove_entity_succeeds: bool = true
 var deck_top_succeeds: bool = true
 var shuffle_succeeds: bool = true
 var place_environment_succeeds: bool = true
+var clear_environment_succeeds: bool = true
 ## environment_kind / environment_owner 查询的返回值，供用例切换分支。
 var environment_kind_result: String = ""
 var environment_owner_result: String = "neutral"
@@ -83,6 +84,7 @@ func reset() -> void:
 	deck_top_succeeds = true
 	shuffle_succeeds = true
 	place_environment_succeeds = true
+	clear_environment_succeeds = true
 	environment_kind_result = ""
 	environment_owner_result = "neutral"
 
@@ -296,6 +298,15 @@ func entities_in_column(min_offset: int, max_offset: int, side_filter: String, m
 func place_environment(column_offset: int, card_name: String) -> bool:
 	_record("place_environment", {"column_offset": column_offset, "card": card_name})
 	return place_environment_succeeds
+
+
+func clear_environment(column_offset: int = 0) -> bool:
+	_record("clear_environment", {"column_offset": column_offset})
+	return clear_environment_succeeds
+
+
+func summon_matching(filter_text: String) -> void:
+	_record("summon_matching", {"filter": filter_text})
 
 
 func environment_kind(target: Variant = null) -> String:

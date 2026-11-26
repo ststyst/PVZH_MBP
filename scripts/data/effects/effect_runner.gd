@@ -297,6 +297,13 @@ func _exec_primitive(statement: Dictionary) -> void:
 				_as_int(_eval(arguments[0], {})),
 				_as_string(_eval(arguments[1], {})),
 			)
+		"clear_environment":
+			var clear_offset: int = 0
+			if not arguments.is_empty():
+				clear_offset = _as_int(_eval(arguments[0], {}))
+			context.clear_environment(clear_offset)
+		"summon_matching":
+			context.summon_matching(_as_string(_eval(arguments[0], {})))
 		"apply_buff", "remove_buff":
 			var buff_targets: Array = _resolve_argument_target(arguments[0])
 			if buff_targets.size() != 1:
