@@ -3143,9 +3143,15 @@ func _choose_attack_target(attacker: BattleEntity) -> Variant:
 
 
 func _choose_attack_target_in_column(attacker: BattleEntity, column: int) -> Variant:
+	# 优先攻击该列最靠前的存活敌方实体（slot 最小：普通位 0 优先于组队位 1）。
+	var front_target: BattleEntity = null
 	for entity: BattleEntity in entities:
-		if entity.is_alive() and entity.side != attacker.side and entity.column == column:
-			return entity
+		if not entity.is_alive() or entity.side == attacker.side or entity.column != column:
+			continue
+		if front_target == null or entity.slot < front_target.slot:
+			front_target = entity
+	if front_target != null:
+		return front_target
 	return hero_handle(opposite_side(attacker.side))
 
 
@@ -3224,9 +3230,10 @@ func _execute_wide_attack(attacker: BattleEntity, extra_attack: bool) -> void:
 			continue
 		var target_entity: BattleEntity = null
 		for entity: BattleEntity in entities:
-			if entity.alive and entity.side != attacker.side and entity.column == column:
+			if not entity.alive or entity.side == attacker.side or entity.column != column:
+				continue
+			if target_entity == null or entity.slot < target_entity.slot:
 				target_entity = entity
-				break
 		if target_entity == null:
 			hero_damage += attack_value
 			continue

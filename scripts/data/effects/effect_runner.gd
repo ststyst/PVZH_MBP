@@ -21,6 +21,7 @@ const DEFAULT_FACTS: Dictionary = {
 	"cost": 0,
 	"column": 0,
 	"column_abs": 0,
+	"slot": 0,
 	"turn": 0,
 	"entered_this_turn": false,
 }

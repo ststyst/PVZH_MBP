@@ -231,6 +231,7 @@ func describe_entity(handle) -> Dictionary:
 			"entered_this_turn": entity.entered_turn == engine.turn,
 			"column": entity.column - reference_column if reference_column >= 0 else entity.column + 1,
 			"column_abs": entity.column + 1,
+			"slot": entity.slot,
 		}
 	if handle is String and handle.begins_with("hero:"):
 		var side: String = handle.substr(5)
@@ -250,6 +251,7 @@ func describe_entity(handle) -> Dictionary:
 			"cost": 0,
 			"turn": engine.turn,
 			"entered_this_turn": false,
+			"slot": -1,
 		}
 	return {}
 

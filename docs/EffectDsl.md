@@ -514,7 +514,7 @@ destroy(chosen_if(attack == highest_attack('enemy')))
 
 ### 列、实体事件与环境
 
-实体事件条件中可使用 `column`（相对技能拥有者所在列）和 `column_abs`（绝对列 1~5）：
+实体事件条件中可使用 `column`（相对技能拥有者所在列）、`column_abs`（绝对列 1~5）和 `slot`（0 普通位/靠前，1 组队位/靠后）：
 
 ```text
 when enter(side == 'ally' and column == -1):
@@ -1550,6 +1550,7 @@ damage_column_relative(1, 'front', 1)
 - 如果目标列只有一个敌方实体，无论 `front` 还是 `back` 都会命中它
 - 目标列没有敌方实体时不造成伤害
 - 只伤害敌方实体，不命中英雄
+- 普通攻击 / 三连打 / 广域打击在选择每列目标时也使用同一套前后口径：优先靠前（slot 0）的存活敌方实体
 - 伤害携带施放者词缀
 - 不进入攻击流程，不触发先攻、双击、狂热、穿透、三连等攻击形式
 
@@ -1806,6 +1807,7 @@ for_each(<目标表达式>) as <名称>:
 | `tribes` / `keywords` / `buffs` | 流派数组 / 词缀 id 数组 / 当前 Buff id 数组 |
 | `keyword_values` | 词缀数值字典，如 `first_strike` 的数值 |
 | `column` / `column_abs` | 相对列（-4~4）/ 绝对列（1~5） |
+| `slot` | 所在格：0 = 普通位（靠前）/ 1 = 组队位（靠后）；非实体句柄为 -1 |
 | `turn` / `entered_this_turn` | 当前回合数 / 是否本回合入场 |
 | `loop_index` / `loop_count` | 本次下标（从 0 开始）/ 目标总数 |
 | `loop_target` | 当前目标句柄（等价于循环变量） |
@@ -1871,7 +1873,7 @@ when damage_dealt:
 
 - 语句关键字：`if` / `elif` / `else` / `repeat` / `for_each` / `when` / `as` / `and` / `or` / `not` / `true` / `false`
 - 选择器名：`self` / `event` / `chosen` / `all_enemies` / `damage_targets` …
-- 事实变量名：`attack` / `health` / `cost` / `shield` / `keywords` / `loop_index` …
+- 事实变量名：`attack` / `health` / `cost` / `shield` / `slot` / `keywords` / `loop_index` …
 
 违反时在**解析阶段**直接报错，不会等到运行时。
 

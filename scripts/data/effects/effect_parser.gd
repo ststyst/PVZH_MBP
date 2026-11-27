@@ -87,7 +87,7 @@ const RESERVED_NAMES: Array[String] = [
 const FACT_NAMES: Array[String] = [
 	"side", "class", "tribes", "keywords", "buffs",
 	"attack", "health", "max_health", "shield", "defense", "cost",
-	"column", "column_abs", "turn", "entered_this_turn", "zone",
+	"column", "column_abs", "slot", "turn", "entered_this_turn", "zone",
 	"loop_index", "loop_count", "loop_target",
 ]
 

@@ -2220,6 +2220,57 @@ func test_aura_buff_filter_and_stats() -> void:
 	assert_eq(matched.shield, 0, "光环来源离场后防御应回退")
 
 
+func test_slot_fact_and_front_attack_priority() -> void:
+	var engine: BattleEngine = _started_engine()
+	var slot_card: CardData = _make_test_card(
+		"pvzh:test_slot_fact",
+		"when enter:\n"
+		+ "    if slot == 0:\n        add_marker('前排入场', 1)\n"
+		+ "    if slot == 1:\n        add_marker('后排入场', 1)"
+	)
+	var front_entry: BattleEntity = engine.summon_card("p", slot_card, 1, BattleEngine.SLOT_NORMAL)
+	engine._fire_event("enter", front_entry)
+	assert_eq(engine.players["p"].marker_count("前排入场"), 1, "slot 事实应读到普通位 0")
+	var back_entry: BattleEntity = engine.summon_card("p", slot_card, 1, BattleEngine.SLOT_TEAM_UP)
+	engine._fire_event("enter", back_entry)
+	assert_eq(engine.players["p"].marker_count("后排入场"), 1, "slot 事实应读到组队位 1")
+	var attacker_card: CardData = _make_test_card("pvzh:test_slot_attacker", "")
+	attacker_card.attack = 2
+	attacker_card.health = 5
+	var attacker: BattleEntity = engine.summon_card("p", attacker_card, 2, BattleEngine.SLOT_NORMAL)
+	var back_card: CardData = _make_test_card("pvzh:test_slot_back", "")
+	back_card.attack = 1
+	back_card.health = 10
+	var front_card: CardData = _make_test_card("pvzh:test_slot_front", "")
+	front_card.attack = 1
+	front_card.health = 10
+	var back_target: BattleEntity = engine.summon_card("z", back_card, 2, BattleEngine.SLOT_TEAM_UP)
+	var front_target: BattleEntity = engine.summon_card("z", front_card, 2, BattleEngine.SLOT_NORMAL)
+	assert_true(engine.force_entity_attack(attacker))
+	assert_eq(front_target.health, 8, "普通攻击应优先命中靠前实体")
+	assert_eq(back_target.health, 10, "靠后实体不应被优先命中")
+
+
+func test_wide_strike_front_priority() -> void:
+	var engine: BattleEngine = _started_engine()
+	var wide_card: CardData = _make_test_card("pvzh:test_wide_front", "")
+	wide_card.keywords = ["wide_strike"]
+	wide_card.attack = 2
+	wide_card.health = 5
+	var attacker: BattleEntity = engine.summon_card("p", wide_card, 3, BattleEngine.SLOT_NORMAL)
+	var back_card: CardData = _make_test_card("pvzh:test_wide_front_back", "")
+	back_card.attack = 1
+	back_card.health = 10
+	var front_card: CardData = _make_test_card("pvzh:test_wide_front_front", "")
+	front_card.attack = 1
+	front_card.health = 10
+	var back_target: BattleEntity = engine.summon_card("z", back_card, 3, BattleEngine.SLOT_TEAM_UP)
+	var front_target: BattleEntity = engine.summon_card("z", front_card, 3, BattleEngine.SLOT_NORMAL)
+	assert_true(engine.force_entity_attack(attacker))
+	assert_eq(front_target.health, 8, "广域打击每列应优先命中靠前实体")
+	assert_eq(back_target.health, 10, "广域打击不应命中靠后实体")
+
+
 func test_environment_query_kind_and_owner() -> void:
 	var engine: BattleEngine = _started_engine()
 	var env_card: CardData = cards.get_card("pvzh:sunny_field")
