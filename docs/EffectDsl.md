@@ -66,7 +66,7 @@
 | `environment_grant_keyword(keyword, value, side_filter)` | 词缀、数值、阵营过滤 | 当前环境临时授予同列实体词缀 |
 | `environment_grant_keyword_persistent(keyword, value, side_filter)` | 词缀、数值、阵营过滤 | 同上，但为持久词缀 |
 | `environment_grant_stats(attack, health, shield, side_filter)` | 三项数值、阵营过滤 | 当前环境临时授予同列实体数值 |
-| `aura_buff(side, buff_id, min_offset, max_offset, exclude_self)` | 阵营、Buff、列偏移范围、是否排除自身 | 光环：给范围内友方附着 Buff |
+| `aura_buff(side, buff_id, min_offset, max_offset, exclude_self[, filter[, attack[, health[, shield]]]])` | 阵营、Buff（可空）、列偏移范围、是否排除自身、可选筛选、可选数值增益 | 光环：给范围内符合条件的实体附着 Buff / 提供攻血防数值加成 |
 | `aura_hand_cost(side, filter, delta)` | 阵营、筛选、费用修正 | 光环：修改手牌费用 |
 | `aura_spell_cost(side, delta)` | 阵营、费用修正 | 光环：修改锦囊费用 |
 | `double_death_effects()` | — | 自身存活时，同阵营实体死亡触发两次 `die`（双亡语） |
@@ -971,7 +971,7 @@ deal_damage(entities_matching(enemy_entities, "keyword == 'frost'"), 1)
 
 - 形式：`entities_matching(<筛选>)` / `entities_matching(<范围>, <筛选>)`
 - 单参数：在**全部在场实体**（双方、存活）里筛；双参数：在给定范围里筛（选择器 / `entities_in_column(...)` / `random_targets(...)` / 循环变量 / 其它数组结果）。
-- 筛选字段与卡牌数据库一致：
+- 筛选字段（在场实体用**当前状态**判定，卡牌数据库筛选用原始数据）：
 
 | 字段 | 说明 |
 |---|---|
@@ -982,8 +982,10 @@ deal_damage(entities_matching(enemy_entities, "keyword == 'frost'"), 1)
 | `category` / `class_category` | 职业类别 |
 | `keyword` | 词缀，**包含**语义 |
 | `tribe` | 流派，**包含**语义 |
-| `deck_includable` | 是否可编入牌组；未显式写出时**默认要求 true** |
+| `deck_includable` | 是否可编入牌组；未显式写出时**默认要求 true**（光环筛选不要求） |
 | `cost` / `费用` | 当前费用，支持 `< <= > >= == !=` |
+| `attack` / `攻击力` | 当前攻击力，支持 `< <= > >= == !=`（在场实体判定用当前值） |
+| `health` / `生命值` | 当前生命值，支持 `< <= > >= == !=`（在场实体判定用当前值） |
 
 - 支持 `and` / `or` / `not` 与括号（也认 `&&` / `||` / `!`）。
 - 判定用**当前状态**：Buff / 环境临时赋予的词缀同样参与匹配，`cost` 是当前费用。
@@ -1004,12 +1006,20 @@ deal_damage(entities_matching(enemy_entities, "keyword == 'frost'"), 1)
 
 ```text
 aura_buff("ally", "spell_immune", -1, 1, true)
-aura_buff("ally", "hatred", -4, 4, false)
+aura_buff("ally", "", 0, 0, false, "tribe == 'pea' and rarity == 'rare'", 1, 2, 0)
+aura_buff("enemy", "temp_frost", 0, 0, false, "attack >= 3 and health <= 4", 0, 0, 1)
 aura_hand_cost("self", "kind == 'spell'", -1)
 aura_spell_cost("enemy", 6)
 ```
 
-- 光环 Buff 按来源实体追踪；来源离场后只移除该来源提供的 Buff
+- `aura_buff(side, buff_id, min_offset, max_offset, exclude_self[, filter[, attack[, health[, shield]]]])`
+  - `side`：`ally` / `self`（同阵营）/ `enemy` / `all`
+  - 列范围：相对来源实体当前列的偏移，闭区间（`-1, 1` 为左右各一列）
+  - `buff_id` 可写空字符串（只提供数值光环）；内置 Buff 与 `temp_<词缀>` 都可用
+  - `filter`：与 `entities_matching` 相同的筛选语法（`tribe` / `keyword` / `rarity` / `class` / `kind` / `cost` / `attack` / `health`），判定用实体**当前状态**（当前攻击/生命、当前词缀）；光环筛选**不要求** `deck_includable`
+  - `attack` / `health` / `shield`：数值光环，实时增量应用；`health` 同时加当前生命与上限
+- 光环 Buff 按来源实体追踪；来源离场、移动、筛选不再匹配时只移除该来源提供的 Buff / 数值
+- 数值光环按“目标当前应得总加成 − 已应用加成”的差值刷新，因此多个光环来源可以叠加
 - `aura_hand_cost` 按筛选器修改手牌费用
 - `aura_spell_cost` 修改锦囊费用
 - `draw_cards(count, cost_delta)` 和随机塞牌可追加费用修饰符

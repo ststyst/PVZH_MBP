@@ -28,6 +28,10 @@ var buff_sources: Dictionary = {}
 ## 临时词缀加成：keyword -> 额外数值（不影响原始 keywords/keyword_values）
 var temporary_keyword_bonus: Dictionary = {}
 var team_up: bool = false
+## 实体光环提供的数值加成（刷新时按来源/筛选增量修正，光环消失时回退）。
+var aura_attack_bonus: int = 0
+var aura_health_bonus: int = 0
+var aura_shield_bonus: int = 0
 var alive: bool = true
 ## 克制英雄词缀提供的临时攻击力
 var counter_bonus: int = 0

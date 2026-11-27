@@ -360,6 +360,21 @@ damage == 0 = 未造成有效伤害
 - 不带参数的查询读当前基准列：实体能力读自身列，`choose_column()` 锦囊读选中的列
 - 实体/锦囊可以按列尝试放置环境（`place_environment`）；目标列受 `protected_environments` 保护时静默失败，不中断脚本
 
+### 实体光环
+
+- 只有实体牌可以声明光环（`aura_buff` / `aura_hand_cost` / `aura_spell_cost`），来源必须在场且存活
+- `aura_buff(side, buff_id, min_offset, max_offset, exclude_self[, filter[, attack[, health[, shield]]]])`：
+  - 目标筛选：阵营（ally / self / enemy / all）+ 相对来源列的偏移范围 + 可选排除自身 + 可选筛选表达式
+  - 筛选字段：`tribe`（包含）、`keyword`（包含）、`rarity`、`class`、`kind`、`cost`、`attack`（当前攻击）、`health`（当前生命），支持 `and` / `or` / `not` 与比较运算
+  - `buff_id` 可为空（只提供数值）；数值项 `attack` / `health` / `shield` 为光环数值加成（`health` 同时加当前生命与上限）
+- 结算方式：每次刷新重算“期望集合”，与当前已应用状态做差分
+  - Buff：按（目标, Buff, 来源）记录层数；来源离场、移动、筛选不再匹配时只移除该来源的层
+  - 数值：记录每个实体当前应得的光环总加成，刷新时按差值增减；多个来源可叠加
+  - 刷新时机：召唤、移动、移除、每次死亡结算之后
+- 光环增删 Buff 与数值**不触发** `buff_applied` / `buff_removed` / `attack_changed` / `health_changed` 事件，只刷新界面状态
+- 光环数值与环境列增益、持久增益、临时 Buff 分别记账，互不影响
+- `aura_hand_cost(side, filter, delta)` 按筛选条件修改手牌费用；`aura_spell_cost(side, delta)` 修改锦囊费用；两者不限列距离，多个来源相加
+
 ### 底座与进化
 
 1. 进化实体放置到底座上

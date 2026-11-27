@@ -48,13 +48,14 @@ func matches(card: CardData) -> bool:
 
 
 ## 用“卡牌字段快照”判定。战斗层借此按在场实体的**当前状态**筛选
-## （例如被 Buff 临时赋予的词缀、结算后的当前费用），而不只是数据库原值。
-func matches_values(values: Dictionary) -> bool:
+## （例如被 Buff 临时赋予的词缀、结算后的当前费用）。
+## require_deck_includable=false 时不自动要求“可组入牌组”（实体光环等在场筛选使用）。
+func matches_values(values: Dictionary, require_deck_includable: bool = true) -> bool:
 	if not errors.is_empty():
 		return false
 	if not ast.is_empty() and not _eval_values(ast, values):
 		return false
-	if not has_deck_includable_condition and not bool(values.get("deck_includable", false)):
+	if require_deck_includable and not has_deck_includable_condition and not bool(values.get("deck_includable", false)):
 		return false
 	return true
 
@@ -156,9 +157,29 @@ func _match_condition_values(node: Dictionary, values: Dictionary) -> bool:
 					return actual_cost != wanted_cost
 				_:
 					return actual_cost == wanted_cost
+		"attack":
+			return _compare_int(int(values.get("attack", 0)), op, int(value))
+		"health":
+			return _compare_int(int(values.get("health", 0)), op, int(value))
 		_:
 			return false
 	return false
+
+
+func _compare_int(actual: int, op: String, wanted: int) -> bool:
+	match op:
+		"<":
+			return actual < wanted
+		"<=":
+			return actual <= wanted
+		">":
+			return actual > wanted
+		">=":
+			return actual >= wanted
+		"!=":
+			return actual != wanted
+		_:
+			return actual == wanted
 
 
 # ----- 词法/语法 -----
@@ -310,6 +331,10 @@ func _normalize_field(field: String) -> String:
 			return "deck_includable"
 		"cost", "费用":
 			return "cost"
+		"attack", "attack_power", "攻击", "攻击力":
+			return "attack"
+		"health", "hp", "生命", "生命值", "current_health":
+			return "health"
 	return ""
 
 

@@ -2174,6 +2174,52 @@ func test_choose_if_destroys_selected_max_attack_entity() -> void:
 	assert_false(max_b.alive, "第二次选择另一个并列最高攻击实体也应被消灭")
 
 
+func test_aura_buff_filter_and_stats() -> void:
+	var engine: BattleEngine = _started_engine()
+	var source_card: CardData = _make_test_card(
+		"pvzh:test_aura_filter_source",
+		"aura_buff(\"ally\", \"temp_amphibious\", -1, 1, true, "
+		+ "\"tribe == 'pea' and rarity == 'rare' and keyword == 'frost' and attack >= 2 and health <= 4\", "
+		+ "2, 1, 1)"
+	)
+	source_card.attack = 1
+	source_card.health = 5
+	var source: BattleEntity = engine.summon_card("p", source_card, 2, 0)
+	assert_true(source != null)
+	var matched_card: CardData = _make_test_card("pvzh:test_aura_matched", "")
+	matched_card.attack = 2
+	matched_card.health = 3
+	matched_card.rarity = "rare"
+	matched_card.tribes = ["pea"]
+	matched_card.keywords = ["frost"]
+	var matched: BattleEntity = engine.summon_card("p", matched_card, 2, BattleEngine.SLOT_TEAM_UP)
+	assert_true(matched != null)
+	assert_true(matched.has_keyword("amphibious"), "筛选通过的实体应获得光环 Buff")
+	assert_eq(matched.attack, 4, "光环应提供 +2 攻击")
+	assert_eq(matched.max_health, 4, "光环应提供 +1 生命上限")
+	assert_eq(matched.health, 4)
+	assert_eq(matched.shield, 1, "光环应提供 +1 防御")
+	var other_card: CardData = _make_test_card("pvzh:test_aura_other", "")
+	other_card.attack = 2
+	other_card.health = 3
+	other_card.rarity = "normal"
+	other_card.tribes = ["pea"]
+	other_card.keywords = ["frost"]
+	var other: BattleEntity = engine.summon_card("p", other_card, 3, BattleEngine.SLOT_NORMAL)
+	assert_true(other != null)
+	assert_false(other.has_keyword("amphibious"), "稀有度不匹配不应获得 Buff")
+	assert_eq(other.attack, 2, "稀有度不匹配不应获得数值光环")
+	assert_eq(other.max_health, 3)
+	assert_eq(other.shield, 0)
+	engine.destroy_handle(source)
+	engine._flush_deaths()
+	assert_false(matched.has_keyword("amphibious"), "光环来源离场后 Buff 应移除")
+	assert_eq(matched.attack, 2, "光环来源离场后攻击应回退")
+	assert_eq(matched.max_health, 3, "光环来源离场后生命上限应回退")
+	assert_eq(matched.health, 3)
+	assert_eq(matched.shield, 0, "光环来源离场后防御应回退")
+
+
 func test_environment_query_kind_and_owner() -> void:
 	var engine: BattleEngine = _started_engine()
 	var env_card: CardData = cards.get_card("pvzh:sunny_field")

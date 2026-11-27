@@ -925,6 +925,31 @@ func test_declaration_primitives_are_noop_at_runtime() -> void:
 	assert_eq(context.calls.size(), 0, "声明类原语在运行时是空操作")
 
 
+func test_aura_buff_extended_declaration() -> void:
+	var script: CardEffectScript = CardEffectScript.parse(
+		"aura_buff(\"ally\", \"frozen\", -1, 1, true, "
+		+ "\"tribe == 'pea' and rarity == 'rare' and keyword == 'frost' and attack >= 2 and health <= 4\", "
+		+ "1, 2, 3)"
+	)
+	assert_false(script.has_errors(), "扩展 aura_buff 应可解析：%s" % [script.errors])
+	assert_eq(script.aura_buffs.size(), 1)
+	if not script.aura_buffs.is_empty():
+		var aura: Dictionary = script.aura_buffs[0]
+		assert_eq(str(aura.get("selector", "")), "ally")
+		assert_eq(str(aura.get("buff", "")), "frozen")
+		assert_eq(int(aura.get("min_column", 0)), -1)
+		assert_eq(int(aura.get("max_column", 0)), 1)
+		assert_true(bool(aura.get("exclude_self", false)))
+		assert_eq(str(aura.get("filter", "")), "tribe == 'pea' and rarity == 'rare' and keyword == 'frost' and attack >= 2 and health <= 4")
+		assert_eq(int(aura.get("attack", 0)), 1)
+		assert_eq(int(aura.get("health", 0)), 2)
+		assert_eq(int(aura.get("shield", 0)), 3)
+	var bad: CardEffectScript = CardEffectScript.parse(
+		"aura_buff(\"ally\", \"frozen\", 0, 0, false, \"tribe maybe\")"
+	)
+	assert_true(bad.has_errors(), "非法光环筛选条件应报错")
+
+
 func test_query_functions_delegate_to_context() -> void:
 	context.query_results["entities_in_column"] = ["e1", "e2"]
 	context.query_results["random_targets"] = ["r1"]

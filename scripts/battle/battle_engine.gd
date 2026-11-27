@@ -2319,6 +2319,7 @@ func _refresh_all_counter_bonuses() -> void:
 
 func _refresh_auras() -> void:
 	var desired: Dictionary = {}
+	var stat_desired: Dictionary = {}
 	for source: BattleEntity in entities:
 		if not source.alive or source.card == null or source.card.ability_script == null:
 			continue
@@ -2326,6 +2327,13 @@ func _refresh_auras() -> void:
 			var buff_id: String = str(aura.get("buff", ""))
 			var min_column: int = source.column + int(aura.get("min_column", 0))
 			var max_column: int = source.column + int(aura.get("max_column", 0))
+			var filter_text: String = str(aura.get("filter", "")).strip_edges()
+			var aura_filter := CardFilter.new()
+			if not filter_text.is_empty() and not aura_filter.parse(filter_text):
+				continue
+			var aura_attack: int = int(aura.get("attack", 0))
+			var aura_health: int = int(aura.get("health", 0))
+			var aura_shield: int = int(aura.get("shield", 0))
 			for target: BattleEntity in entities:
 				if not target.alive:
 					continue
@@ -2335,10 +2343,21 @@ func _refresh_auras() -> void:
 					continue
 				if not _aura_target_matches(str(aura.get("selector", "ally")), source.side, target.side):
 					continue
-				var key: String = "%d:%s" % [target.entity_id, buff_id]
-				var sources: Array = desired.get(key, [])
-				sources.append(source.entity_id)
-				desired[key] = sources
+				if not filter_text.is_empty() and not aura_filter.matches_values(_aura_filter_values(target), false):
+					continue
+				if not buff_id.is_empty():
+					var key: String = "%d:%s" % [target.entity_id, buff_id]
+					var sources: Array = desired.get(key, [])
+					sources.append(source.entity_id)
+					desired[key] = sources
+				if aura_attack != 0 or aura_health != 0 or aura_shield != 0:
+					var stats: Dictionary = stat_desired.get(target.entity_id, {
+						"attack": 0, "health": 0, "shield": 0,
+					})
+					stats["attack"] = int(stats.get("attack", 0)) + aura_attack
+					stats["health"] = int(stats.get("health", 0)) + aura_health
+					stats["shield"] = int(stats.get("shield", 0)) + aura_shield
+					stat_desired[target.entity_id] = stats
 	for target: BattleEntity in entities:
 		for buff_id: Variant in target.buff_sources.keys():
 			var active_sources: Array = desired.get("%d:%s" % [target.entity_id, str(buff_id)], [])
@@ -2356,6 +2375,26 @@ func _refresh_auras() -> void:
 			continue
 		for source_id: Variant in desired[key]:
 			target.add_buff_from_source(buff_id, int(source_id))
+	# 光环数值：按“目标期望总加成 - 当前已应用”做增量修正，光环来源/范围/筛选变化时自动回退。
+	for entity: BattleEntity in entities:
+		if not entity.alive:
+			continue
+		var wanted: Dictionary = stat_desired.get(entity.entity_id, {
+			"attack": 0, "health": 0, "shield": 0,
+		})
+		var delta_attack: int = int(wanted.get("attack", 0)) - entity.aura_attack_bonus
+		var delta_health: int = int(wanted.get("health", 0)) - entity.aura_health_bonus
+		var delta_shield: int = int(wanted.get("shield", 0)) - entity.aura_shield_bonus
+		if delta_attack == 0 and delta_health == 0 and delta_shield == 0:
+			continue
+		entity.attack = maxi(entity.attack + delta_attack, 0)
+		if delta_health != 0:
+			entity.max_health = maxi(entity.max_health + delta_health, 1)
+			entity.health = clampi(entity.health + delta_health, 0, entity.max_health)
+		entity.shield = maxi(entity.shield + delta_shield, 0)
+		entity.aura_attack_bonus = int(wanted.get("attack", 0))
+		entity.aura_health_bonus = int(wanted.get("health", 0))
+		entity.aura_shield_bonus = int(wanted.get("shield", 0))
 	for entity: BattleEntity in entities:
 		display_state_changed.emit(entity)
 	for side: String in [SIDE_P, SIDE_Z]:
@@ -2364,6 +2403,27 @@ func _refresh_auras() -> void:
 			continue
 		for instance: BattleCardInstance in state.hand:
 			display_state_changed.emit(instance)
+
+
+## 光环筛选用的实体当前状态快照（含当前攻击/生命与当前词缀）。
+func _aura_filter_values(entity: BattleEntity) -> Dictionary:
+	var card: CardData = entity.card
+	if card == null:
+		return {}
+	return {
+		"name": card.english_name,
+		"kind": card.kind,
+		"rarity": card.rarity,
+		"class": card.card_class,
+		"category": card.class_category,
+		"keywords": entity.keywords.duplicate(),
+		"tribes": card.tribes.duplicate(),
+		"deck_includable": card.deck_includable,
+		"cost": entity.cost,
+		# 判定用“不含光环自身加成”的当前数值，避免数值光环自我强化/抖动。
+		"attack": entity.attack - entity.aura_attack_bonus,
+		"health": entity.health - entity.aura_health_bonus,
+	}
 
 
 func _aura_target_matches(selector: String, source_side: String, target_side: String) -> bool:

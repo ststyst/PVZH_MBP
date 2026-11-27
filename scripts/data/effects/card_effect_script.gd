@@ -68,6 +68,19 @@ func _arg_value(arg: Variant) -> Variant:
 		return data.get("value", null)
 	if arg_type == "var":
 		return str(data.get("name", ""))
+	if arg_type == "un":
+		# 负号/not 在 AST 里是一元节点；声明类参数（光环范围、费用修正等）需要还原出数值。
+		var op: String = str(data.get("op", ""))
+		var inner_value: Variant = _arg_value(data.get("value", {}))
+		if op == "neg":
+			if inner_value is int or inner_value is float:
+				return -float(inner_value) if inner_value is float else -int(inner_value)
+			if inner_value is String and inner_value.is_valid_int():
+				return -int(inner_value)
+			return null
+		if op == "not":
+			return not bool(inner_value)
+		return null
 	return null
 
 
@@ -257,13 +270,25 @@ func _extract_declarations() -> void:
 		elif call_name == "in_deck":
 			in_deck_scope = true
 		elif call_name == "aura_buff" and args.size() >= 5:
+			var aura_filter_text: String = ""
+			if args.size() > 5:
+				aura_filter_text = str(_arg_value(args[5])).strip_edges()
 			aura_buffs.append({
 				"selector": str(_arg_value(args[0])),
 				"buff": str(_arg_value(args[1])),
 				"min_column": _int_arg(args[2]),
 				"max_column": _int_arg(args[3]),
 				"exclude_self": _bool_arg(args[4]),
+				"filter": aura_filter_text,
+				"attack": _int_arg(args[6]) if args.size() > 6 else 0,
+				"health": _int_arg(args[7]) if args.size() > 7 else 0,
+				"shield": _int_arg(args[8]) if args.size() > 8 else 0,
 			})
+			if not aura_filter_text.is_empty():
+				var aura_filter := CardFilter.new()
+				if not aura_filter.parse(aura_filter_text):
+					for message: String in aura_filter.errors:
+						errors.append("光环筛选条件错误：%s" % message)
 		elif call_name == "aura_hand_cost" and args.size() >= 3:
 			aura_hand_costs.append({
 				"side": str(_arg_value(args[0])),

@@ -273,6 +273,8 @@ func filter_values(handle) -> Dictionary:
 		"tribes": card.tribes.duplicate(),
 		"deck_includable": card.deck_includable,
 		"cost": entity.cost,
+		"attack": entity.attack,
+		"health": entity.health,
 	}
 
 
