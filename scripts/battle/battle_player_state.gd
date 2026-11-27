@@ -24,6 +24,8 @@ var special_offer_id: int = 0
 var special_choice: String = ""
 var energy: int = 0
 var energy_cap: int = 99
+## 本回合累计实际获得的费用（含回合开始发放 + 本回合卡牌能力获取），每回合开始清零。
+var energy_gained_this_turn: int = 0
 var hand: Array[BattleCardInstance] = []
 var deck: Array[BattleCardInstance] = []
 var discard: Array[BattleCardInstance] = []

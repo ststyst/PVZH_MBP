@@ -1892,6 +1892,211 @@ func test_summon_matching_keyword_applied_before_enter() -> void:
 	assert_eq(engine.players["p"].marker_count("词缀先于入场"), 1, "入场事件应能读到预先赋予的词缀")
 
 
+func test_numeric_queries() -> void:
+	var engine: BattleEngine = _started_engine()
+	var p_state: BattlePlayerState = engine.players["p"]
+	var z_state: BattlePlayerState = engine.players["z"]
+	var high_card: CardData = _make_test_card("pvzh:test_query_high", "")
+	high_card.attack = 4
+	high_card.health = 5
+	var low_card: CardData = _make_test_card("pvzh:test_query_low", "")
+	low_card.attack = 1
+	low_card.health = 2
+	engine.summon_card("z", high_card, 1, 0)
+	engine.summon_card("z", low_card, 3, 0)
+	engine.gain_energy("p", 2)
+	var expected_energy: int = p_state.energy_gained_this_turn
+	assert_true(expected_energy >= 2, "本回合费用获取应累计")
+	var spell: CardData = _make_test_card(
+		"pvzh:test_numeric_queries",
+		"add_marker('费用', energy_gained())\n"
+		+ "add_marker('敌方英雄血', hero_health(enemy_hero))\n"
+		+ "add_marker('敌方最高攻', highest_attack('enemy'))\n"
+		+ "add_marker('敌方最低血', lowest_health('enemy'))\n"
+		+ "add_marker('我方最高攻', highest_attack('ally'))"
+	)
+	spell.kind = "spell"
+	spell.cost = 1
+	_set_hand(engine, "p", [spell.card_id])
+	p_state.energy = 10
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "p"
+	var result: Dictionary = engine.play_card("p", 0, {})
+	assert_true(bool(result.get("ok", false)), str(result))
+	assert_eq(p_state.marker_count("费用"), expected_energy)
+	assert_eq(p_state.marker_count("敌方英雄血"), z_state.hero_health)
+	assert_eq(p_state.marker_count("敌方最高攻"), 4)
+	assert_eq(p_state.marker_count("敌方最低血"), 2)
+	assert_eq(p_state.marker_count("我方最高攻"), 0, "没有我方实体时应为 0")
+
+
+func test_summon_prefers_columns_without_enemy() -> void:
+	var engine: BattleEngine = _started_engine()
+	engine.summon_card("z", cards.get_card("pvzh:gnoll"), 0, 0)
+	var spell: CardData = _make_test_card(
+		"pvzh:test_summon_no_enemy",
+		"summon(\"hound\", 1, 5, 'no_enemy')"
+	)
+	spell.kind = "spell"
+	spell.cost = 1
+	_set_hand(engine, "p", [spell.card_id])
+	engine.players["p"].energy = 10
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "p"
+	var result: Dictionary = engine.play_card("p", 0, {})
+	assert_true(bool(result.get("ok", false)), str(result))
+	assert_true(engine._entity_at(0, "p", 0) == null, "应避开有敌方实体的列")
+	var spawned_columns: int = 0
+	for column: int in [1, 2, 3, 4]:
+		if engine._entity_at(column, "p", 0) != null:
+			spawned_columns += 1
+	assert_eq(spawned_columns, 1, "应在没有敌方实体的列召唤")
+
+
+func test_summon_matching_prefers_columns_without_enemy() -> void:
+	var engine: BattleEngine = _started_engine()
+	engine.summon_card("z", cards.get_card("pvzh:gnoll"), 0, 0)
+	var spell: CardData = _make_test_card(
+		"pvzh:test_summon_matching_no_enemy",
+		"summon_matching(\"name == 'gnoll'\", 1, 5, '', 'no_enemy')"
+	)
+	spell.kind = "spell"
+	spell.cost = 1
+	_set_hand(engine, "p", [spell.card_id])
+	engine.players["p"].energy = 10
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "p"
+	var result: Dictionary = engine.play_card("p", 0, {})
+	assert_true(bool(result.get("ok", false)), str(result))
+	assert_true(engine._entity_at(0, "p", 0) == null, "应避开有敌方实体的列")
+	var spawned_columns: int = 0
+	for column: int in [1, 2, 3, 4]:
+		if engine._entity_at(column, "p", 0) != null:
+			spawned_columns += 1
+	assert_eq(spawned_columns, 1, "应在没有敌方实体的列召唤")
+
+
+func test_summon_prefers_columns_with_enemy() -> void:
+	var engine: BattleEngine = _started_engine()
+	engine.summon_card("z", cards.get_card("pvzh:gnoll"), 3, 0)
+	var spell: CardData = _make_test_card(
+		"pvzh:test_summon_has_enemy",
+		"summon(\"hound\", 1, 5, 'has_enemy')"
+	)
+	spell.kind = "spell"
+	spell.cost = 1
+	_set_hand(engine, "p", [spell.card_id])
+	engine.players["p"].energy = 10
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "p"
+	var result: Dictionary = engine.play_card("p", 0, {})
+	assert_true(bool(result.get("ok", false)), str(result))
+	assert_true(engine._entity_at(3, "p", 0) != null, "应优先在有敌方实体的列召唤")
+
+
+func test_wide_strike_hits_all_columns_once() -> void:
+	var engine: BattleEngine = _started_engine()
+	var attacker_card: CardData = _make_test_card("pvzh:test_wide_attacker", "")
+	attacker_card.keywords = ["wide_strike"]
+	attacker_card.attack = 2
+	attacker_card.health = 4
+	var attacker: BattleEntity = engine.summon_card("p", attacker_card, 2, 0)
+	var first_card: CardData = _make_test_card("pvzh:test_wide_target_a", "")
+	first_card.health = 10
+	first_card.attack = 1
+	var second_card: CardData = _make_test_card("pvzh:test_wide_target_b", "")
+	second_card.health = 10
+	second_card.attack = 1
+	var target_a: BattleEntity = engine.summon_card("z", first_card, 0, 0)
+	var target_b: BattleEntity = engine.summon_card("z", second_card, 4, 0)
+	var listener_card: CardData = _make_test_card(
+		"pvzh:test_wide_listener",
+		"when attack(side == 'ally'):\n    add_marker('攻击事件', 1)\n"
+		+ "when after_attack(side == 'ally'):\n    add_marker('攻击完成', 1)"
+	)
+	engine.summon_card("p", listener_card, 1, 0)
+	var z_state: BattlePlayerState = engine.players["z"]
+	var hero_before: int = z_state.hero_health
+	assert_true(engine.force_entity_attack(attacker))
+	assert_eq(target_a.health, 8, "第 1 列应被同时打击")
+	assert_eq(target_b.health, 8, "第 5 列应被同时打击")
+	assert_eq(z_state.hero_health, hero_before - 6, "空列应合计对英雄造成 6 点")
+	assert_eq(engine.players["p"].marker_count("攻击事件"), 1, "攻击事件只触发一次")
+	assert_eq(engine.players["p"].marker_count("攻击完成"), 1, "after_attack 只触发一次")
+	assert_eq(
+		z_state.charge_shield,
+		engine.mode.charge_gain_for_damage(6),
+		"命中英雄只充能一次（按总和计算）"
+	)
+
+
+func test_mole_damages_own_hero_on_attack() -> void:
+	var engine: BattleEngine = _started_engine()
+	var card: CardData = _make_test_card("pvzh:test_mole_attacker", "")
+	card.keywords = ["mole"]
+	card.keyword_values = {"mole": 3}
+	card.attack = 2
+	card.health = 5
+	var entity: BattleEntity = engine.summon_card("p", card, 2, 0)
+	var p_state: BattlePlayerState = engine.players["p"]
+	var health_before: int = p_state.hero_health
+	assert_true(engine.force_entity_attack(entity))
+	assert_eq(p_state.hero_health, health_before - 3, "攻击时应先对我方英雄造成 3 点伤害")
+	var frozen: BattleEntity = engine.summon_card("p", card, 4, 0)
+	engine.apply_buff_handle(frozen, "frozen", 1)
+	var health_after: int = p_state.hero_health
+	assert_false(engine.force_entity_attack(frozen), "冰冻实体不应攻击")
+	assert_eq(p_state.hero_health, health_after, "攻击未发生时不触发内鬼")
+
+
+func test_temp_buff_removed_at_turn_end_and_independent() -> void:
+	var engine: BattleEngine = _started_engine()
+	var env_card: CardData = _make_test_card(
+		"pvzh:test_temp_buff_env",
+		"environment_grant_keyword('frost', 1, 'ally')"
+	)
+	env_card.kind = "environment"
+	env_card.english_name = "test_temp_buff_env"
+	env_card.chinese_name = "测试临时 Buff 环境"
+	env_card.cost = 1
+	var target_card: CardData = _make_test_card("pvzh:test_temp_buff_target", "")
+	target_card.attack = 2
+	target_card.health = 3
+	var entity: BattleEntity = engine.summon_card("p", target_card, 2, 0)
+	assert_true(entity != null)
+	assert_true(engine._place_environment("p", 2, env_card), "应能放置环境")
+	assert_true(entity.has_keyword("frost"), "环境应授予临时寒霜")
+	var spell: CardData = _make_test_card(
+		"pvzh:test_temp_buff_spell",
+		"choose(1, 'all_allies')\n"
+		+ "temp_buff(chosen, 2, 1, 1, 'amphibious')"
+	)
+	spell.kind = "spell"
+	spell.cost = 1
+	_set_hand(engine, "p", [spell.card_id])
+	engine.players["p"].energy = 10
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "p"
+	var result: Dictionary = engine.play_card("p", 0, {"handles": [entity]})
+	assert_true(bool(result.get("ok", false)), str(result))
+	assert_eq(entity.attack, 4, "临时 Buff 应 +2 攻击")
+	assert_eq(entity.max_health, 4, "临时 Buff 应 +1 生命上限")
+	assert_eq(entity.health, 4)
+	assert_eq(entity.shield, 1, "临时 Buff 应 +1 防御")
+	assert_true(entity.has_keyword("amphibious"), "临时 Buff 应授予词缀")
+	# 独立的持久增益
+	engine.buff_handle(entity, 5, 2)
+	assert_eq(entity.attack, 9)
+	assert_eq(entity.max_health, 6)
+	engine._resolve_turn_end()
+	assert_eq(entity.attack, 7, "回合结束只移除临时 Buff，持久 +5 保留")
+	assert_eq(entity.max_health, 5, "持久 +2 生命上限保留")
+	assert_eq(entity.health, 5)
+	assert_eq(entity.shield, 0, "临时防御应移除")
+	assert_false(entity.has_keyword("amphibious"), "临时词缀应移除")
+	assert_true(entity.has_keyword("frost"), "环境授予的临时词缀不应被临时 Buff 清理")
+
+
 func test_environment_query_kind_and_owner() -> void:
 	var engine: BattleEngine = _started_engine()
 	var env_card: CardData = cards.get_card("pvzh:sunny_field")

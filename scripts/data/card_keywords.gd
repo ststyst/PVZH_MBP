@@ -108,6 +108,17 @@ const DEFINITIONS: Dictionary = {
 		"description": "伤害类型增加冰冻攻击；被命中的实体获得冰冻 Debuff。",
 		"allowed_kinds": ["entity"],
 	},
+	"wide_strike": {
+		"label": "广域打击",
+		"description": "攻击时同时对所有列攻击；只触发一次攻击事件，命中敌方英雄只触发一次充能。",
+		"allowed_kinds": ["entity"],
+	},
+	"mole": {
+		"label": "内鬼",
+		"description": "攻击时先对我方英雄造成等同于词缀数值的伤害。",
+		"value": true,
+		"allowed_kinds": ["entity"],
+	},
 	"thorns": {
 		"label": "反伤",
 		"description": "受到实体攻击时，对攻击来源造成对应数值的伤害。",

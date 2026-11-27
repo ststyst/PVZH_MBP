@@ -571,6 +571,34 @@ func test_summon_matching_argument_forms() -> void:
 		assert_eq(str(context.calls[0].get("keyword", "")), "team_up,amphibious")
 
 
+func test_new_queries_and_primitives() -> void:
+	context.selector_results["chosen"] = ["a1"]
+	_run("summon(\"gnoll\", 1, 5, 'no_enemy')")
+	assert_eq(context.calls.size(), 1)
+	if not context.calls.is_empty():
+		assert_eq(str(context.calls[0].get("preference", "")), "no_enemy", "随机召唤应记录列偏好")
+	context.calls.clear()
+	_run("temp_buff(chosen, 1, 2, 3, 'amphibious')")
+	assert_eq(context.calls.size(), 1)
+	if not context.calls.is_empty():
+		assert_eq(str(context.calls[0].get("op", "")), "temp_buff")
+		assert_eq(int(context.calls[0].get("attack", 0)), 1)
+		assert_eq(int(context.calls[0].get("health", 0)), 2)
+		assert_eq(int(context.calls[0].get("shield", 0)), 3)
+		assert_eq(str(context.calls[0].get("keyword", "")), "amphibious")
+	context.calls.clear()
+	_run(
+		"x = energy_gained() + hero_health() + highest_attack('enemy') "
+		+ "+ lowest_health('ally') + highest_health('all') + lowest_attack('enemy')"
+	)
+	assert_eq(context.query_calls.size(), 6, "六个数值查询都应记录")
+	context.query_calls.clear()
+	var query_script: CardEffectScript = CardEffectScript.parse(
+		"if highest_attack('enemy') >= 5:\n    destroy(chosen)"
+	)
+	assert_false(query_script.has_errors(), "数值查询应可解析：%s" % [query_script.errors])
+
+
 func test_choose_column_is_declaration_only() -> void:
 	var script: CardEffectScript = CardEffectScript.parse(
 		"choose_column()\nplace_environment(0, 'water')"

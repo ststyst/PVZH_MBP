@@ -21,6 +21,7 @@
 | `summon(card_name)` | 英文名 | 在合法位置召唤一个实体；每次语句只召唤一个 |
 | `summon(card_name, column)` | 英文名、列 | 法术/环境：绝对列 1~5；实体异能：相对自身列 -4~4（0=本列） |
 | `summon(card_name, min_column, max_column)` | 英文名、范围 | 在范围内随机尝试一个合法列；坐标含义同上 |
+| `summon(card_name, min_column, max_column, preference)` | 英文名、范围、列偏好 | `'no_enemy'` 优先没有敌方实体的列，`'has_enemy'` 优先有敌方实体的列；没有符合且合法的列时回退原本随机逻辑 |
 | `summon_matching(filter)` | 卡牌筛选表达式 | 在自身位置（实体：自身列/格；锦囊：选择的列/格）尝试召唤一个符合筛选的随机实体 |
 | `summon_matching(filter, column)` | 筛选、列 | 指定列召唤；实体为相对自身列的偏移（0=本列），锦囊为绝对 1~5 |
 | `summon_matching(filter, min, max)` | 筛选、列范围 | 在列范围内随机顺序尝试召唤 |
@@ -28,6 +29,7 @@
 | `place_environment(offset, card_name)` | 相对列偏移、环境英文名 | 在基准列偏移位置尝试放置环境；受保护环境不可覆盖 |
 | `clear_environment([offset])` | 可选相对列偏移 | 清除基准列偏移位置的环境：仅当环境非中立时恢复为默认的中立环境；不触发 `environment_played` |
 | `apply_buff(target, buff_id, amount = 1)` | 实体、Buff id、层数 | 施加内置 Buff/Debuff |
+| `temp_buff(target, attack, health, shield[, keyword[, keyword_value]])` | 实体、三项增益、可选词缀 | 施加临时 Buff（数值 + 词缀），回合结束时整体移除；与环境增益、持久增益独立 |
 | `remove_buff(target, buff_id)` | 实体、Buff id | 解除内置 Buff/Debuff |
 | `force_attack(target)` | 实体 | 让实体按当前列目标攻击一次；冰冻时失败；触发额外攻击事件 |
 | `remove_entity(target)` | 实体 | 将实体移出战场；不触发死亡/亡语 |
@@ -88,7 +90,7 @@
 - 变量：`x = 2 + 3 * 2`（后续语句可用 `x`）
 - 四则运算：`+ - * /`（整数运算，除数为 0 会记录运行错误）
 - 比较：`== != < <= > >=`；逻辑：`and` `or` `not`
-- 查询函数：`attack(target)`、`health(target)`、`max_health(target)`、`shield(target)`、`defense(target)`、`cost(target)`、`highest(目标集合, 数值名[, 条件])`、`lowest(目标集合, 数值名[, 条件])`、`entities_matching(筛选)`、`entities_matching(范围, 筛选)`、`min(a,b)`、`max(a,b)`、`has_tribe("pea")`、`has_tribe("pea", target)`、`has_keyword("frost")`、`has_keyword("frost", target)`、`keyword_value("first_strike", target)`、`has_buff("frozen", target)`、`environment_kind([target])`、`environment_owner([target])`、`is_entity(target)`、`marker_count("名字"[, target])`（`marker_count` 用于玩家特殊标志物数量，可指定敌方英雄）
+- 查询函数：`attack(target)`、`health(target)`、`max_health(target)`、`shield(target)`、`defense(target)`、`cost(target)`、`highest(目标集合, 数值名[, 条件])`、`lowest(目标集合, 数值名[, 条件])`、`entities_matching(筛选)`、`entities_matching(范围, 筛选)`、`min(a,b)`、`max(a,b)`、`has_tribe("pea")`、`has_tribe("pea", target)`、`has_keyword("frost")`、`has_keyword("frost", target)`、`keyword_value("first_strike", target)`、`has_buff("frozen", target)`、`environment_kind([target])`、`environment_owner([target])`、`energy_gained()`、`hero_health([target])`、`highest_attack(side)`、`lowest_attack(side)`、`highest_health(side)`、`lowest_health(side)`、`is_entity(target)`、`marker_count("名字"[, target])`（`marker_count` 用于玩家特殊标志物数量，可指定敌方英雄）
 - 单参数形式读“当前作用域目标”（事件触发者 / `for_each` 当前目标），双参数形式显式指定实体；`defense` 与 `shield` 等价
 - `environment_kind` / `environment_owner` 的 0 参数形式读当前基准列（实体自身列 / 锦囊选中的列），1 参数形式读指定实体所在列；详见“列、实体事件与环境”一节
 - 字符串可用单引号或双引号：`side == 'enemy'` / `side == "enemy"`
@@ -351,6 +353,7 @@ when enter:
 - 召唤结算顺序：选卡与选格 → 附加词缀先赋予并参与放置判定 → 入场词缀（无敌/墓碑等）→ 触发 `enter`
 - 因此 `enter` 的过滤条件可以读到预赋予的词缀（如 `when enter(has_keyword('amphibious'))`）
 - 词缀可写多个，逗号分隔：`summon_matching("name == 'gnoll'", 'team_up,amphibious')`
+- 第 5 个参数可选列偏好：`'no_enemy'`（优先没有敌方实体的列）/ `'has_enemy'`（优先有敌方实体的列）；配合范围列使用，不需要词缀时词缀位传空字符串：`summon_matching("name == 'gnoll'", 1, 5, '', 'no_enemy')`
 - 锦囊不填列参数时，使用 `choose_column()` 选中的列；填数字是**绝对列 1~5**（与 `summon` 一致），不是相对选中列的偏移
 
 锦囊（让玩家选一列，并在该列尝试召唤）：
@@ -468,11 +471,14 @@ move_entity(chosen)
 summon("gnoll", 1)          # 法术：绝对第 1 列
 summon("gnoll", -1)         # 实体异能：相对自身左一列
 summon("gnoll", 2, 4)       # 在范围内随机尝试合法列
+summon("gnoll", 1, 5, 'no_enemy')   # 优先在没有敌方实体的列召唤
+summon("gnoll", 1, 5, 'has_enemy')  # 优先在有敌方实体的列召唤
 ```
 
 - 法术/环境中的数字是绝对列，合法范围 1~5
 - 实体异能中的数字是相对列，合法范围 -4~4；0 表示自身所在列
 - 范围形式会在范围内随机选择列，并逐个尝试；全部不合法则放弃召唤
+- 列偏好（第 4 个参数）：`'no_enemy'` / `'has_enemy'`；先判断符合偏好的列里有没有能合法召唤的，有则只在其中随机，没有则回退到原本的全范围随机
 - 召唤不会挤开已有实体；列满或不满足组队条件时该列召唤失败
 - 每一条 `summon(...)` 语句只召唤一个实体；需要多个实体就写多条语句
 
@@ -561,6 +567,26 @@ when enter:
 		buff_stats(self, 2, 0)
 ```
 
+### 数值查询
+
+- `energy_gained()`：本回合累计**实际获得**的费用（回合开始发放 + 本回合所有能力获取；花费不扣减此计数）
+- `hero_health()`：施放者英雄当前生命值；`hero_health(enemy_hero)` 或 `hero_health(实体)` 取对应阵营英雄
+- `highest_attack('ally'|'enemy'|'all')` / `lowest_attack(...)`：该阵营所有在场实体的最大 / 最小**当前攻击力**；没有实体时返回 0
+- `highest_health(...)` / `lowest_health(...)`：同上，取**当前生命值**
+
+锦囊（消灭敌方攻击力最高的一个实体；并列时全部命中）：
+
+```text
+destroy(highest(enemy_entities, 'attack'))
+```
+
+锦囊（敌方最大攻击力达到 5 时才消灭攻击力最高的实体）：
+
+```text
+if highest_attack('enemy') >= 5:
+	destroy(highest(enemy_entities, 'attack'))
+```
+
 ### Buff / Debuff 与新增词缀
 
 内置 Buff：
@@ -585,7 +611,7 @@ when buff_removed:
 - `frozen`：不能攻击；所在列战斗结算完成后解除
 - `invincible`：词缀**只在入场时给一层无敌 Buff**，Buff 免疫伤害（**不**阻止消灭），所在列战斗结算完成后解除
 - `spell_immune`：只拦**敌方锦囊**——敌方锦囊不能选它、伤害/消灭无效；我方锦囊、实体能力、环境等效果正常生效（不判断效果有益或有害）
-- 相关实体词缀：双重打击、狂热、锦囊免疫、克制英雄、穿透、致命、无敌、捕猎、两栖、溅射、寒霜、反伤、免疫负面
+- 相关实体词缀：双重打击、狂热、锦囊免疫、克制英雄、穿透、致命、无敌、捕猎、两栖、溅射、寒霜、反伤、免疫负面、三连打、广域打击、内鬼
 - `debuff_immune` 会阻止冰冻等 Debuff 被施加
 - 战斗阶段中，每一列的战斗**完全结束**（两轮攻击 + 死亡结算之后）时，只清除该列**存活**实体的 `frozen` 与 `invincible`（清掉全部叠加层数）；其余 Buff（`spell_immune` / `hatred` / `life_force` / `buried` / `bounce` / `frozen_tombstone`）与临时词缀 Buff 不会在战斗结束时清除
 - 已被消灭或已移出该列的实体不参与这次清除；战斗阶段之外的强制攻击不触发该清除
@@ -682,6 +708,39 @@ when tombstone_enter:
 # 攻击时依次攻击左列、自身列、右列
 # 第一列没有左列、最后一列没有右列时跳过该次攻击
 ```
+
+### 广域打击
+
+```text
+# 实体词缀：wide_strike
+# 攻击时同时对所有列结算：每列有敌方实体就打该实体，没有就打敌方英雄
+# 多列命中英雄的伤害合计为一次英雄伤害（只触发一次充能护盾充能）
+# attack / after_attack 只触发一次；每个被命中的存活实体各触发一次 attacked
+# 与穿透同时存在时，每列按穿透结算（该列全部敌方实体 + 英雄）
+# 与三连打同时存在时广域打击优先（三连打不额外结算）
+# 广域打击下溅射 overshoot 不再额外结算（已经覆盖所有列）
+```
+
+### 内鬼
+
+```text
+# 实体词缀：mole（带数值，如 "mole:3"）
+# 每次攻击动作开始时，先对我方英雄造成等同数值的伤害
+# 触发范围：普通攻击、穿透、广域打击、双重打击第二段、狂热追击、force_attack
+# 该伤害走英雄受伤流程（可触发我方充能护盾与 hero_damaged）；攻击因冰冻/攻击力不足未发生时不会触发
+```
+
+### 临时 Buff
+
+```text
+temp_buff(chosen, 2, 1, 1, 'amphibious')
+```
+
+- 参数：目标、攻击增益、生命增益（同时加当前生命与生命上限）、防御增益、可选词缀、可选词缀数值（层数）
+- 在回合结束时（回合结束事件结算完之后）整体移除：三项数值与临时词缀一起消失
+- 与 `buff_stats` 的持久增益、环境授予的列增益分别记账，互不影响
+- 临时词缀按层数记账；移除时只移除本次施加的层数，环境授予的同名词缀不受影响
+- 数值为负时视为临时减益，生命降到 0 以下会在移除后正常走死亡结算
 
 ### 芦荟队长
 

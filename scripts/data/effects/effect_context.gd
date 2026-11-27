@@ -95,9 +95,39 @@ func environment_owner(_target: Variant = null) -> String:
 	return ""
 
 
+# ----- 数值查询 -----
+
+## 本回合施放者阵营累计实际获得的费用（回合开始发放 + 本回合能力获取）。
+func energy_gained() -> int:
+	return 0
+
+
+## 指定英雄（缺省为施放者）的当前生命值；target 可为英雄句柄或实体句柄。
+func hero_health(_target: Variant = null) -> int:
+	return 0
+
+
+## 阵营（ally / enemy / all）所有在场实体的最大/最小当前攻击力（无实体时为 0）。
+func highest_attack(_side_filter: String) -> int:
+	return 0
+
+
+func lowest_attack(_side_filter: String) -> int:
+	return 0
+
+
+## 阵营（ally / enemy / all）所有在场实体的最大/最小当前生命值（无实体时为 0）。
+func highest_health(_side_filter: String) -> int:
+	return 0
+
+
+func lowest_health(_side_filter: String) -> int:
+	return 0
+
+
 # ----- 原语（以单个实体句柄为参数） -----
 
-func summon(_card_name: String, _column: Variant = null, _max_column: Variant = null) -> Array:
+func summon(_card_name: String, _column: Variant = null, _max_column: Variant = null, _preference: String = "") -> Array:
 	push_warning("EffectContext.summon 未实现：需要战斗层提供")
 	return []
 
@@ -219,12 +249,26 @@ func summon_matching(
 	_column: Variant = null,
 	_max_column: Variant = null,
 	_keyword_text: String = "",
+	_preference: String = "",
 ) -> void:
 	push_warning("EffectContext.summon_matching 未实现：需要战斗层提供")
 
 
 func apply_buff(_target, _buff_id: String, _amount: int = 1) -> bool:
 	push_warning("EffectContext.apply_buff 未实现：需要战斗层提供")
+	return false
+
+
+## 临时 Buff：攻/血/防增益 + 可选词缀，回合结束时整体移除。
+func temp_buff(
+	_target,
+	_attack_delta: int,
+	_health_delta: int,
+	_shield_delta: int,
+	_keyword: String = "",
+	_keyword_value: int = 0,
+) -> bool:
+	push_warning("EffectContext.temp_buff 未实现：需要战斗层提供")
 	return false
 
 

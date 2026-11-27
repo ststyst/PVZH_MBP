@@ -96,6 +96,10 @@ var _effect_resolution_count: int = 0
 var _effect_limit_hit: bool = false
 ## 本次战斗轮中已经触发过先攻的实体 id，保证整轮只触发一次
 var _first_strike_used_this_round: Dictionary = {}
+## 广域打击的狂热追击深度（防止无限连锁）。
+var _wide_frenzy_depth: int = 0
+## 临时 Buff（卡牌能力施加，回合结束时移除）：entity_id -> [{attack, health, shield, buff_id}]
+var temp_buff_grants: Dictionary = {}
 
 
 func _init(database = null, battle_seed: int = 0) -> void:
@@ -132,6 +136,7 @@ func setup(
 	_special_resume_active_side = ""
 	_special_turn_end_resolved = false
 	_special_resolving = false
+	temp_buff_grants.clear()
 	environments.clear()
 	environment_labels.clear()
 	for entry: Variant in DEFAULT_ENVIRONMENTS:
@@ -573,6 +578,7 @@ func confirm_mulligan(side: String) -> void:
 
 func _begin_first_turn() -> void:
 	turn = 1
+	_reset_energy_gained_turn()
 	_grant_energy(SIDE_P)
 	_grant_energy(SIDE_Z)
 	_resolve_turn_start()
@@ -681,6 +687,7 @@ func clear_draw_block_markers() -> void:
 
 func _start_next_turn() -> void:
 	turn += 1
+	_reset_energy_gained_turn()
 	_grant_energy(SIDE_P)
 	_grant_energy(SIDE_Z)
 	_resolve_turn_start()
@@ -703,12 +710,21 @@ func _start_next_turn() -> void:
 	changed.emit()
 
 
+func _reset_energy_gained_turn() -> void:
+	for side: String in [SIDE_P, SIDE_Z]:
+		var state: BattlePlayerState = players.get(side, null)
+		if state != null:
+			state.energy_gained_this_turn = 0
+
+
 func _grant_energy(side: String) -> void:
 	var state: BattlePlayerState = players.get(side, null)
 	if state == null:
 		return
 	var amount: int = mode.initial_energy_for_faction(side) + turn - 1
+	var before: int = state.energy
 	state.energy = mini(amount, mode.energy_cap)
+	state.energy_gained_this_turn += maxi(state.energy - before, 0)
 
 
 # ----- 抽牌 -----
@@ -1506,6 +1522,7 @@ func summon_matching_in_columns(
 	preferred_slot: int,
 	filter_text: String,
 	granted_keyword_text: String = "",
+	preference: String = "",
 ) -> BattleEntity:
 	var granted: Array = []
 	for raw_keyword: String in granted_keyword_text.split(","):
@@ -1520,7 +1537,20 @@ func summon_matching_in_columns(
 	for keyword: Variant in granted:
 		if not merged_keywords.has(str(keyword)):
 			merged_keywords.append(str(keyword))
-	for column_value: Variant in columns:
+	# 可选列偏好：优先在没有/有敌方实体的列尝试；都不满足则按原顺序回退。
+	var ordered_columns: Array = []
+	if not preference.strip_edges().is_empty():
+		var preferred_columns: Array = []
+		var other_columns: Array = []
+		for column_value: Variant in columns:
+			if _column_matches_enemy_preference(side, int(column_value), preference):
+				preferred_columns.append(int(column_value))
+			else:
+				other_columns.append(int(column_value))
+		ordered_columns = preferred_columns + other_columns
+	else:
+		ordered_columns = columns.duplicate()
+	for column_value: Variant in ordered_columns:
 		var column: int = int(column_value)
 		var slot: int = _find_summon_slot(side, column, preferred_slot, merged_keywords)
 		if slot < 0:
@@ -1560,6 +1590,22 @@ func _find_summon_slot(side: String, column: int, preferred_slot: int, keywords:
 		return preferred_slot
 	var alternate_slot: int = SLOT_NORMAL if preferred_slot == SLOT_TEAM_UP else SLOT_TEAM_UP
 	return alternate_slot if _entity_at(column, side, alternate_slot) == null else -1
+
+
+## 随机召唤的列偏好：no_enemy = 该列没有敌方实体；has_enemy = 该列有敌方实体。
+func _column_matches_enemy_preference(side: String, column: int, preference: String) -> bool:
+	var has_enemy: bool = false
+	for entity: BattleEntity in entities:
+		if entity.alive and entity.side != side and entity.column == column:
+			has_enemy = true
+			break
+	match preference.strip_edges().to_lower():
+		"no_enemy", "without_enemy":
+			return not has_enemy
+		"has_enemy", "with_enemy":
+			return has_enemy
+		_:
+			return false
 
 
 func summon_card_by_name_in_column(side: String, card_name: String, column: int) -> BattleEntity:
@@ -2548,6 +2594,78 @@ func buff_handle(handle: Variant, attack_delta: int, health_delta: int) -> void:
 	display_state_changed.emit(entity)
 
 
+## 临时 Buff：攻/血/防御增益 + 可选临时词缀，回合结束时整体移除。
+## 与环境的列增益、buff_stats 的持久增益分别记账，互不影响。
+func apply_temp_buff_handle(
+	handle: Variant,
+	attack_delta: int,
+	health_delta: int,
+	shield_delta: int,
+	keyword: String = "",
+	keyword_value: int = 0,
+) -> bool:
+	if not handle is BattleEntity:
+		return false
+	var entity: BattleEntity = handle
+	if not entity.alive:
+		return false
+	if attack_delta == 0 and health_delta == 0 and shield_delta == 0 and keyword.strip_edges().is_empty():
+		return false
+	var record: Dictionary = {
+		"attack": attack_delta,
+		"health": health_delta,
+		"shield": shield_delta,
+		"buff_id": "",
+		"layers": 0,
+	}
+	if attack_delta != 0 or health_delta != 0:
+		buff_handle(entity, attack_delta, health_delta)
+	if shield_delta != 0:
+		entity.shield = maxi(entity.shield + shield_delta, 0)
+		display_state_changed.emit(entity)
+	if not keyword.strip_edges().is_empty():
+		var normalized: String = CardKeywords.normalize(keyword)
+		var card_kind: String = entity.card.kind if entity.card != null else "entity"
+		if CardKeywords.has(normalized) and CardKeywords.can_receive(normalized, card_kind):
+			var buff_id: String = "temp_%s" % normalized
+			var layers: int = maxi(keyword_value, 1)
+			if apply_buff_handle(entity, buff_id, layers):
+				record["buff_id"] = buff_id
+				record["layers"] = layers
+	var records: Array = temp_buff_grants.get(entity.entity_id, [])
+	records.append(record)
+	temp_buff_grants[entity.entity_id] = records
+	changed.emit()
+	return true
+
+
+## 回合结束时移除所有临时 Buff（数值与临时词缀）。
+func _remove_temp_buffs_at_turn_end() -> void:
+	if temp_buff_grants.is_empty():
+		return
+	for entity_id: Variant in temp_buff_grants.keys():
+		var entity: BattleEntity = find_entity_by_id(int(entity_id))
+		if entity == null or not entity.alive:
+			continue
+		for record: Dictionary in temp_buff_grants[entity_id]:
+			var attack_delta: int = int(record.get("attack", 0))
+			var health_delta: int = int(record.get("health", 0))
+			var shield_delta: int = int(record.get("shield", 0))
+			if attack_delta != 0 or health_delta != 0:
+				buff_handle(entity, -attack_delta, -health_delta)
+			if shield_delta != 0:
+				entity.shield = maxi(entity.shield - shield_delta, 0)
+			var buff_id: String = str(record.get("buff_id", ""))
+			var layers: int = maxi(int(record.get("layers", 1)), 1)
+			for _layer: int in range(layers):
+				remove_buff_handle(entity, buff_id)
+			display_state_changed.emit(entity)
+	temp_buff_grants.clear()
+	_flush_deaths()
+	_check_game_over()
+	changed.emit()
+
+
 func keyword_value_for(handle: Variant, keyword: String) -> int:
 	var normalized: String = CardKeywords.normalize(keyword)
 	if handle is BattleEntity:
@@ -2771,7 +2889,9 @@ func gain_energy(side: String, amount: int) -> void:
 	var state: BattlePlayerState = players.get(side, null)
 	if state == null or amount <= 0:
 		return
+	var before: int = state.energy
 	state.energy = mini(state.energy + amount, state.energy_cap)
+	state.energy_gained_this_turn += maxi(state.energy - before, 0)
 
 
 # ----- 事件 -----
@@ -2949,12 +3069,22 @@ func _execute_attack_action(attacker: BattleEntity, extra_attack: bool) -> void:
 		return
 	if attacker == null or not attacker.alive or attacker.is_frozen() or _attack_power(attacker) < 1:
 		return
+	# 内鬼：攻击动作一开始先对自己英雄造成伤害；攻击未能发生（冰冻/攻击力不足）时不触发。
+	var mole_value: int = attacker.keyword_value("mole")
+	if mole_value > 0:
+		_log("%s 的内鬼效果先对我方英雄造成 %d 点伤害" % [attacker.display_name(), mole_value])
+		damage_hero(attacker.side, mole_value, [], attacker, "内鬼")
+		if winner != "":
+			return
 	var first_strike: int = attacker.keyword_value("first_strike")
 	if first_strike > 0 and not _first_strike_used_this_round.has(attacker.entity_id):
 		_first_strike_used_this_round[attacker.entity_id] = true
 		damage_hero(opposite_side(attacker.side), first_strike, attacker.keywords, attacker)
 		if winner != "":
 			return
+	if attacker.has_keyword("wide_strike"):
+		_execute_wide_attack(attacker, extra_attack)
+		return
 	if attacker.has_keyword("triple_strike"):
 		var columns: Array[int] = [attacker.column - 1, attacker.column, attacker.column + 1]
 		for index: int in range(columns.size()):
@@ -2980,6 +3110,69 @@ func _execute_attack_action(attacker: BattleEntity, extra_attack: bool) -> void:
 		false,
 		attacker.column,
 	)
+
+
+func _execute_wide_attack(attacker: BattleEntity, extra_attack: bool) -> void:
+	if extra_attack:
+		_fire_event("extra_attack", attacker)
+	var attack_value: int = _attack_power(attacker)
+	var strikethrough: bool = attacker.has_keyword("strikethrough")
+	var killed_enemy: bool = false
+	var hero_damage: int = 0
+	var hit_entities: Array[BattleEntity] = []
+	for column: int in range(COLUMN_COUNT):
+		if _battle_over() or not attacker.alive:
+			break
+		if strikethrough:
+			for entity: BattleEntity in entities.duplicate():
+				if not entity.alive or entity.side == attacker.side or entity.column != column:
+					continue
+				var dealt: int = damage_entity(entity, attack_value, attacker.keywords, false, attacker)
+				if dealt > 0:
+					_try_thorns(attacker, entity, dealt)
+				if dealt > 0 and entity.health <= 0:
+					killed_enemy = true
+				if entity.alive:
+					hit_entities.append(entity)
+			hero_damage += attack_value
+			continue
+		var target_entity: BattleEntity = null
+		for entity: BattleEntity in entities:
+			if entity.alive and entity.side != attacker.side and entity.column == column:
+				target_entity = entity
+				break
+		if target_entity == null:
+			hero_damage += attack_value
+			continue
+		var dealt: int = damage_entity(target_entity, attack_value, attacker.keywords, false, attacker)
+		if dealt > 0:
+			_try_thorns(attacker, target_entity, dealt)
+		if dealt > 0 and target_entity.health <= 0:
+			killed_enemy = true
+		if target_entity.alive:
+			hit_entities.append(target_entity)
+	# 广域打击视为同时攻击：所有列都打完后，英雄伤害只结算一次（只触发一次充能）。
+	if hero_damage > 0 and winner == "":
+		damage_hero(opposite_side(attacker.side), hero_damage, attacker.keywords, attacker)
+	if _battle_over():
+		return
+	for target: BattleEntity in hit_entities:
+		if target.alive:
+			_fire_event("attacked", target)
+	_fire_event("attack", attacker)
+	if _battle_over():
+		return
+	_emit_animation_cue("attack", attacker, null)
+	if attacker.alive and not _battle_over():
+		_fire_event("after_attack", attacker)
+	if killed_enemy and attacker.alive and attacker.has_keyword("frenzy") and _wide_frenzy_depth < 8:
+		_flush_deaths()
+		if attacker.alive and not _battle_over():
+			_wide_frenzy_depth += 1
+			_execute_attack_action(attacker, true)
+			_wide_frenzy_depth -= 1
+	_flush_deaths()
+	_flush_damage_dealt()
 
 
 func force_entity_attack(attacker: BattleEntity) -> bool:
@@ -3166,6 +3359,8 @@ func _resolve_turn_end() -> void:
 		if invisible > 0:
 			entity.set_keyword_value("invisible", invisible - 1)
 			keyword_changed.emit(entity, "invisible", invisible, entity.keyword_value("invisible"))
+	# 临时 Buff 在回合结束（含回合结束事件）之后统一移除。
+	_remove_temp_buffs_at_turn_end()
 
 
 func _flush_deaths() -> void:

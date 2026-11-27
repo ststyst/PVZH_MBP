@@ -171,8 +171,10 @@ func choose_targets(count: int, selector: String) -> bool:
 
 # ----- 原语 -----
 
-func summon(card_name: String, column: Variant = null, max_column: Variant = null) -> Array:
-	_record("summon", {"card": card_name, "column": column, "max_column": max_column})
+func summon(card_name: String, column: Variant = null, max_column: Variant = null, preference: String = "") -> Array:
+	_record("summon", {
+		"card": card_name, "column": column, "max_column": max_column, "preference": preference,
+	})
 	return []
 
 
@@ -310,12 +312,14 @@ func summon_matching(
 	column: Variant = null,
 	max_column: Variant = null,
 	keyword_text: String = "",
+	preference: String = "",
 ) -> void:
 	_record("summon_matching", {
 		"filter": filter_text,
 		"column": column,
 		"max_column": max_column,
 		"keyword": keyword_text,
+		"preference": preference,
 	})
 
 
@@ -331,6 +335,25 @@ func environment_owner(target: Variant = null) -> String:
 
 func apply_buff(target, buff_id: String, amount: int = 1) -> bool:
 	_record("apply_buff", {"target": target, "buff": buff_id, "amount": amount})
+	return buff_succeeds
+
+
+func temp_buff(
+	target,
+	attack_delta: int,
+	health_delta: int,
+	shield_delta: int,
+	keyword: String = "",
+	keyword_value: int = 0,
+) -> bool:
+	_record("temp_buff", {
+		"target": target,
+		"attack": attack_delta,
+		"health": health_delta,
+		"shield": shield_delta,
+		"keyword": keyword,
+		"keyword_value": keyword_value,
+	})
 	return buff_succeeds
 
 
@@ -402,6 +425,36 @@ func remove_marker(marker_name: String, amount: int, target: Variant = null) -> 
 func marker_count(marker_name: String, target: Variant = null) -> int:
 	_record_query("marker_count", {"name": marker_name, "target": target})
 	return int(markers.get(marker_name, 0))
+
+
+func energy_gained() -> int:
+	_record_query("energy_gained")
+	return int(query_results.get("energy_gained", 0))
+
+
+func hero_health(target: Variant = null) -> int:
+	_record_query("hero_health", {"target": target})
+	return int(query_results.get("hero_health", 0))
+
+
+func highest_attack(side_filter: String) -> int:
+	_record_query("highest_attack", {"side": side_filter})
+	return int(query_results.get("highest_attack", 0))
+
+
+func lowest_attack(side_filter: String) -> int:
+	_record_query("lowest_attack", {"side": side_filter})
+	return int(query_results.get("lowest_attack", 0))
+
+
+func highest_health(side_filter: String) -> int:
+	_record_query("highest_health", {"side": side_filter})
+	return int(query_results.get("highest_health", 0))
+
+
+func lowest_health(side_filter: String) -> int:
+	_record_query("lowest_health", {"side": side_filter})
+	return int(query_results.get("lowest_health", 0))
 
 
 # ----- 查询原语 -----

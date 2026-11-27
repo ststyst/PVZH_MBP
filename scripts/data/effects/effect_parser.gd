@@ -93,7 +93,7 @@ const FACT_NAMES: Array[String] = [
 
 ## 原语（只能作为语句调用）
 const PRIMITIVES: Dictionary = {
-	"summon": {"min": 1, "max": 3},
+	"summon": {"min": 1, "max": 4},
 	"draw_cards": {"min": 1, "max": 3},
 	"draw_matching_cards": {"min": 3, "max": 4},
 	"deal_damage": {"min": 2, "max": 2},
@@ -119,8 +119,9 @@ const PRIMITIVES: Dictionary = {
 	"choose_column": {"min": 0, "max": 0},
 	"place_environment": {"min": 2, "max": 2},
 	"clear_environment": {"min": 0, "max": 1},
-	"summon_matching": {"min": 1, "max": 4},
+	"summon_matching": {"min": 1, "max": 5},
 	"apply_buff": {"min": 2, "max": 3},
+	"temp_buff": {"min": 4, "max": 6},
 	"remove_buff": {"min": 2, "max": 2},
 	"force_attack": {"min": 1, "max": 1},
 	"remove_entity": {"min": 1, "max": 1},
@@ -156,6 +157,12 @@ const QUERIES: Dictionary = {
 	"lowest": {"min": 2, "max": 3},
 	"entities_matching": {"min": 1, "max": 2},
 	"is_entity": {"min": 1, "max": 1},
+	"energy_gained": {"min": 0, "max": 0},
+	"hero_health": {"min": 0, "max": 1},
+	"highest_attack": {"min": 1, "max": 1},
+	"lowest_attack": {"min": 1, "max": 1},
+	"highest_health": {"min": 1, "max": 1},
+	"lowest_health": {"min": 1, "max": 1},
 	"environment_kind": {"min": 0, "max": 1},
 	"environment_owner": {"min": 0, "max": 1},
 	"min": {"min": 2, "max": 2},

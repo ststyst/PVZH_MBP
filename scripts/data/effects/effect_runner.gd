@@ -170,11 +170,14 @@ func _exec_primitive(statement: Dictionary) -> void:
 			var card_name: String = _as_string(_eval(arguments[0], {}))
 			var summon_column: Variant = null
 			var summon_max_column: Variant = null
+			var summon_preference: String = ""
 			if arguments.size() > 1:
 				summon_column = _eval(arguments[1], {})
 			if arguments.size() > 2:
 				summon_max_column = _eval(arguments[2], {})
-			context.summon(card_name, summon_column, summon_max_column)
+			if arguments.size() > 3:
+				summon_preference = _as_string(_eval(arguments[3], {}))
+			context.summon(card_name, summon_column, summon_max_column, summon_preference)
 		"draw_cards":
 			# 两种写法：
 			# - draw_cards(count[, cost_delta])：由施放者阵营抽牌；
@@ -209,7 +212,7 @@ func _exec_primitive(statement: Dictionary) -> void:
 				context.draw_matching_cards(search_targets[0], search_count, search_filter, search_cost)
 		"gain_energy":
 			context.gain_energy(_as_int(_eval(arguments[0], {})))
-		"deal_damage", "heal", "gain_shield", "buff_stats", "give_keyword", "destroy":
+		"deal_damage", "heal", "gain_shield", "buff_stats", "give_keyword", "destroy", "temp_buff":
 			_exec_target_primitive(primitive_name, arguments, line)
 		"environment_grant_keyword":
 			context.environment_grant_keyword(
@@ -311,6 +314,7 @@ func _exec_primitive(statement: Dictionary) -> void:
 			var sm_column: Variant = null
 			var sm_max_column: Variant = null
 			var sm_keyword: String = ""
+			var sm_preference: String = ""
 			if sm_optional.size() == 1:
 				if sm_optional[0] is int:
 					sm_column = int(sm_optional[0])
@@ -329,7 +333,12 @@ func _exec_primitive(statement: Dictionary) -> void:
 				sm_column = _as_int(sm_optional[0])
 				sm_max_column = _as_int(sm_optional[1])
 				sm_keyword = _as_string(sm_optional[2])
-			context.summon_matching(sm_filter, sm_column, sm_max_column, sm_keyword)
+			elif sm_optional.size() == 4:
+				sm_column = _as_int(sm_optional[0])
+				sm_max_column = _as_int(sm_optional[1])
+				sm_keyword = _as_string(sm_optional[2])
+				sm_preference = _as_string(sm_optional[3])
+			context.summon_matching(sm_filter, sm_column, sm_max_column, sm_keyword, sm_preference)
 		"apply_buff", "remove_buff":
 			var buff_targets: Array = _resolve_argument_target(arguments[0])
 			if buff_targets.size() != 1:
@@ -469,6 +478,21 @@ func _exec_target_primitive(primitive_name: String, arguments: Array, line: int)
 				context.gain_shield(handle, _as_int(extra_values[0]))
 			"buff_stats":
 				context.buff_stats(handle, _as_int(extra_values[0]), _as_int(extra_values[1]))
+			"temp_buff":
+				var temp_keyword: String = ""
+				var temp_keyword_value: int = 0
+				if extra_values.size() > 3:
+					temp_keyword = _as_string(extra_values[3])
+				if extra_values.size() > 4:
+					temp_keyword_value = _as_int(extra_values[4])
+				context.temp_buff(
+					handle,
+					_as_int(extra_values[0]),
+					_as_int(extra_values[1]),
+					_as_int(extra_values[2]),
+					temp_keyword,
+					temp_keyword_value,
+				)
 			"give_keyword":
 				var keyword_value: int = 0
 				if extra_values.size() > 1:
@@ -576,6 +600,26 @@ func _eval_call(expression: Dictionary, facts: Dictionary) -> Variant:
 			if function_name == "environment_owner":
 				return context.environment_owner(environment_target)
 			return context.environment_kind(environment_target)
+		"energy_gained":
+			return context.energy_gained()
+		"hero_health":
+			var hero_health_target: Variant = null
+			if not arguments.is_empty():
+				var hero_health_handles: Array = _resolve_argument_target(arguments[0], facts)
+				if hero_health_handles.size() == 1:
+					hero_health_target = hero_health_handles[0]
+			return context.hero_health(hero_health_target)
+		"highest_attack", "lowest_attack", "highest_health", "lowest_health":
+			var stat_side: String = _as_string(_eval(arguments[0], facts))
+			match function_name:
+				"highest_attack":
+					return context.highest_attack(stat_side)
+				"lowest_attack":
+					return context.lowest_attack(stat_side)
+				"highest_health":
+					return context.highest_health(stat_side)
+				_:
+					return context.lowest_health(stat_side)
 		"keyword_value":
 			return _eval_keyword_value(arguments, facts, expression)
 		"highest", "lowest":

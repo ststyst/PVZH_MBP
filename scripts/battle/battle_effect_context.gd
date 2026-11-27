@@ -276,7 +276,7 @@ func filter_values(handle) -> Dictionary:
 	}
 
 
-func summon(card_name: String, column: Variant = null, max_column: Variant = null) -> Array:
+func summon(card_name: String, column: Variant = null, max_column: Variant = null, preference: String = "") -> Array:
 	var card: CardData = engine.get_card_by_english(card_name)
 	if card == null or not card.is_entity():
 		return []
@@ -305,16 +305,42 @@ func summon(card_name: String, column: Variant = null, max_column: Variant = nul
 		var target_column: int = base_column + value if relative else value - 1
 		if target_column >= 0 and target_column < BattleEngine.COLUMN_COUNT:
 			columns.append(target_column)
-	for index: int in range(columns.size() - 1, 0, -1):
-		var swap_index: int = engine.rng.randi_range(0, index)
-		var temp: int = columns[index]
-		columns[index] = columns[swap_index]
-		columns[swap_index] = temp
-	for target_column: int in columns:
-		var entity: BattleEntity = engine.summon_card_in_column(caster_side, card, target_column)
-		if entity != null:
-			return [entity]
+	# 可选列偏好：优先在“没有/有敌方实体”的列里随机尝试；都不满足则回退原本随机逻辑。
+	var ordered_groups: Array = []
+	if not preference.strip_edges().is_empty():
+		var preferred_columns: Array[int] = []
+		for candidate: int in columns:
+			if _summon_preference_matches(candidate, preference):
+				preferred_columns.append(candidate)
+		if not preferred_columns.is_empty():
+			ordered_groups.append(preferred_columns)
+	ordered_groups.append(columns.duplicate())
+	for group: Array in ordered_groups:
+		var candidates: Array[int] = []
+		for column_value: Variant in group:
+			candidates.append(int(column_value))
+		for index: int in range(candidates.size() - 1, 0, -1):
+			var swap_index: int = engine.rng.randi_range(0, index)
+			var temp_value: int = candidates[index]
+			candidates[index] = candidates[swap_index]
+			candidates[swap_index] = temp_value
+		for target_column: int in candidates:
+			var entity: BattleEntity = engine.summon_card_in_column(caster_side, card, target_column)
+			if entity != null:
+				return [entity]
 	return []
+
+
+## 随机召唤的可选列偏好：no_enemy = 该列没有敌方实体；has_enemy = 该列有敌方实体。
+func _summon_preference_matches(column: int, preference: String) -> bool:
+	var has_enemy: bool = not engine.alive_entities(column, engine.opposite_side(caster_side)).is_empty()
+	match preference.strip_edges().to_lower():
+		"no_enemy", "without_enemy":
+			return not has_enemy
+		"has_enemy", "with_enemy":
+			return has_enemy
+		_:
+			return false
 
 
 func draw_cards(count: int, cost_delta: int = 0, target = null) -> int:
@@ -570,6 +596,7 @@ func summon_matching(
 	column: Variant = null,
 	max_column: Variant = null,
 	keyword_text: String = "",
+	preference: String = "",
 ) -> void:
 	var self_entity: BattleEntity = _self_handle if _self_handle is BattleEntity else null
 	var preferred_slot: int = BattleEngine.SLOT_NORMAL
@@ -606,7 +633,7 @@ func summon_matching(
 		var swap_value: int = columns[index]
 		columns[index] = columns[swap_index]
 		columns[swap_index] = swap_value
-	engine.summon_matching_in_columns(caster_side, columns, preferred_slot, filter_text, keyword_text)
+	engine.summon_matching_in_columns(caster_side, columns, preferred_slot, filter_text, keyword_text, preference)
 
 
 ## 目标所在列的环境种类（环境 id）。不带参数时读当前基准列：
@@ -644,12 +671,88 @@ func _environment_column_of(target) -> int:
 	return column
 
 
+# ----- 数值查询 -----
+
+func energy_gained() -> int:
+	var state: BattlePlayerState = engine.players.get(caster_side, null)
+	return state.energy_gained_this_turn if state != null else 0
+
+
+func hero_health(target = null) -> int:
+	var hero_side: String = _side_of(target) if target != null else caster_side
+	if hero_side.is_empty():
+		hero_side = caster_side
+	var state: BattlePlayerState = engine.players.get(hero_side, null)
+	return state.hero_health if state != null else 0
+
+
+func highest_attack(side_filter: String) -> int:
+	return _extreme_entity_stat(side_filter, "attack", true)
+
+
+func lowest_attack(side_filter: String) -> int:
+	return _extreme_entity_stat(side_filter, "attack", false)
+
+
+func highest_health(side_filter: String) -> int:
+	return _extreme_entity_stat(side_filter, "health", true)
+
+
+func lowest_health(side_filter: String) -> int:
+	return _extreme_entity_stat(side_filter, "health", false)
+
+
+## side_filter 支持 ally / enemy / all（both 亦可）；没有匹配实体时返回 0。
+func _extreme_entity_stat(side_filter: String, stat_name: String, want_highest: bool) -> int:
+	var wanted_sides: Array[String] = []
+	match side_filter.strip_edges().to_lower():
+		"ally", "self":
+			wanted_sides = [caster_side]
+		"enemy":
+			wanted_sides = [engine.opposite_side(caster_side)]
+		"all", "both", "":
+			wanted_sides = [BattleEngine.SIDE_P, BattleEngine.SIDE_Z]
+		_:
+			return 0
+	var has_value: bool = false
+	var best: int = 0
+	for entity: BattleEntity in engine.entities:
+		if not entity.alive or not wanted_sides.has(entity.side):
+			continue
+		var value: int = entity.attack if stat_name == "attack" else entity.health
+		if not has_value:
+			best = value
+			has_value = true
+		elif want_highest:
+			best = maxi(best, value)
+		else:
+			best = mini(best, value)
+	return best if has_value else 0
+
+
 func apply_buff(target, buff_id: String, amount: int = 1) -> bool:
 	if not target is BattleEntity:
 		return false
 	if _spell_immunity_applies(target):
 		return false
 	return engine.apply_buff_handle(target, buff_id, amount)
+
+
+func temp_buff(
+	target,
+	attack_delta: int,
+	health_delta: int,
+	shield_delta: int,
+	keyword: String = "",
+	keyword_value: int = 0,
+) -> bool:
+	if not target is BattleEntity:
+		return false
+	if _spell_immunity_applies(target):
+		return false
+	return engine.apply_temp_buff_handle(
+		target, attack_delta, health_delta, shield_delta, keyword, keyword_value
+	)
 
 
 func remove_buff(target, buff_id: String) -> bool:
