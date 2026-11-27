@@ -3073,7 +3073,8 @@ func _execute_attack_action(attacker: BattleEntity, extra_attack: bool) -> void:
 	var mole_value: int = attacker.keyword_value("mole")
 	if mole_value > 0:
 		_log("%s 的内鬼效果先对我方英雄造成 %d 点伤害" % [attacker.display_name(), mole_value])
-		damage_hero(attacker.side, mole_value, [], attacker, "内鬼")
+		# 内鬼伤害不带伤害来源（不算作该实体“造成的有效伤害”），只走英雄受伤流程。
+		damage_hero(attacker.side, mole_value, [], null, "内鬼")
 		if winner != "":
 			return
 	var first_strike: int = attacker.keyword_value("first_strike")
