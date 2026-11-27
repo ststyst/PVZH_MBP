@@ -365,10 +365,13 @@ damage == 0 = 未造成有效伤害
 ### 实体光环
 
 - 只有实体牌可以声明光环（`aura_buff` / `aura_hand_cost` / `aura_spell_cost`），来源必须在场且存活
-- `aura_buff(side, buff_id, min_offset, max_offset, exclude_self[, filter[, attack[, health[, shield]]]])`：
+- `aura_buff(side, buff_id, min_offset, max_offset, exclude_self[, filter[, attack[, health[, shield[, source_filter]]]]])`：
   - 目标筛选：阵营（ally / self / enemy / all）+ 相对来源列的偏移范围 + 可选排除自身 + 可选筛选表达式
-  - 筛选字段：`tribe`（包含）、`keyword`（包含）、`rarity`、`class`、`kind`、`cost`、`attack`（当前攻击）、`health`（当前生命），支持 `and` / `or` / `not` 与比较运算
+  - 筛选字段：`tribe`（包含）、`keyword`（包含）、`rarity`、`class`、`kind`、`cost`、`attack`（当前攻击）、`health`（当前生命）、`slot`（0 普通位/靠前，1 组队位/靠后），支持 `and` / `or` / `not` 与比较运算
+  - `source_filter`：可选，用同一套字段判定**来源自身**；不满足时整条光环不生效
   - `buff_id` 可为空（只提供数值）；数值项 `attack` / `health` / `shield` 为光环数值加成（`health` 同时加当前生命与上限）
+- 例：自身在普通位时，为同列组队位友方 +2 攻击：`aura_buff("ally", "", 0, 0, true, "slot == 1", 2, 0, 0, "slot == 0")`
+- 即时效果（不持续）可以用 `for_each` + `column` / `slot` 事实自己筛选目标，例如给同列组队位友方 `buff_stats`
 - 结算方式：每次刷新重算“期望集合”，与当前已应用状态做差分
   - Buff：按（目标, Buff, 来源）记录层数；来源离场、移动、筛选不再匹配时只移除该来源的层
   - 数值：记录每个实体当前应得的光环总加成，刷新时按差值增减；多个来源可叠加

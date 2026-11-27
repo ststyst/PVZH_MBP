@@ -2271,6 +2271,49 @@ func test_wide_strike_front_priority() -> void:
 	assert_eq(back_target.health, 10, "广域打击不应命中靠后实体")
 
 
+func test_aura_slot_source_and_target_filter() -> void:
+	var engine: BattleEngine = _started_engine()
+	var source_card: CardData = _make_test_card(
+		"pvzh:test_aura_slot_source",
+		"aura_buff(\"ally\", \"\", 0, 0, true, \"slot == 1\", 2, 0, 0, \"slot == 0\")"
+	)
+	source_card.attack = 1
+	source_card.health = 6
+	var source: BattleEntity = engine.summon_card("p", source_card, 2, BattleEngine.SLOT_NORMAL)
+	assert_true(source != null)
+	var ally_card: CardData = _make_test_card("pvzh:test_aura_slot_ally", "")
+	ally_card.attack = 1
+	ally_card.health = 5
+	var team_ally: BattleEntity = engine.summon_card("p", ally_card, 2, BattleEngine.SLOT_TEAM_UP)
+	assert_true(team_ally != null)
+	assert_eq(team_ally.attack, 3, "自身普通位时，同列组队位友方 +2 攻击")
+	assert_true(engine.move_entity_handle(source, 3, BattleEngine.SLOT_NORMAL))
+	assert_eq(team_ally.attack, 1, "来源离开该列后光环应回退")
+
+
+func test_for_each_slot_targeted_effect() -> void:
+	var engine: BattleEngine = _started_engine()
+	var target_card: CardData = _make_test_card("pvzh:test_slot_target", "")
+	target_card.attack = 1
+	target_card.health = 5
+	var team_target: BattleEntity = engine.summon_card("p", target_card, 2, BattleEngine.SLOT_TEAM_UP)
+	var other_card: CardData = _make_test_card("pvzh:test_slot_target_other", "")
+	other_card.attack = 1
+	other_card.health = 5
+	var other: BattleEntity = engine.summon_card("p", other_card, 3, BattleEngine.SLOT_NORMAL)
+	var source_card: CardData = _make_test_card(
+		"pvzh:test_slot_for_each_source",
+		"when enter:\n"
+		+ "    for_each(all_allies) as e:\n"
+		+ "        if column == 0 and slot == 1:\n"
+		+ "            buff_stats(e, 3, 0)"
+	)
+	var source: BattleEntity = engine.summon_card("p", source_card, 2, BattleEngine.SLOT_NORMAL)
+	engine._fire_event("enter", source)
+	assert_eq(team_target.attack, 4, "应能给同列组队位友方施加即时效果")
+	assert_eq(other.attack, 1, "其他列/普通位不应受影响")
+
+
 func test_environment_query_kind_and_owner() -> void:
 	var engine: BattleEngine = _started_engine()
 	var env_card: CardData = cards.get_card("pvzh:sunny_field")

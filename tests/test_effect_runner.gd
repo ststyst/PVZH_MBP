@@ -929,7 +929,7 @@ func test_aura_buff_extended_declaration() -> void:
 	var script: CardEffectScript = CardEffectScript.parse(
 		"aura_buff(\"ally\", \"frozen\", -1, 1, true, "
 		+ "\"tribe == 'pea' and rarity == 'rare' and keyword == 'frost' and attack >= 2 and health <= 4\", "
-		+ "1, 2, 3)"
+		+ "1, 2, 3, \"slot == 0\")"
 	)
 	assert_false(script.has_errors(), "扩展 aura_buff 应可解析：%s" % [script.errors])
 	assert_eq(script.aura_buffs.size(), 1)
@@ -944,6 +944,7 @@ func test_aura_buff_extended_declaration() -> void:
 		assert_eq(int(aura.get("attack", 0)), 1)
 		assert_eq(int(aura.get("health", 0)), 2)
 		assert_eq(int(aura.get("shield", 0)), 3)
+		assert_eq(str(aura.get("source_filter", "")), "slot == 0")
 	var bad: CardEffectScript = CardEffectScript.parse(
 		"aura_buff(\"ally\", \"frozen\", 0, 0, false, \"tribe maybe\")"
 	)

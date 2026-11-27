@@ -161,6 +161,8 @@ func _match_condition_values(node: Dictionary, values: Dictionary) -> bool:
 			return _compare_int(int(values.get("attack", 0)), op, int(value))
 		"health":
 			return _compare_int(int(values.get("health", 0)), op, int(value))
+		"slot":
+			return _compare_int(int(values.get("slot", 0)), op, int(value))
 		_:
 			return false
 	return false
@@ -335,6 +337,8 @@ func _normalize_field(field: String) -> String:
 			return "attack"
 		"health", "hp", "生命", "生命值", "current_health":
 			return "health"
+		"slot", "slot_index", "位置", "格子":
+			return "slot"
 	return ""
 
 

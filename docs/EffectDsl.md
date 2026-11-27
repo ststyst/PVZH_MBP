@@ -66,7 +66,7 @@
 | `environment_grant_keyword(keyword, value, side_filter)` | 词缀、数值、阵营过滤 | 当前环境临时授予同列实体词缀 |
 | `environment_grant_keyword_persistent(keyword, value, side_filter)` | 词缀、数值、阵营过滤 | 同上，但为持久词缀 |
 | `environment_grant_stats(attack, health, shield, side_filter)` | 三项数值、阵营过滤 | 当前环境临时授予同列实体数值 |
-| `aura_buff(side, buff_id, min_offset, max_offset, exclude_self[, filter[, attack[, health[, shield]]]])` | 阵营、Buff（可空）、列偏移范围、是否排除自身、可选筛选、可选数值增益 | 光环：给范围内符合条件的实体附着 Buff / 提供攻血防数值加成 |
+| `aura_buff(side, buff_id, min_offset, max_offset, exclude_self[, filter[, attack[, health[, shield[, source_filter]]]]])` | 阵营、Buff（可空）、列偏移范围、是否排除自身、可选目标筛选、可选数值增益、可选来源筛选 | 光环：给范围内符合条件的实体附着 Buff / 提供攻血防数值加成 |
 | `aura_hand_cost(side, filter, delta)` | 阵营、筛选、费用修正 | 光环：修改手牌费用 |
 | `aura_spell_cost(side, delta)` | 阵营、费用修正 | 光环：修改锦囊费用 |
 | `double_death_effects()` | — | 自身存活时，同阵营实体死亡触发两次 `die`（双亡语） |
@@ -302,8 +302,6 @@ when die: gain_energy(2); when enter: buff_stats(self, 2, 0)
 
 ## 七、示例
 
-## 七、示例
-
 实体（入场获得 2 费）：
 
 ```
@@ -511,6 +509,23 @@ destroy(chosen_if(attack == highest_attack('enemy')))
 - 该列没有敌方实体时改为对敌方英雄造成伤害
 - 伤害携带施放者词缀；不算攻击，不触发 `attack` / `attacked` / `after_attack` 等攻击事件
 - 锦囊来源的伤害对敌方锦囊免疫实体无效
+
+### 按位置读取与施加效果
+
+- 实体在事件过滤/循环体里可以直接读 `slot`：`0` 普通位（靠前）、`1` 组队位（靠后）
+- 检测自身位置：`when enter(slot == 0):` 或事件块里 `if slot == 0:`（`slot` 指事件目标/循环当前实体）
+- 对“某一列指定位置”的实体施加即时效果：用 `for_each` + `column` / `slot` 过滤
+
+```text
+# 实体：入场时给同列组队位（靠后）的友方 +2 攻击（一次性效果）
+when enter:
+	for_each(all_allies) as e:
+		if column == 0 and slot == 1:
+			buff_stats(e, 2, 0)
+```
+
+- 实体能力的 `column` 相对自身列 → `column == 0` 即同一列
+- 需要“持续存在、来源离开就回退”的效果时不要用 `buff_stats`，改用 `aura_buff` 的目标筛选 `slot == 1` + 来源筛选 `source_filter = "slot == 0"`（见「光环与费用」）
 
 ### 列、实体事件与环境
 
@@ -986,6 +1001,7 @@ deal_damage(entities_matching(enemy_entities, "keyword == 'frost'"), 1)
 | `cost` / `费用` | 当前费用，支持 `< <= > >= == !=` |
 | `attack` / `攻击力` | 当前攻击力，支持 `< <= > >= == !=`（在场实体判定用当前值） |
 | `health` / `生命值` | 当前生命值，支持 `< <= > >= == !=`（在场实体判定用当前值） |
+| `slot` / `位置` | 所在格：0 = 普通位（靠前）/ 1 = 组队位（靠后），支持比较运算 |
 
 - 支持 `and` / `or` / `not` 与括号（也认 `&&` / `||` / `!`）。
 - 判定用**当前状态**：Buff / 环境临时赋予的词缀同样参与匹配，`cost` 是当前费用。
@@ -1012,14 +1028,27 @@ aura_hand_cost("self", "kind == 'spell'", -1)
 aura_spell_cost("enemy", 6)
 ```
 
-- `aura_buff(side, buff_id, min_offset, max_offset, exclude_self[, filter[, attack[, health[, shield]]]])`
+- `aura_buff(side, buff_id, min_offset, max_offset, exclude_self[, filter[, attack[, health[, shield[, source_filter]]]]])`
   - `side`：`ally` / `self`（同阵营）/ `enemy` / `all`
   - 列范围：相对来源实体当前列的偏移，闭区间（`-1, 1` 为左右各一列）
   - `buff_id` 可写空字符串（只提供数值光环）；内置 Buff 与 `temp_<词缀>` 都可用
-  - `filter`：与 `entities_matching` 相同的筛选语法（`tribe` / `keyword` / `rarity` / `class` / `kind` / `cost` / `attack` / `health`），判定用实体**当前状态**（当前攻击/生命、当前词缀）；光环筛选**不要求** `deck_includable`
+  - `filter`（目标筛选）：与 `entities_matching` 相同的筛选语法（`tribe` / `keyword` / `rarity` / `class` / `kind` / `cost` / `attack` / `health` / `slot`），判定用实体**当前状态**；光环筛选**不要求** `deck_includable`
   - `attack` / `health` / `shield`：数值光环，实时增量应用；`health` 同时加当前生命与上限
+  - `source_filter`（来源筛选）：可选，用同一套筛选语法判定**光环来源自身**；不满足时整条光环不生效
 - 光环 Buff 按来源实体追踪；来源离场、移动、筛选不再匹配时只移除该来源提供的 Buff / 数值
 - 数值光环按“目标当前应得总加成 − 已应用加成”的差值刷新，因此多个光环来源可以叠加
+
+示例：实体牌（自身处于普通位时，为同列组队位我方实体提供“攻击力 +2”的光环）：
+
+```text
+aura_buff("ally", "", 0, 0, true, "slot == 1", 2, 0, 0, "slot == 0")
+```
+
+- `filter = "slot == 1"`：只挑组队位（靠后）的友方
+- `min_offset = max_offset = 0`：限制在同一列
+- `source_filter = "slot == 0"`：只有来源自身在普通位（靠前）时光环才生效
+- 同列组队位没有实体时自然没有目标；来源移动到其他列/其他格后光环自动失效并回退数值
+
 - `aura_hand_cost` 按筛选器修改手牌费用
 - `aura_spell_cost` 修改锦囊费用
 - `draw_cards(count, cost_delta)` 和随机塞牌可追加费用修饰符

@@ -277,6 +277,7 @@ func filter_values(handle) -> Dictionary:
 		"cost": entity.cost,
 		"attack": entity.attack,
 		"health": entity.health,
+		"slot": entity.slot,
 	}
 
 

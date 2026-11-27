@@ -273,6 +273,9 @@ func _extract_declarations() -> void:
 			var aura_filter_text: String = ""
 			if args.size() > 5:
 				aura_filter_text = str(_arg_value(args[5])).strip_edges()
+			var aura_source_filter_text: String = ""
+			if args.size() > 9:
+				aura_source_filter_text = str(_arg_value(args[9])).strip_edges()
 			aura_buffs.append({
 				"selector": str(_arg_value(args[0])),
 				"buff": str(_arg_value(args[1])),
@@ -283,12 +286,18 @@ func _extract_declarations() -> void:
 				"attack": _int_arg(args[6]) if args.size() > 6 else 0,
 				"health": _int_arg(args[7]) if args.size() > 7 else 0,
 				"shield": _int_arg(args[8]) if args.size() > 8 else 0,
+				"source_filter": aura_source_filter_text,
 			})
 			if not aura_filter_text.is_empty():
 				var aura_filter := CardFilter.new()
 				if not aura_filter.parse(aura_filter_text):
 					for message: String in aura_filter.errors:
 						errors.append("光环筛选条件错误：%s" % message)
+			if not aura_source_filter_text.is_empty():
+				var aura_source_filter := CardFilter.new()
+				if not aura_source_filter.parse(aura_source_filter_text):
+					for message: String in aura_source_filter.errors:
+						errors.append("光环来源筛选条件错误：%s" % message)
 		elif call_name == "aura_hand_cost" and args.size() >= 3:
 			aura_hand_costs.append({
 				"side": str(_arg_value(args[0])),

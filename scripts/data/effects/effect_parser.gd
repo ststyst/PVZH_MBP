@@ -131,7 +131,7 @@ const PRIMITIVES: Dictionary = {
 	"deal_damage_each": {"min": 2, "max": 8},
 	"damage_column_relative": {"min": 2, "max": 3},
 	"damage_column": {"min": 1, "max": 2},
-	"aura_buff": {"min": 5, "max": 9},
+	"aura_buff": {"min": 5, "max": 10},
 	"aura_hand_cost": {"min": 3, "max": 3},
 	"aura_spell_cost": {"min": 2, "max": 2},
 	"double_death_effects": {"min": 0, "max": 0},

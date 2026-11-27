@@ -2331,6 +2331,14 @@ func _refresh_auras() -> void:
 			var aura_filter := CardFilter.new()
 			if not filter_text.is_empty() and not aura_filter.parse(filter_text):
 				continue
+			# 来源条件：例如“只有自身处于普通位时该光环才生效”。
+			var source_filter_text: String = str(aura.get("source_filter", "")).strip_edges()
+			if not source_filter_text.is_empty():
+				var source_filter := CardFilter.new()
+				if not source_filter.parse(source_filter_text):
+					continue
+				if not source_filter.matches_values(_aura_filter_values(source), false):
+					continue
 			var aura_attack: int = int(aura.get("attack", 0))
 			var aura_health: int = int(aura.get("health", 0))
 			var aura_shield: int = int(aura.get("shield", 0))
@@ -2423,6 +2431,7 @@ func _aura_filter_values(entity: BattleEntity) -> Dictionary:
 		# 判定用“不含光环自身加成”的当前数值，避免数值光环自我强化/抖动。
 		"attack": entity.attack - entity.aura_attack_bonus,
 		"health": entity.health - entity.aura_health_bonus,
+		"slot": entity.slot,
 	}
 
 
