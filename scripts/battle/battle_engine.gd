@@ -2063,6 +2063,31 @@ func damage_column_relative_at(
 	return total
 
 
+## 对某一列造成伤害：该列没有敌方实体时改为对敌方英雄造成伤害；
+## 有敌方实体时只命中“更靠前”的那个（普通位优先，只有组队位则命中组队位）。
+func damage_column_front(
+	caster_side: String,
+	column: int,
+	amount: int,
+	source_entity: BattleEntity,
+	source_keywords: Array,
+	from_spell: bool,
+	explicit_source: String,
+) -> int:
+	if amount <= 0 or column < 0 or column >= COLUMN_COUNT:
+		return 0
+	var front_entity: BattleEntity = null
+	for entity: BattleEntity in entities:
+		if not entity.alive or entity.side == caster_side or entity.column != column:
+			continue
+		if front_entity == null or entity.slot < front_entity.slot:
+			front_entity = entity
+	if front_entity == null:
+		damage_hero(opposite_side(caster_side), amount, source_keywords, source_entity, explicit_source)
+		return amount
+	return damage_entity(front_entity, amount, source_keywords, from_spell, source_entity, explicit_source)
+
+
 func damage_handle(handle: Variant, amount: int, source_keywords: Array = [], from_spell: bool = false, source_entity: BattleEntity = null, explicit_source: String = "") -> void:
 	if _battle_over():
 		return

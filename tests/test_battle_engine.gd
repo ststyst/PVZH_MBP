@@ -2097,6 +2097,83 @@ func test_temp_buff_removed_at_turn_end_and_independent() -> void:
 	assert_true(entity.has_keyword("frost"), "环境授予的临时词缀不应被临时 Buff 清理")
 
 
+func test_damage_column_front_and_hero_fallback() -> void:
+	var engine: BattleEngine = _started_engine()
+	var z_state: BattlePlayerState = engine.players["z"]
+	var spell: CardData = _make_test_card(
+		"pvzh:test_damage_column_spell",
+		"choose_column()\ndamage_column(3)"
+	)
+	spell.kind = "spell"
+	spell.cost = 1
+	_set_hand(engine, "p", [spell.card_id])
+	engine.players["p"].energy = 10
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "p"
+	var hero_before: int = z_state.hero_health
+	assert_true(bool(engine.play_card("p", 0, {"column": 1}).get("ok", false)))
+	assert_eq(z_state.hero_health, hero_before - 3, "该列没有敌方实体时应打英雄")
+	var front_card: CardData = _make_test_card("pvzh:test_column_front", "")
+	front_card.attack = 1
+	front_card.health = 10
+	var back_card: CardData = _make_test_card("pvzh:test_column_back", "")
+	back_card.attack = 1
+	back_card.health = 10
+	var front_entity: BattleEntity = engine.summon_card("z", front_card, 2, BattleEngine.SLOT_NORMAL)
+	var back_entity: BattleEntity = engine.summon_card("z", back_card, 2, BattleEngine.SLOT_TEAM_UP)
+	_set_hand(engine, "p", [spell.card_id])
+	engine.players["p"].energy = 10
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "p"
+	var hero_before_second: int = z_state.hero_health
+	assert_true(bool(engine.play_card("p", 0, {"column": 2}).get("ok", false)))
+	assert_eq(front_entity.health, 7, "应命中更靠前的普通位实体")
+	assert_eq(back_entity.health, 10, "不应命中组队位实体")
+	assert_eq(z_state.hero_health, hero_before_second, "有敌方实体时不应打英雄")
+
+
+func test_choose_if_destroys_selected_max_attack_entity() -> void:
+	var engine: BattleEngine = _started_engine()
+	var max_card_a: CardData = _make_test_card("pvzh:test_max_attack_a", "")
+	max_card_a.attack = 5
+	max_card_a.health = 5
+	var max_card_b: CardData = _make_test_card("pvzh:test_max_attack_b", "")
+	max_card_b.attack = 5
+	max_card_b.health = 5
+	var low_card: CardData = _make_test_card("pvzh:test_low_attack", "")
+	low_card.attack = 2
+	low_card.health = 5
+	var max_a: BattleEntity = engine.summon_card("z", max_card_a, 0, 0)
+	var max_b: BattleEntity = engine.summon_card("z", max_card_b, 2, 0)
+	var low: BattleEntity = engine.summon_card("z", low_card, 4, 0)
+	var spell: CardData = _make_test_card(
+		"pvzh:test_choose_if_max_spell",
+		"choose(1, 'enemy_entities')\ndestroy(chosen_if(attack == highest_attack('enemy')))"
+	)
+	spell.kind = "spell"
+	spell.cost = 1
+	var p_state: BattlePlayerState = engine.players["p"]
+	_set_hand(engine, "p", [spell.card_id])
+	p_state.energy = 10
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "p"
+	assert_true(bool(engine.play_card("p", 0, {"handles": [max_a]}).get("ok", false)))
+	assert_false(max_a.alive, "玩家选中的并列最高攻击实体应被消灭")
+	assert_true(max_b.alive, "另一个并列最高攻击实体不应被连带消灭")
+	_set_hand(engine, "p", [spell.card_id])
+	p_state.energy = 10
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "p"
+	assert_true(bool(engine.play_card("p", 0, {"handles": [low]}).get("ok", false)))
+	assert_true(low.alive, "选中非最高攻击实体时不应消灭")
+	_set_hand(engine, "p", [spell.card_id])
+	p_state.energy = 10
+	engine.phase = BattleEngine.PHASE_SPELL
+	engine.active_side = "p"
+	assert_true(bool(engine.play_card("p", 0, {"handles": [max_b]}).get("ok", false)))
+	assert_false(max_b.alive, "第二次选择另一个并列最高攻击实体也应被消灭")
+
+
 func test_environment_query_kind_and_owner() -> void:
 	var engine: BattleEngine = _started_engine()
 	var env_card: CardData = cards.get_card("pvzh:sunny_field")

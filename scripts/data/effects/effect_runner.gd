@@ -420,6 +420,12 @@ func _exec_primitive(statement: Dictionary) -> void:
 				_as_string(_eval(arguments[1], {})),
 				relative_offset
 			)
+		"damage_column":
+			var column_damage_amount: int = _as_int(_eval(arguments[0], {}))
+			var column_damage_offset: int = 0
+			if arguments.size() > 1:
+				column_damage_offset = _as_int(_eval(arguments[1], {}))
+			context.damage_column(column_damage_amount, column_damage_offset)
 		"add_random_cards_to_deck", "add_random_cards_to_hand":
 			var card_targets: Array = _resolve_argument_target(arguments[0])
 			if card_targets.size() != 1:

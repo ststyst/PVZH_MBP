@@ -578,14 +578,50 @@ func place_environment(column_offset: int, card_name: String) -> bool:
 
 ## 清除基准列偏移位置的环境；中立环境保持原样。清除不会触发 environment_played。
 func clear_environment(column_offset: int = 0) -> bool:
+	var reference_column: int = _base_reference_column()
+	if reference_column < 0:
+		return false
+	return engine.clear_environment_at(reference_column + column_offset)
+
+
+## 对基准列偏移位置造成伤害：该列没有敌方实体时打敌方英雄，否则打更靠前的敌方实体。
+func damage_column(amount: int, column_offset: int = 0) -> void:
+	if amount <= 0:
+		return
+	var reference_column: int = _base_reference_column()
+	if reference_column < 0:
+		return
+	var target_column: int = reference_column + column_offset
+	if target_column < 0 or target_column >= BattleEngine.COLUMN_COUNT:
+		return
+	var source_entity: BattleEntity = _self_handle if _self_handle is BattleEntity else null
+	var explicit_source: String = ""
+	if source_entity == null:
+		if is_spell_source:
+			explicit_source = "锦囊：%s" % source_name if not source_name.is_empty() else "锦囊"
+		elif get_zone() == "environment":
+			explicit_source = "环境"
+	engine.damage_column_front(
+		caster_side,
+		target_column,
+		amount,
+		source_entity,
+		source_keywords,
+		is_spell_source,
+		explicit_source,
+	)
+
+
+## 基准列：实体/环境为自身列，锦囊为玩家选择（或出牌时指定）的列。
+func _base_reference_column() -> int:
 	var reference_column: int = base_column
 	if reference_column < 0 and _self_handle is BattleEntity:
 		reference_column = _self_handle.column
 	if reference_column < 0:
 		reference_column = chosen_column
-	if reference_column < 0:
-		return false
-	return engine.clear_environment_at(reference_column + column_offset)
+	if reference_column < 0 or reference_column >= BattleEngine.COLUMN_COUNT:
+		return -1
+	return reference_column
 
 
 ## 在自身位置（实体能力：自身列/格；锦囊：选择的列/格）尝试召唤一个符合筛选的实体。

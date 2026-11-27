@@ -599,6 +599,25 @@ func test_new_queries_and_primitives() -> void:
 	assert_false(query_script.has_errors(), "数值查询应可解析：%s" % [query_script.errors])
 
 
+func test_damage_column_and_choose_if_max_attack() -> void:
+	_run("damage_column(3)")
+	assert_eq(context.calls.size(), 1)
+	if not context.calls.is_empty():
+		assert_eq(str(context.calls[0].get("op", "")), "damage_column")
+		assert_eq(int(context.calls[0].get("amount", 0)), 3)
+		assert_eq(int(context.calls[0].get("column_offset", 0)), 0)
+	context.calls.clear()
+	_run("damage_column(2, -1)")
+	if not context.calls.is_empty():
+		assert_eq(int(context.calls[0].get("column_offset", 0)), -1)
+	var script: CardEffectScript = CardEffectScript.parse(
+		"choose(1, 'enemy_entities')\n"
+		+ "destroy(chosen_if(attack == highest_attack('enemy')))"
+	)
+	assert_false(script.has_errors(), "choose_if + highest_attack 应可解析：%s" % [script.errors])
+	assert_true(script.requires_single_target(), "应识别为需要选择目标")
+
+
 func test_choose_column_is_declaration_only() -> void:
 	var script: CardEffectScript = CardEffectScript.parse(
 		"choose_column()\nplace_environment(0, 'water')"

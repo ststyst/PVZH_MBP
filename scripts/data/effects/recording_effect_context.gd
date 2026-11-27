@@ -200,6 +200,10 @@ func damage_column_relative(amount: int, direction: String, column_offset: int =
 	})
 
 
+func damage_column(amount: int, column_offset: int = 0) -> void:
+	_record("damage_column", {"amount": amount, "column_offset": column_offset})
+
+
 func heal(target, amount: int) -> void:
 	_record("heal", {"target": target, "amount": amount})
 

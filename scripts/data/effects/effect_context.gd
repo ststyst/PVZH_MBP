@@ -150,6 +150,11 @@ func damage_column_relative(_amount: int, _direction: String, _column_offset: in
 	push_warning("EffectContext.damage_column_relative 未实现：需要战斗层提供")
 
 
+## 对基准列偏移位置造成伤害；该列没有敌方实体时改为对敌方英雄造成伤害。
+func damage_column(_amount: int, _column_offset: int = 0) -> void:
+	push_warning("EffectContext.damage_column 未实现：需要战斗层提供")
+
+
 func heal(_target, _amount: int) -> void:
 	push_warning("EffectContext.heal 未实现：需要战斗层提供")
 

@@ -49,6 +49,7 @@
 | `gain_max_health(target, delta)` | 目标、增减值 | 修改实体/英雄生命上限 |
 | `deal_damage_each(target, d1[, d2…])` | 目标数组、伤害序列 | 目标逐个承受对应伤害；伤害不足时重复最后一个 |
 | `damage_column_relative(amount, direction[, offset])` | 数值、方向、可选偏移 | 以基准列为原点向某方向逐列造成伤害 |
+| `damage_column(amount[, offset])` | 数值、可选相对偏移 | 对基准列偏移位置造成伤害：该列没有敌方实体时打敌方英雄，否则打更靠前的敌方实体 |
 | `gain_energy(amount)` | 数值 | 获得费用 |
 | `give_keyword(target, keyword, value = 0)` | 目标、词缀 id、数值 | 赋予词缀；已有同词缀则累加数值（如先攻 2 + 先攻 3 = 先攻 5）；受卡牌种类白名单限制 |
 | `give_keyword` 的 `bullseye` | — | 伤害类型变为必中；必中伤害不增加充能护盾充能 |
@@ -481,6 +482,35 @@ summon("gnoll", 1, 5, 'has_enemy')  # 优先在有敌方实体的列召唤
 - 列偏好（第 4 个参数）：`'no_enemy'` / `'has_enemy'`；先判断符合偏好的列里有没有能合法召唤的，有则只在其中随机，没有则回退到原本的全范围随机
 - 召唤不会挤开已有实体；列满或不满足组队条件时该列召唤失败
 - 每一条 `summon(...)` 语句只召唤一个实体；需要多个实体就写多条语句
+
+### 按列伤害与 choose_if
+
+锦囊（选择一列，对该列造成 3 点伤害：空列打英雄，有敌方实体打最靠前的那个）：
+
+```text
+choose_column()
+damage_column(3)
+```
+
+实体能力（对自身右侧一列造成 2 点伤害）：
+
+```text
+when enter:
+	damage_column(2, 1)
+```
+
+锦囊（选择敌方攻击力最大的一个实体并消灭；并列时由玩家在并列者中选择一个）：
+
+```text
+choose(1, 'enemy_entities')
+destroy(chosen_if(attack == highest_attack('enemy')))
+```
+
+- `damage_column` 的基准列：实体/环境用自身列，锦囊用 `choose_column()` 选中的列；可选偏移相对基准列
+- 该列有敌方实体时**只命中更靠前的一个**（普通位优先；该列只有组队位实体时命中它）
+- 该列没有敌方实体时改为对敌方英雄造成伤害
+- 伤害携带施放者词缀；不算攻击，不触发 `attack` / `attacked` / `after_attack` 等攻击事件
+- 锦囊来源的伤害对敌方锦囊免疫实体无效
 
 ### 列、实体事件与环境
 
