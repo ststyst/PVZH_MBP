@@ -16,6 +16,8 @@ const DISPLAY_SIZE_RATIO: float = 0.95
 const ART_SCALE_MULTIPLIER: float = 1.22
 ## 实体背景向下显示偏移（像素，正数向下；想改位置只改这里）。
 const BACKGROUND_OFFSET_Y: float = 8.0
+## 实体背景额外放大倍数；>1 时背景允许超出实体放置格。
+const BACKGROUND_SCALE_MULTIPLIER: float = 1.0
 const ART_BOX: Vector2 = Vector2(124, 58)
 const ART_CENTER: Vector2 = Vector2(68, 34)
 const MODE_WHOLE: String = "whole"
@@ -207,7 +209,7 @@ func _apply_background(rarity: String) -> void:
 	var cover_scale: float = maxf(
 		_view_size().x / float(texture.get_width()),
 		_view_size().y / float(texture.get_height()),
-	)
+	) * BACKGROUND_SCALE_MULTIPLIER
 	background_sprite.scale = Vector2(cover_scale, cover_scale)
 
 

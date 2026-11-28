@@ -42,7 +42,6 @@ mouse_filter = 2
 
 [node name="BackgroundRoot" type="Control" parent="WholeRoot" unique_id=1427477866]
 unique_name_in_owner = true
-clip_contents = true
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -63,7 +62,6 @@ position = Vector2(68, 42)
 
 [node name="ArtRoot" type="Control" parent="WholeRoot" unique_id=1625685971]
 unique_name_in_owner = true
-clip_contents = true
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0

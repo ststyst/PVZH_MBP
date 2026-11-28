@@ -301,6 +301,16 @@ func _get_entity_view(button: Button) -> BattleEntityView:
 	view.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_entity_views[button] = view
 	return view
+
+
+## 场上实体显示层级：列越靠右越高；同列内越靠下越高，保证超格背景/插画互相遮挡正确。
+func _entity_view_z_index(column: int, side: String, slot: int) -> int:
+	var row_from_top: int
+	if side == "z":
+		row_from_top = 0 if slot == BattleEngine.SLOT_TEAM_UP else 1
+	else:
+		row_from_top = 2 if slot == BattleEngine.SLOT_NORMAL else 3
+	return column * 4 + row_from_top + 1
 # ----- 起手 -----
 
 func _show_mulligan() -> void:
@@ -1064,6 +1074,7 @@ func _update_slot_button(
 			button.disabled = true
 		return
 	var view: BattleEntityView = _get_entity_view(button)
+	view.z_index = _entity_view_z_index(column, side, slot)
 	if entity.has_buff("buried") and entity.side != player_side:
 		view.visible = false
 		button.text = "墓碑"
