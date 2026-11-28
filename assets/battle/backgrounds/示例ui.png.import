@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://chb17x8ig8btf"
-path="res://.godot/imported/super_rare.png-9a81528676ff50e7580e7b726b134a48.ctex"
+uid="uid://dqbx5h5550uvt"
+path="res://.godot/imported/示例ui.png-ddf4c45b2cc0bcf4bb1f5d4d6e0955a4.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/battle/entities/borders/super_rare.png"
-dest_files=["res://.godot/imported/super_rare.png-9a81528676ff50e7580e7b726b134a48.ctex"]
+source_file="res://assets/battle/backgrounds/示例ui.png"
+dest_files=["res://.godot/imported/示例ui.png-ddf4c45b2cc0bcf4bb1f5d4d6e0955a4.ctex"]
 
 [params]
 

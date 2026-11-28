@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cegvo3n403ind"
-path="res://.godot/imported/legend.png-ce3fa31abe2d1a39c9eac61cd6c3c643.ctex"
+uid="uid://520q5134l2fe"
+path="res://.godot/imported/实体背景3.png-45f146c5762534c8e3927bb7a7f6a403.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/battle/entities/borders/legend.png"
-dest_files=["res://.godot/imported/legend.png-ce3fa31abe2d1a39c9eac61cd6c3c643.ctex"]
+source_file="res://assets/battle/entities/borders/实体背景3.png"
+dest_files=["res://.godot/imported/实体背景3.png-45f146c5762534c8e3927bb7a7f6a403.ctex"]
 
 [params]
 

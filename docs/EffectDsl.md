@@ -1079,44 +1079,44 @@ when position_changed:
 ```text
 # 1) 对每个敌方实体按自己的当前数值分流（for_each + if/elif/else）
 when enter:
-    for_each(all_enemies) as e:
-        if health <= 2:
-            destroy(e)
-        elif has_keyword('frost'):
-            deal_damage(e, 1)
-        else:
-            gain_energy(1)
+	for_each(all_enemies) as e:
+		if health <= 2:
+			destroy(e)
+		elif has_keyword('frost'):
+			deal_damage(e, 1)
+		else:
+			gain_energy(1)
 
 # 2) 只处理筛选后的敌方实体（卡牌筛选语法 + 循环）
 when enter:
-    for_each(entities_matching(enemy_entities, "class == 'soldier'")) as e:
-        buff_stats(e, 0, 1)
+	for_each(entities_matching(enemy_entities, "class == 'soldier'")) as e:
+		buff_stats(e, 0, 1)
 
 # 3) 挑当前攻击力最高的敌方，吃 3 点伤害
 when enter:
-    deal_damage(highest(all_enemies, 'attack'), 3)
+	deal_damage(highest(all_enemies, 'attack'), 3)
 
 # 4) 先收窄再挑：当前生命 >= 5 的敌方里防御最高的，冻住
 when enter:
-    apply_buff(highest(all_enemies, 'defense', health >= 5), 'frozen')
+	apply_buff(highest(all_enemies, 'defense', health >= 5), 'frozen')
 
 # 5) 我方费用最高的、还没有组队的实体获得组队
 when turn_end:
-    give_keyword(highest(all_allies, 'cost', not has_keyword('team_up')), 'team_up')
+	give_keyword(highest(all_allies, 'cost', not has_keyword('team_up')), 'team_up')
 
 # 6) 遍历本次造成有效伤害的所有目标（事件回调数组作为循环源）
 when damage_dealt:
-    for_each(damage_targets) as hurt:
-        if attack(hurt) > 4:
-            gain_energy(1)
+	for_each(damage_targets) as hurt:
+		if attack(hurt) > 4:
+			gain_energy(1)
 
 # 7) 筛选 + 极值：只在我方豆族里找当前生命最低的，治疗 3 点
 when turn_end:
-    heal(lowest(entities_matching(all_allies, "tribe == 'pea'"), 'health'), 3)
+	heal(lowest(entities_matching(all_allies, "tribe == 'pea'"), 'health'), 3)
 
 # 8) 多职业类别 / 词缀组合筛选
 when enter:
-    destroy(entities_matching(enemy_entities, "category == 'growth' and keyword == 'team_up' and cost <= 4"))
+	destroy(entities_matching(enemy_entities, "category == 'growth' and keyword == 'team_up' and cost <= 4"))
 ```
 
 ## 八、书写规则
@@ -1695,14 +1695,14 @@ deal_damage_each(damage_targets, 1)
 
 ```text
 when enter:
-    deal_damage(enemy_hero_or_entities, 2)
+	deal_damage(enemy_hero_or_entities, 2)
 
 when damage_dealt:
-    for_each(damage_targets) as t:
-        if class == 'hero':
-            gain_energy(1)
-        else:
-            give_keyword(t, 'frost')
+	for_each(damage_targets) as t:
+		if class == 'hero':
+			gain_energy(1)
+		else:
+			give_keyword(t, 'frost')
 ```
 
 要点：
@@ -1720,9 +1720,9 @@ when damage_dealt:
 
 ```text
 when damage_dealt:
-    for_each(damage_targets) as t:
-        if class == 'hero' and side == 'enemy':
-            draw_cards(1)
+	for_each(damage_targets) as t:
+		if class == 'hero' and side == 'enemy':
+			draw_cards(1)
 ```
 
 想对实体目标套用卡牌筛选语法，可以配合 `entities_matching` 再用英雄事实分流；
@@ -1747,13 +1747,13 @@ when damage_dealt:
 ```text
 # 这是"我被打了"——默认只响应自己；要观察友方受伤需要过滤
 when damaged(side == 'ally'):
-    ...
+	...
 
 # 这是"我打出了有效伤害"——能拿到被打的目标数组
 when damage_dealt:
-    for_each(damage_targets) as t:
-        if class == 'hero':
-            ...
+	for_each(damage_targets) as t:
+		if class == 'hero':
+			...
 ```
 
 ### 伤害来源事实（`damage_source` / `damage_amount`）
@@ -1770,18 +1770,18 @@ when damage_dealt:
 ```text
 # 受伤时给来源上 Buff（先判类型：来源为空或为英雄时自动跳过）
 when damaged:
-    if is_entity(damage_source):
-        apply_buff(damage_source, 'hatred')
+	if is_entity(damage_source):
+		apply_buff(damage_source, 'hatred')
 
 # 带刺玫瑰式写法：友方受伤 → 消灭伤害来源实体
 when damaged(side == 'ally'):
-    if is_entity(damage_source):
-        destroy(damage_source)
+	if is_entity(damage_source):
+		destroy(damage_source)
 
 # 按伤害量分流
 when damaged:
-    if damage_amount >= 3:
-        draw_cards(1)
+	if damage_amount >= 3:
+		draw_cards(1)
 ```
 
 - `damage_source` 直接当目标传给原语是安全的：空数组会被原语自动跳过（`destroy(damage_source)` 在没有来源时什么都不做）。
@@ -1792,7 +1792,7 @@ when damaged:
 
 ```text
 when hero_damaged(side == 'ally'):
-    ...
+	...
 ```
 
 - 事件目标是**受伤的英雄句柄**（`hero:p` / `hero:z`）。英雄没有自己的技能，所以监听方必须写过滤条件
@@ -1810,7 +1810,7 @@ when hero_damaged(side == 'ally'):
 
 ```text
 for_each(<目标表达式>) as <名称>:
-    <任意语句块>
+	<任意语句块>
 ```
 
 - `<目标表达式>`：任何能得到句柄或句柄数组的表达式——
@@ -1845,20 +1845,20 @@ for_each(<目标表达式>) as <名称>:
 
 ```text
 for_each(all_enemies) as e:
-    if health <= 3:
-        destroy(e)
-    elif has_keyword('frost'):
-        buff_stats(e, 0, 2)
-    else:
-        deal_damage(e, 1)
+	if health <= 3:
+		destroy(e)
+	elif has_keyword('frost'):
+		buff_stats(e, 0, 2)
+	else:
+		deal_damage(e, 1)
 ```
 
 ### 条件分支
 
 ```text
 for_each(all_enemies) as e:
-    if cost >= 5 and not has_keyword('spell_immune'):
-        destroy(e)
+	if cost >= 5 and not has_keyword('spell_immune'):
+		destroy(e)
 ```
 
 - `elif` 可连续使用，等价于 `else:` 里再套一个 `if`。
@@ -1886,12 +1886,12 @@ for_each(all_enemies) as e:
 
 ```text
 when damage_dealt:
-    for_each(damage_targets) as hurt:
-        for_each(all_allies) as friend:
-            if health > 0:
-                heal(friend, 1)
-        if attack(hurt) > 4:
-            gain_energy(1)
+	for_each(damage_targets) as hurt:
+		for_each(all_allies) as friend:
+			if health > 0:
+				heal(friend, 1)
+		if attack(hurt) > 4:
+			gain_energy(1)
 ```
 
 上例中内层的 `health` 是 `friend` 的当前生命；内层循环结束后，`attack(hurt)` 用双参数查询读外层目标。

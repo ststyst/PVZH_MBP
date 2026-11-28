@@ -264,9 +264,9 @@ damage == 0 = 未造成有效伤害
    （生命 ≤ 0 但尚未移除），所以 `after_attack` 里的 `all_enemies` / `entities_matching(...)`
    仍能看到它
 10. **狂热 `frenzy`**：击杀被命中实体后先结算死亡，再追加一次完整攻击（递归上限 8），
-    追加攻击带 `extra_attack` 并拥有自己的 `after_attack`
+	追加攻击带 `extra_attack` 并拥有自己的 `after_attack`
 11. `damage_dealt`：每次事件派发结束时按来源批量结算，目标汇总到 `damage_targets`
-    （实体与英雄目标都会包含）
+	（实体与英雄目标都会包含）
 
 ### 其他阶段里的攻击
 
@@ -512,12 +512,12 @@ damage == 0 = 未造成有效伤害
 
 ```text
 for_each(all_enemies) as e:
-    if health <= 3:
-        destroy(e)
-    elif cost >= 5:
-        deal_damage(e, 2)
-    else:
-        deal_damage(e, 1)
+	if health <= 3:
+		destroy(e)
+	elif cost >= 5:
+		deal_damage(e, 2)
+	else:
+		deal_damage(e, 1)
 ```
 
 玩法语义：
@@ -634,8 +634,8 @@ deal_damage(entities_matching(enemy_entities, "keyword == 'frost'"), 1)
 
 ```text
 when damaged(side == 'ally'):
-    if is_entity(damage_source):
-        destroy(damage_source)
+	if is_entity(damage_source):
+		destroy(damage_source)
 ```
 
 ## 事件触发器归档（2026-11-25）

@@ -21,10 +21,10 @@
 
 ```text
 BattleScreen（只读 BattleViewState + 发命令）
-        │ BattleCommand
+		│ BattleCommand
 BattleClientSession ── ENet/UDP ── BattleServerSession
-                                      │
-                                  BattleEngine
+									  │
+								  BattleEngine
 ```
 
 已加入的基础代码：
@@ -77,8 +77,8 @@ BattleClientSession ── ENet/UDP ── BattleServerSession
 
 ```text
 when enter:
-    choose(2, "other_allies")
-    buff_stats(chosen, 2, 0)
+	choose(2, "other_allies")
+	buff_stats(chosen, 2, 0)
 ```
 
 - 客户端选牌、可选 0~2 个其他友方实体，连同放置位置一起发 `play_card.handles`
@@ -92,7 +92,7 @@ when enter:
 
 ```text
 when ally_die(zone == 'deck'):
-    gain_attack(1)
+	gain_attack(1)
 ```
 
 - 服务器维护牌库卡牌实例的 `attack_bonus`，不发给任何客户端
@@ -106,8 +106,8 @@ when ally_die(zone == 'deck'):
 
 ```text
 when ally_die(zone == 'hand'):
-    gain_attack(1)
-    reduce_cost(1)
+	gain_attack(1)
+	reduce_cost(1)
 ```
 
 - 服务器修改手牌实例修正，给本人发 `hand_card_updated`（instance_id、有效攻击/费用）
@@ -121,9 +121,9 @@ when ally_die(zone == 'hand'):
 
 ```text
 when enter:
-    if marker_count("special_marker_1") > 1:
-        add_marker("special_marker_2", 3)
-        add_marker("special_marker_3", -1)
+	if marker_count("special_marker_1") > 1:
+		add_marker("special_marker_2", 3)
+		add_marker("special_marker_3", -1)
 ```
 
 - `BattlePlayerState.markers: Dictionary[String,int]`，名字任意英文字符串，数量允许负数

@@ -13,7 +13,7 @@ const DESIGN_SIZE: Vector2 = Vector2(136, 84)
 ## 实体显示占可放置按钮的比例；0.95 表示四周各留 2.5% 空隙
 const DISPLAY_SIZE_RATIO: float = 0.95
 ## 实体插画额外放大倍数
-const ART_SCALE_MULTIPLIER: float = 2.0
+const ART_SCALE_MULTIPLIER: float = 1.22
 const ART_BOX: Vector2 = Vector2(124, 58)
 const ART_CENTER: Vector2 = Vector2(68, 34)
 const MODE_WHOLE: String = "whole"

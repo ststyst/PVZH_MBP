@@ -32,8 +32,8 @@ addons/          第三方插件（godot_ai 用于编辑器联调）
 
 ```
 表现层（scenes + scripts/ui）  ──调用──▶  服务层（scripts/core 单例）  ──调用──▶  数据层（scripts/data）
-                                        │
-                                        └──▶ 网络层（scripts/net，M5）
+										│
+										└──▶ 网络层（scripts/net，M5）
 ```
 
 - 表现层：只读单例状态、发 UI 事件，不直接读写文件、不直接碰 socket。
