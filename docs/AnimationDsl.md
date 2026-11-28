@@ -25,6 +25,22 @@ when cast:       # 自己打出的法术结算时
 
 等待指定秒数，常用于“先播放自身攻击动画，等待几秒后播放目标受击动画”。
 
+### move_to(目标, 秒)
+
+把**自身视图整体平移**到本次动作的目标位置上（攻击者扑到受击者身上就是用它）。
+
+- 目标只能是 `target`（可与 `play_animation` 一样是实体或英雄）
+- 目标格坐标**运行时才确定**，所以不要在 AnimationPlayer/AnimatedSprite2D 里烘焙绝对坐标；
+  这条指令在播放时用两个视图的 `global_position` 相减得到相对位移
+- 目标实体已经死亡/视图已隐藏时，会自动用 ghost 视图定位
+- 目标是英雄（没有场上视图）时，对齐到该英雄的按钮中心（例如“扑向敌方英雄”）
+- 平移用的是 `position` 上的 Tween，**不要**在 `whole` 模式的动画轨道里再写 `position`，两者会互相抢属性
+- 位移期间该视图的 `z_index` 会被临时抬高，并临时抬升所在列，保证不被同格/相邻列遮住
+
+### move_back(秒)
+
+回到 `move_to` 之前的位置。即使脚本里忘了写，动画播完后也会自动复位。
+
 ### play_fx(目标, "特效名")
 
 实例化 `assets/battle/fx/<特效名>.tscn`（烟雾/爆炸等通用特效，场景由你自己制作）。
@@ -50,6 +66,17 @@ when cast:
 	wait(0.2)
 	play_animation(target, "magic_hit", "art")
 	play_fx(global, "explosion")
+```
+
+扑击示例（移动到受击者位置 → 挥击/受击 → 归位）：
+
+```text
+when attack:
+	move_to(target, 0.12)
+	play_animation(self, "attack_swing", "art")
+	play_animation(target, "hit_flash", "art")
+	wait(0.18)
+	move_back(0.12)
 ```
 
 单行写法：
@@ -103,6 +130,8 @@ when attack: play_animation(self, "swing", "whole"); wait(0.2); play_animation(t
 
 - `BattleEntityView.play_animation(name, mode) -> float`：播放并返回时长
 - `BattleEntityView.play_fx(name) -> Node`
+- `BattleEntityView.move_by(offset, 秒) -> float` / `move_home(秒) -> float` / `reset_motion()`：
+  位移动画；`move_to` / `move_back` 就是调它们，`offset` 由 UI 在播放时按目标视图算出
 - `BattleEngine.animation_cue(trigger, actor, target)` 信号：本地/AI 战斗的动画请求
 - 卡牌载入时会解析 `animation` 列到 `CardData.animation_script`；语法错误记入
   `CardDatabase.load_errors` 与编译器报告

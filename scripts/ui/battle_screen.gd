@@ -12,6 +12,8 @@ const AI_INTERVAL: float = 0.7
 const COMBAT_COLUMN_GAP: float = 0.2
 ## 等待动画队列播完的上限（秒）：动画异常（循环/缺失时长）时兜底，避免战斗卡死。
 const ANIMATION_WAIT_TIMEOUT: float = 8.0
+## 实体位移动画期间，临时抬高「该实体所在列」的层级（跨列扑击不被相邻列压住）。
+const MOTION_COLUMN_Z_INDEX: int = 30
 ## 环境 id -> 每列背景图路径（留空 = 不显示）。其它环境仍可用
 ## set_environment_background_path() 在运行时动态注册。
 const ENVIRONMENT_BACKGROUND_PATHS: Dictionary = {
@@ -1193,7 +1195,9 @@ func _update_slot_button(
 			button.disabled = true
 		return
 	var view: BattleEntityView = _get_entity_view(button)
-	view.z_index = _entity_view_z_index(column, side, slot)
+	# 位移动画期间不改层级（否则扑向目标时会被同格/相邻格压住）。
+	if not view.is_moving():
+		view.z_index = _entity_view_z_index(column, side, slot)
 	if entity.has_buff("buried") and entity.side != player_side:
 		view.visible = false
 		button.text = "墓碑"
@@ -1485,6 +1489,9 @@ func _play_animation_cue(cue: Dictionary) -> void:
 		return
 	var is_death: bool = str(cue.get("trigger", "")) == "die"
 	var ghosts: Array[BattleEntityView] = []
+	var moved_views: Array[BattleEntityView] = []
+	# 跨列扑击（三连打/广域打击）时，需要把整列临时抬到别的列之上。
+	var boosted_zones: Array[Control] = []
 	var longest_duration: float = 0.0
 	for raw_instruction: Variant in instructions:
 		if not raw_instruction is Dictionary:
@@ -1513,11 +1520,86 @@ func _play_animation_cue(cue: Dictionary) -> void:
 				)
 				if fx_view != null:
 					fx_view.play_fx(str(instruction.get("fx", "")))
+			"move_to":
+				# 目标坐标运行时才知道：用目标视图（实体或其 ghost）/英雄按钮算相对位移。
+				var mover: BattleEntityView = _resolve_animation_view(
+					"self", actor, cue.get("target"), ghosts, is_death
+				)
+				var offset: Vector2 = _animation_move_offset(mover, cue.get("target"), ghosts)
+				if mover != null and offset != Vector2.INF:
+					longest_duration = maxf(
+						longest_duration,
+						mover.move_by(offset, float(instruction.get("seconds", 0.1))),
+					)
+					if not moved_views.has(mover):
+						moved_views.append(mover)
+					var zone: Control = _column_zone_for_view(mover)
+					if zone != null and not boosted_zones.has(zone):
+						boosted_zones.append(zone)
+						zone.z_index = MOTION_COLUMN_Z_INDEX
+			"move_back":
+				for mover: BattleEntityView in moved_views:
+					if is_instance_valid(mover):
+						longest_duration = maxf(
+							longest_duration,
+							mover.move_home(float(instruction.get("seconds", 0.1))),
+						)
 	if longest_duration > 0.0:
 		await get_tree().create_timer(longest_duration).timeout
+	# 兜底复位：脚本忘了写 move_back 时也不会让实体停在别人格子上。
+	for mover: BattleEntityView in moved_views:
+		if is_instance_valid(mover):
+			mover.reset_motion()
+	for zone: Control in boosted_zones:
+		if is_instance_valid(zone):
+			zone.z_index = 0
 	for ghost: BattleEntityView in ghosts:
 		if is_instance_valid(ghost):
 			ghost.queue_free()
+
+
+## 找到实体视图所在的「列容器」（Board 的直接子节点），用于跨列扑击时临时抬升整列层级。
+func _column_zone_for_view(view: BattleEntityView) -> Control:
+	if view == null or _board == null:
+		return null
+	var node: Node = view
+	while node != null:
+		if node.get_parent() == _board:
+			return node as Control
+		node = node.get_parent()
+	return null
+
+
+## 计算「从 actor_view 位移到本次事件目标」的相对偏移；无可用目标时返回 Vector2.INF。
+## 实体目标用视图左上角对齐（同尺寸视图正好重叠）；英雄目标对齐英雄按钮中心。
+func _animation_move_offset(
+	actor_view: BattleEntityView, target: Variant, ghosts: Array[BattleEntityView]
+) -> Vector2:
+	if actor_view == null:
+		return Vector2.INF
+	if target is BattleEntity:
+		var target_view: BattleEntityView = _resolve_animation_view(
+			"target", null, target, ghosts, false
+		)
+		if target_view == null or not is_instance_valid(target_view):
+			return Vector2.INF
+		return target_view.global_position - actor_view.global_position
+	if target is String and str(target).begins_with("hero:"):
+		var button: Button = _hero_button_for_side(str(target).substr(5))
+		if button == null:
+			return Vector2.INF
+		var target_center: Vector2 = button.global_position + button.size * 0.5
+		var actor_center: Vector2 = actor_view.global_position + actor_view.size * 0.5
+		return target_center - actor_center
+	return Vector2.INF
+
+
+func _hero_button_for_side(side: String) -> Button:
+	if side == player_side:
+		return _player_hero_button
+	if side == enemy_side:
+		return _enemy_hero_button
+	return null
 
 
 func _resolve_animation_view(

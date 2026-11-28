@@ -77,3 +77,43 @@ func test_global_is_rejected_for_entity_animation() -> void:
 		"when attack:\n    play_animation(global, \"a\", \"whole\")"
 	)
 	assert_true(script.errors.size() >= 1, "play_animation(global) 应报错")
+
+
+func test_move_primitives() -> void:
+	# 攻击时扑到目标身上再回来：位置由播放时解析，动画资源里不烘焙坐标。
+	var source: String = """
+when attack:
+    move_to(target, 0.12)
+    play_animation(self, "slash", "art")
+    play_animation(target, "hit", "art")
+    wait(0.18)
+    move_back(0.12)
+"""
+	var script: CardAnimationScript = CardAnimationScript.parse(source)
+	assert_eq(script.errors.size(), 0, "move_to/move_back 应通过：%s" % [script.errors])
+	var attack: Array = script.instructions_for("attack")
+	assert_eq(attack.size(), 5)
+	assert_eq(str(attack[0].get("type", "")), "move_to")
+	assert_eq(str(attack[0].get("target", "")), "target")
+	assert_eq(float(attack[0].get("seconds", 0.0)), 0.12)
+	assert_eq(str(attack[1].get("type", "")), "play_animation")
+	assert_eq(str(attack[4].get("type", "")), "move_back")
+	assert_eq(float(attack[4].get("seconds", 0.0)), 0.12)
+	# 存取往返后位移指令仍然保留（编译器会写进 .cardpack）。
+	var restored: CardAnimationScript = CardAnimationScript.from_program(script.to_program())
+	var restored_attack: Array = restored.instructions_for("attack")
+	assert_eq(str(restored_attack[0].get("type", "")), "move_to")
+	assert_eq(str(restored_attack[4].get("type", "")), "move_back")
+
+
+func test_move_errors() -> void:
+	var script: CardAnimationScript = CardAnimationScript.parse(
+		"when attack:\n"
+		+ "    move_to(self, 0.1)\n"
+		+ "    move_to(target)\n"
+		+ "    move_to(target, \"快的\")\n"
+		+ "    move_back(0.1, 0.2)\n"
+		+ "    move_back()"
+	)
+	assert_eq(script.errors.size(), 5, "五个非法位移语句都应报错：%s" % [script.errors])
+	assert_true(script.instructions_for("attack").is_empty(), "报错的语句不应进入指令表")

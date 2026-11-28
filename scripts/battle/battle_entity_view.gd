@@ -29,6 +29,8 @@ const ANIMATION_LIBRARIES: Dictionary = {
 	MODE_ART: "res://assets/animations/art.tres",
 }
 const FX_DIR: String = "res://assets/battle/fx/"
+## 位移期间的临时 z_index：保证扑向目标时不会被同格/相邻格的视图压住。
+const MOTION_Z_INDEX: int = 40
 
 @onready var whole_root: Control = %WholeRoot
 @onready var background_root: Control = %BackgroundRoot
@@ -48,6 +50,11 @@ const FX_DIR: String = "res://assets/battle/fx/"
 
 
 var _last_card: CardData = null
+## 位移状态：首次 move_by 时记住原位，move_back / reset_motion 用它复位。
+var _motion_active: bool = false
+var _motion_home: Vector2 = Vector2.ZERO
+var _motion_saved_z: int = 0
+var _motion_tween: Tween = null
 
 
 func _ready() -> void:
@@ -172,6 +179,63 @@ func stop_animation(mode: String = MODE_WHOLE) -> void:
 	var player: AnimationPlayer = _player_for_mode(mode)
 	if player != null:
 		player.stop()
+
+
+## 把整个视图平移到「当前显示位置 + offset」，返回时长（秒）。
+## 用于「攻击者扑到受击者身上」这类运行时才知道坐标的位移：
+## 目标坐标由 UI 在播放动画时用两个视图的 global_position 相减得到。
+func move_by(offset: Vector2, seconds: float) -> float:
+	var duration: float = maxf(seconds, 0.01)
+	if not _motion_active:
+		_motion_home = position
+		_motion_saved_z = z_index
+		_motion_active = true
+	z_index = maxi(z_index, MOTION_Z_INDEX)
+	_start_motion_tween(_motion_home + offset, duration)
+	return duration
+
+
+## 回到本次移动前的位置，返回时长（秒）；没移动过则返回 0。
+func move_home(seconds: float) -> float:
+	if not _motion_active:
+		return 0.0
+	var duration: float = maxf(seconds, 0.01)
+	_start_motion_tween(_motion_home, duration)
+	if _motion_tween != null and _motion_tween.is_valid():
+		_motion_tween.finished.connect(_on_motion_finished, CONNECT_ONE_SHOT)
+	return duration
+
+
+## 立即复位（动画脚本没写 move_back、或视图被复用/打断时兜底）。
+func reset_motion() -> void:
+	if _motion_tween != null and _motion_tween.is_valid():
+		_motion_tween.kill()
+	_motion_tween = null
+	if not _motion_active:
+		return
+	position = _motion_home
+	z_index = _motion_saved_z
+	_motion_active = false
+
+
+func is_moving() -> bool:
+	return _motion_active
+
+
+func _start_motion_tween(target_position: Vector2, duration: float) -> void:
+	if _motion_tween != null and _motion_tween.is_valid():
+		_motion_tween.kill()
+	_motion_tween = create_tween()
+	_motion_tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_motion_tween.tween_property(self, "position", target_position, duration)
+
+
+func _on_motion_finished() -> void:
+	_motion_tween = null
+	if not _motion_active:
+		return
+	z_index = _motion_saved_z
+	_motion_active = false
 
 
 ## 播放通用特效场景（assets/battle/fx/<name>.tscn）。

@@ -3,9 +3,11 @@ extends RefCounted
 ## 卡牌动画伪代码（与能力 DSL 同样采用 when 块 + 函数调用风格）：
 ##
 ## when attack:
+##     move_to(target, 0.12)
 ##     play_animation(self, "slash", "whole")
-##     wait(0.3)
 ##     play_animation(target, "hit", "art")
+##     wait(0.18)
+##     move_back(0.12)
 ## when ability:
 ##     play_animation(self, "skill", "whole")
 ## when die:
@@ -13,6 +15,8 @@ extends RefCounted
 ##
 ## 模式：whole（背景+外观+数值整体）/ background（仅背景）/ art（仅外观）。
 ## 动画名对应 assets/animations/<mode>.tres 中的 AnimationLibrary 动画名。
+## move_to / move_back 是「运行时解析位置」的位移：目标格坐标在战斗时才确定，
+## 所以不要在 AnimatedSprite2D/AnimationPlayer 里烘焙绝对坐标，交给这两个原语。
 
 const TRIGGERS: Array[String] = ["attack", "ability", "die", "cast"]
 const SELECTORS: Array[String] = ["self", "target", "global"]
@@ -166,6 +170,40 @@ func _parse_statement(text: String, trigger: String, line: int) -> void:
 				"type": "play_fx",
 				"target": selector,
 				"fx": fx_name,
+				"line": line,
+			})
+		"move_to":
+			# move_to(target, 时长)：把自身视图平移到本次事件的目标身上
+			# （目标可以是实体，也可以是英雄；位置在播放时解析）。
+			if args.size() != 2:
+				_error("move_to 需要 2 个参数：目标、时长（秒）", line)
+				return
+			var selector: String = _unquote(args[0])
+			if selector != "target":
+				_error("move_to 的目标只能是 target（自身没有位移意义）", line)
+				return
+			var seconds_text: String = _unquote(args[1])
+			if not seconds_text.is_valid_float():
+				_error("move_to 的时长必须是数字", line)
+				return
+			(blocks[trigger] as Array).append({
+				"type": "move_to",
+				"target": "target",
+				"seconds": maxf(float(seconds_text), 0.0),
+				"line": line,
+			})
+		"move_back":
+			# move_back(时长)：回到本次移动前的位置。
+			if args.size() != 1:
+				_error("move_back 需要 1 个参数（秒）", line)
+				return
+			var seconds_text: String = _unquote(args[0])
+			if not seconds_text.is_valid_float():
+				_error("move_back 的时长必须是数字", line)
+				return
+			(blocks[trigger] as Array).append({
+				"type": "move_back",
+				"seconds": maxf(float(seconds_text), 0.0),
 				"line": line,
 			})
 		_:
