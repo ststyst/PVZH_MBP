@@ -127,6 +127,19 @@ func setup(entity: BattleEntity) -> void:
 	health_label.visible = true
 
 
+## 只刷新数值与名称（掉血 / 加攻 / 治疗等高频变化），不重设素材与布局。
+## 用于 display_state_changed：整屏刷新（setup）太重，且会打断正在播的动画观感。
+func refresh_stats(entity: BattleEntity) -> void:
+	if entity == null or entity.card == null or _last_card == null:
+		return
+	# 视图显示的还是另一张卡（被复用）时交给下一次整屏刷新走 setup，避免这里误改。
+	if _last_card.card_id != entity.card.card_id:
+		return
+	name_label.text = entity.display_name()
+	attack_label.text = str(entity.attack)
+	health_label.text = str(entity.health)
+
+
 func set_highlight(enabled: bool) -> void:
 	border_panel.visible = enabled
 

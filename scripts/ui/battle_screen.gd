@@ -220,6 +220,11 @@ func _ready() -> void:
 	engine.animation_cue.connect(_on_animation_cue)
 	engine.combat_phase_started.connect(_on_combat_phase_started)
 	engine.environment_changed.connect(_on_engine_environment_changed)
+	# 数值变化（掉血/加攻/治疗/词缀）不会发 changed，必须单独监听，否则实体面板上的
+	# 生命/攻击要等到下一次阶段或列结算才更新。
+	engine.display_state_changed.connect(_on_display_state_changed)
+	# 英雄掉血同理不会发 changed（只发 hero_damaged）。
+	engine.hero_damaged.connect(_on_hero_damaged)
 	engine.setup(
 		player_side,
 		player_hero,
@@ -1080,6 +1085,25 @@ func _align_control_rect(target: Control, source: Control) -> void:
 
 func _on_engine_changed() -> void:
 	_refresh_all()
+
+
+## 某个实体/手牌实例的显示状态变了（掉血、加攻、获得词缀…）：
+## 只刷新受影响的那个实体视图，不重建整屏（也不会打断正在播的动画）。
+func _on_display_state_changed(handle: Variant) -> void:
+	if engine == null or not (handle is BattleEntity):
+		return
+	var entity: BattleEntity = handle
+	var view: BattleEntityView = _views_by_entity_id.get(entity.entity_id, null) as BattleEntityView
+	if view == null or not is_instance_valid(view):
+		return
+	view.refresh_stats(entity)
+
+
+## 英雄受伤不发 changed，这里单独刷新双方英雄行（生命/充能/耐久/费用）。
+func _on_hero_damaged(_side: String, _amount: int, _source_keywords: Array) -> void:
+	if engine == null:
+		return
+	_update_hero_bars()
 
 
 func _refresh_all() -> void:
