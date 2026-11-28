@@ -1521,15 +1521,26 @@ func _play_animation_cue(cue: Dictionary) -> void:
 				if fx_view != null:
 					fx_view.play_fx(str(instruction.get("fx", "")))
 			"move_to":
-				# 目标坐标运行时才知道：用目标视图（实体或其 ghost）/英雄按钮算相对位移。
+				# 目标坐标运行时才知道：用目标视图（实体或其 ghost）/英雄按钮算相对位移，
+				# 再叠加伪代码里写的偏移（避免完全糊住目标）与缓动。
 				var mover: BattleEntityView = _resolve_animation_view(
 					"self", actor, cue.get("target"), ghosts, is_death
 				)
-				var offset: Vector2 = _animation_move_offset(mover, cue.get("target"), ghosts)
+				var extra := Vector2(
+					float(instruction.get("offset_x", 0.0)),
+					float(instruction.get("offset_y", 0.0)),
+				)
+				var offset: Vector2 = _animation_move_offset(
+					mover, cue.get("target"), ghosts, extra
+				)
 				if mover != null and offset != Vector2.INF:
 					longest_duration = maxf(
 						longest_duration,
-						mover.move_by(offset, float(instruction.get("seconds", 0.1))),
+						mover.move_by(
+							offset,
+							float(instruction.get("seconds", 0.1)),
+							str(instruction.get("easing", "ease_in")),
+						),
 					)
 					if not moved_views.has(mover):
 						moved_views.append(mover)
@@ -1542,7 +1553,10 @@ func _play_animation_cue(cue: Dictionary) -> void:
 					if is_instance_valid(mover):
 						longest_duration = maxf(
 							longest_duration,
-							mover.move_home(float(instruction.get("seconds", 0.1))),
+							mover.move_home(
+								float(instruction.get("seconds", 0.1)),
+								str(instruction.get("easing", "ease_out")),
+							),
 						)
 	if longest_duration > 0.0:
 		await get_tree().create_timer(longest_duration).timeout
@@ -1572,8 +1586,12 @@ func _column_zone_for_view(view: BattleEntityView) -> Control:
 
 ## 计算「从 actor_view 位移到本次事件目标」的相对偏移；无可用目标时返回 Vector2.INF。
 ## 实体目标用视图左上角对齐（同尺寸视图正好重叠）；英雄目标对齐英雄按钮中心。
+## extra_offset 是伪代码里写的偏移，叠加在目标位置上（避免完全覆盖目标）。
 func _animation_move_offset(
-	actor_view: BattleEntityView, target: Variant, ghosts: Array[BattleEntityView]
+	actor_view: BattleEntityView,
+	target: Variant,
+	ghosts: Array[BattleEntityView],
+	extra_offset: Vector2 = Vector2.ZERO,
 ) -> Vector2:
 	if actor_view == null:
 		return Vector2.INF
@@ -1583,12 +1601,12 @@ func _animation_move_offset(
 		)
 		if target_view == null or not is_instance_valid(target_view):
 			return Vector2.INF
-		return target_view.global_position - actor_view.global_position
+		return target_view.global_position + extra_offset - actor_view.global_position
 	if target is String and str(target).begins_with("hero:"):
 		var button: Button = _hero_button_for_side(str(target).substr(5))
 		if button == null:
 			return Vector2.INF
-		var target_center: Vector2 = button.global_position + button.size * 0.5
+		var target_center: Vector2 = button.global_position + button.size * 0.5 + extra_offset
 		var actor_center: Vector2 = actor_view.global_position + actor_view.size * 0.5
 		return target_center - actor_center
 	return Vector2.INF

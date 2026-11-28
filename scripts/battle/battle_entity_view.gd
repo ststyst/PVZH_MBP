@@ -31,6 +31,16 @@ const ANIMATION_LIBRARIES: Dictionary = {
 const FX_DIR: String = "res://assets/battle/fx/"
 ## 位移期间的临时 z_index：保证扑向目标时不会被同格/相邻格的视图压住。
 const MOTION_Z_INDEX: int = 40
+## 缓动 token → [Tween.TransitionType, Tween.EaseType]。
+## token 白名单在 CardAnimationScript.EASINGS，决定伪代码里能写什么。
+const MOTION_EASINGS: Dictionary = {
+	"linear": [Tween.TRANS_LINEAR, Tween.EASE_IN_OUT],
+	"ease_in": [Tween.TRANS_QUAD, Tween.EASE_IN],
+	"ease_out": [Tween.TRANS_QUAD, Tween.EASE_OUT],
+	"ease_in_out": [Tween.TRANS_QUAD, Tween.EASE_IN_OUT],
+	"back_out": [Tween.TRANS_BACK, Tween.EASE_OUT],
+	"bounce_out": [Tween.TRANS_BOUNCE, Tween.EASE_OUT],
+}
 
 @onready var whole_root: Control = %WholeRoot
 @onready var background_root: Control = %BackgroundRoot
@@ -184,23 +194,24 @@ func stop_animation(mode: String = MODE_WHOLE) -> void:
 ## 把整个视图平移到「当前显示位置 + offset」，返回时长（秒）。
 ## 用于「攻击者扑到受击者身上」这类运行时才知道坐标的位移：
 ## 目标坐标由 UI 在播放动画时用两个视图的 global_position 相减得到。
-func move_by(offset: Vector2, seconds: float) -> float:
+## easing 见 MOTION_EASINGS（默认 ease_in：加速撞过去，收尾干脆有冲击力）。
+func move_by(offset: Vector2, seconds: float, easing: String = "ease_in") -> float:
 	var duration: float = maxf(seconds, 0.01)
 	if not _motion_active:
 		_motion_home = position
 		_motion_saved_z = z_index
 		_motion_active = true
 	z_index = maxi(z_index, MOTION_Z_INDEX)
-	_start_motion_tween(_motion_home + offset, duration)
+	_start_motion_tween(_motion_home + offset, duration, easing)
 	return duration
 
 
 ## 回到本次移动前的位置，返回时长（秒）；没移动过则返回 0。
-func move_home(seconds: float) -> float:
+func move_home(seconds: float, easing: String = "ease_out") -> float:
 	if not _motion_active:
 		return 0.0
 	var duration: float = maxf(seconds, 0.01)
-	_start_motion_tween(_motion_home, duration)
+	_start_motion_tween(_motion_home, duration, easing)
 	if _motion_tween != null and _motion_tween.is_valid():
 		_motion_tween.finished.connect(_on_motion_finished, CONNECT_ONE_SHOT)
 	return duration
@@ -222,11 +233,12 @@ func is_moving() -> bool:
 	return _motion_active
 
 
-func _start_motion_tween(target_position: Vector2, duration: float) -> void:
+func _start_motion_tween(target_position: Vector2, duration: float, easing: String) -> void:
 	if _motion_tween != null and _motion_tween.is_valid():
 		_motion_tween.kill()
 	_motion_tween = create_tween()
-	_motion_tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	var preset: Array = MOTION_EASINGS.get(easing, MOTION_EASINGS["ease_out"])
+	_motion_tween.set_trans(int(preset[0])).set_ease(int(preset[1]))
 	_motion_tween.tween_property(self, "position", target_position, duration)
 
 

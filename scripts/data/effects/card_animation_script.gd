@@ -3,7 +3,7 @@ extends RefCounted
 ## 卡牌动画伪代码（与能力 DSL 同样采用 when 块 + 函数调用风格）：
 ##
 ## when attack:
-##     move_to(target, 0.12)
+##     move_to(target, 0.12, -18, -10, "back_out")   # 偏移 + 缓动（不糊住目标）
 ##     play_animation(self, "slash", "whole")
 ##     play_animation(target, "hit", "art")
 ##     wait(0.18)
@@ -17,10 +17,22 @@ extends RefCounted
 ## 动画名对应 assets/animations/<mode>.tres 中的 AnimationLibrary 动画名。
 ## move_to / move_back 是「运行时解析位置」的位移：目标格坐标在战斗时才确定，
 ## 所以不要在 AnimatedSprite2D/AnimationPlayer 里烘焙绝对坐标，交给这两个原语。
+##
+## move_to(target, 秒[, 偏移x, 偏移y][, "缓动"])
+##   - 偏移相对目标位置叠加（例如 -18, -10 表示停在目标左上偏一点，不完全遮挡）
+##   - 缓动：linear / ease_in / ease_out / ease_in_out / back_out / bounce_out
+##     默认 move_to = ease_in（加速撞过去），move_back = ease_out（减速滑回）
+## move_back(秒[, "缓动"])
 
 const TRIGGERS: Array[String] = ["attack", "ability", "die", "cast"]
 const SELECTORS: Array[String] = ["self", "target", "global"]
 const MODES: Array[String] = ["whole", "background", "art"]
+## 位移动画的缓动预设（由表现层映射成 Tween 的 trans/ease）。
+const EASINGS: Array[String] = [
+	"linear", "ease_in", "ease_out", "ease_in_out", "back_out", "bounce_out"
+]
+const MOVE_TO_DEFAULT_EASING: String = "ease_in"
+const MOVE_BACK_DEFAULT_EASING: String = "ease_out"
 
 var blocks: Dictionary = {}
 var errors: Array[String] = []
@@ -173,41 +185,91 @@ func _parse_statement(text: String, trigger: String, line: int) -> void:
 				"line": line,
 			})
 		"move_to":
-			# move_to(target, 时长)：把自身视图平移到本次事件的目标身上
-			# （目标可以是实体，也可以是英雄；位置在播放时解析）。
-			if args.size() != 2:
-				_error("move_to 需要 2 个参数：目标、时长（秒）", line)
-				return
-			var selector: String = _unquote(args[0])
-			if selector != "target":
-				_error("move_to 的目标只能是 target（自身没有位移意义）", line)
-				return
-			var seconds_text: String = _unquote(args[1])
-			if not seconds_text.is_valid_float():
-				_error("move_to 的时长必须是数字", line)
-				return
-			(blocks[trigger] as Array).append({
-				"type": "move_to",
-				"target": "target",
-				"seconds": maxf(float(seconds_text), 0.0),
-				"line": line,
-			})
+			# move_to(target, 秒[, 偏移x, 偏移y][, "缓动"])
+			# 偏移叠加在目标位置上（避免完全覆盖目标），缓动决定加速度手感。
+			_parse_move_to(args, trigger, line)
 		"move_back":
-			# move_back(时长)：回到本次移动前的位置。
-			if args.size() != 1:
-				_error("move_back 需要 1 个参数（秒）", line)
-				return
-			var seconds_text: String = _unquote(args[0])
-			if not seconds_text.is_valid_float():
-				_error("move_back 的时长必须是数字", line)
-				return
-			(blocks[trigger] as Array).append({
-				"type": "move_back",
-				"seconds": maxf(float(seconds_text), 0.0),
-				"line": line,
-			})
+			# move_back(秒[, "缓动"])
+			_parse_move_back(args, trigger, line)
 		_:
 			_error("未知动画函数：%s" % function_name, line)
+
+
+func _parse_move_to(args: Array[String], trigger: String, line: int) -> void:
+	if args.size() < 2 or args.size() > 5:
+		_error("move_to 需要 2~5 个参数：目标、时长（秒）[, 偏移x, 偏移y][, \"缓动\"]", line)
+		return
+	var selector: String = _unquote(args[0])
+	if selector != "target":
+		_error("move_to 的目标只能是 target（自身没有位移意义）", line)
+		return
+	var seconds_text: String = _unquote(args[1])
+	if not seconds_text.is_valid_float():
+		_error("move_to 的时长必须是数字", line)
+		return
+	var offset_x: float = 0.0
+	var offset_y: float = 0.0
+	var easing: String = MOVE_TO_DEFAULT_EASING
+	if args.size() == 3:
+		# 第三个参数是字符串 → 缓动；是数字 → 只给了 x，缺少 y。
+		if _is_quoted(args[2]):
+			easing = _unquote(args[2])
+		else:
+			_error("move_to 的偏移需要同时给出 x 和 y", line)
+			return
+	elif args.size() >= 4:
+		var x_text: String = _unquote(args[2])
+		var y_text: String = _unquote(args[3])
+		if not x_text.is_valid_float() or not y_text.is_valid_float():
+			_error("move_to 的偏移必须是两个数字（x, y）", line)
+			return
+		offset_x = float(x_text)
+		offset_y = float(y_text)
+		if args.size() == 5:
+			easing = _unquote(args[4])
+	if not EASINGS.has(easing):
+		_error("未知缓动：%s（可用：%s）" % [easing, ", ".join(EASINGS)], line)
+		return
+	(blocks[trigger] as Array).append({
+		"type": "move_to",
+		"target": "target",
+		"seconds": maxf(float(seconds_text), 0.0),
+		"offset_x": offset_x,
+		"offset_y": offset_y,
+		"easing": easing,
+		"line": line,
+	})
+
+
+func _parse_move_back(args: Array[String], trigger: String, line: int) -> void:
+	if args.size() < 1 or args.size() > 2:
+		_error("move_back 需要 1~2 个参数：时长（秒）[, \"缓动\"]", line)
+		return
+	var seconds_text: String = _unquote(args[0])
+	if not seconds_text.is_valid_float():
+		_error("move_back 的时长必须是数字", line)
+		return
+	var easing: String = MOVE_BACK_DEFAULT_EASING
+	if args.size() == 2:
+		easing = _unquote(args[1])
+	if not EASINGS.has(easing):
+		_error("未知缓动：%s（可用：%s）" % [easing, ", ".join(EASINGS)], line)
+		return
+	(blocks[trigger] as Array).append({
+		"type": "move_back",
+		"seconds": maxf(float(seconds_text), 0.0),
+		"easing": easing,
+		"line": line,
+	})
+
+
+static func _is_quoted(text: String) -> bool:
+	var value: String = text.strip_edges()
+	if value.length() < 2:
+		return false
+	return (value.begins_with("\"") and value.ends_with("\"")) or (
+		value.begins_with("'") and value.ends_with("'")
+	)
 
 
 static func _split_args(text: String) -> Array[String]:

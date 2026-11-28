@@ -25,21 +25,27 @@ when cast:       # 自己打出的法术结算时
 
 等待指定秒数，常用于“先播放自身攻击动画，等待几秒后播放目标受击动画”。
 
-### move_to(目标, 秒)
+### move_to(目标, 秒[, 偏移x, 偏移y][, "缓动"])
 
 把**自身视图整体平移**到本次动作的目标位置上（攻击者扑到受击者身上就是用它）。
 
 - 目标只能是 `target`（可与 `play_animation` 一样是实体或英雄）
 - 目标格坐标**运行时才确定**，所以不要在 AnimationPlayer/AnimatedSprite2D 里烘焙绝对坐标；
   这条指令在播放时用两个视图的 `global_position` 相减得到相对位移
+- **偏移**（可选，两个数字）：叠加在目标位置上。想让攻击者停在目标的左上/旁边而不完全遮挡，
+  就写 `move_to(target, 0.12, -18, -10)`（单位=设计像素，720×1280 基准）
+- **缓动**（可选）：`linear` / `ease_in` / `ease_out` / `ease_in_out` / `back_out` / `bounce_out`
+  - 省略时 `move_to` 用 `ease_in`（加速撞过去，收尾干脆，冲击力强）
+  - `back_out` 会先越过再回正（回弹感），适合重击；`bounce_out` 是落地弹跳
+  - 只给缓动不给偏移也合法：`move_to(target, 0.12, "back_out")`
 - 目标实体已经死亡/视图已隐藏时，会自动用 ghost 视图定位
-- 目标是英雄（没有场上视图）时，对齐到该英雄的按钮中心（例如“扑向敌方英雄”）
+- 目标是英雄（没有场上视图）时，对齐到该英雄的按钮中心（偏移同样生效，例如往下偏一点）
 - 平移用的是 `position` 上的 Tween，**不要**在 `whole` 模式的动画轨道里再写 `position`，两者会互相抢属性
 - 位移期间该视图的 `z_index` 会被临时抬高，并临时抬升所在列，保证不被同格/相邻列遮住
 
-### move_back(秒)
+### move_back(秒[, "缓动"])
 
-回到 `move_to` 之前的位置。即使脚本里忘了写，动画播完后也会自动复位。
+回到 `move_to` 之前的位置（默认缓动 `ease_out`，减速滑回）。即使脚本里忘了写，动画播完后也会自动复位。
 
 ### play_fx(目标, "特效名")
 
@@ -77,6 +83,17 @@ when attack:
 	play_animation(target, "hit_flash", "art")
 	wait(0.18)
 	move_back(0.12)
+```
+
+带偏移与冲击力缓动的版本（停在目标左上方，不糊住对方；撞过去带一点回弹）：
+
+```text
+when attack:
+	move_to(target, 0.1, -18, -12, "back_out")
+	play_animation(self, "attack_swing", "art")
+	play_animation(target, "hit_flash", "art")
+	wait(0.16)
+	move_back(0.12, "ease_out")
 ```
 
 单行写法：
@@ -130,8 +147,8 @@ when attack: play_animation(self, "swing", "whole"); wait(0.2); play_animation(t
 
 - `BattleEntityView.play_animation(name, mode) -> float`：播放并返回时长
 - `BattleEntityView.play_fx(name) -> Node`
-- `BattleEntityView.move_by(offset, 秒) -> float` / `move_home(秒) -> float` / `reset_motion()`：
-  位移动画；`move_to` / `move_back` 就是调它们，`offset` 由 UI 在播放时按目标视图算出
+- `BattleEntityView.move_by(offset, 秒, "缓动") -> float` / `move_home(秒, "缓动") -> float` / `reset_motion()`：
+  位移动画；`move_to` / `move_back` 就是调它们，`offset` 由 UI 在播放时按目标视图 + 伪代码偏移算出
 - `BattleEngine.animation_cue(trigger, actor, target)` 信号：本地/AI 战斗的动画请求
 - 卡牌载入时会解析 `animation` 列到 `CardData.animation_script`；语法错误记入
   `CardDatabase.load_errors` 与编译器报告

@@ -96,14 +96,52 @@ when attack:
 	assert_eq(str(attack[0].get("type", "")), "move_to")
 	assert_eq(str(attack[0].get("target", "")), "target")
 	assert_eq(float(attack[0].get("seconds", 0.0)), 0.12)
+	assert_eq(float(attack[0].get("offset_x", 1.0)), 0.0, "省略偏移时为 0")
+	assert_eq(float(attack[0].get("offset_y", 1.0)), 0.0, "省略偏移时为 0")
+	assert_eq(
+		str(attack[0].get("easing", "")),
+		CardAnimationScript.MOVE_TO_DEFAULT_EASING,
+		"move_to 默认缓动 ease_in"
+	)
 	assert_eq(str(attack[1].get("type", "")), "play_animation")
 	assert_eq(str(attack[4].get("type", "")), "move_back")
 	assert_eq(float(attack[4].get("seconds", 0.0)), 0.12)
+	assert_eq(
+		str(attack[4].get("easing", "")),
+		CardAnimationScript.MOVE_BACK_DEFAULT_EASING,
+		"move_back 默认缓动 ease_out"
+	)
 	# 存取往返后位移指令仍然保留（编译器会写进 .cardpack）。
 	var restored: CardAnimationScript = CardAnimationScript.from_program(script.to_program())
 	var restored_attack: Array = restored.instructions_for("attack")
 	assert_eq(str(restored_attack[0].get("type", "")), "move_to")
 	assert_eq(str(restored_attack[4].get("type", "")), "move_back")
+
+
+func test_move_offset_and_easing() -> void:
+	# 偏移 + 缓动：扑过去但不糊住目标，用缓动制造冲击力。
+	var source: String = """
+when attack:
+    move_to(target, 0.12, -18, -10, "back_out")
+    wait(0.1)
+    move_back(0.12, "bounce_out")
+"""
+	var script: CardAnimationScript = CardAnimationScript.parse(source)
+	assert_eq(script.errors.size(), 0, "偏移/缓动应通过：%s" % [script.errors])
+	var attack: Array = script.instructions_for("attack")
+	assert_eq(float(attack[0].get("offset_x", 0.0)), -18.0)
+	assert_eq(float(attack[0].get("offset_y", 0.0)), -10.0)
+	assert_eq(str(attack[0].get("easing", "")), "back_out")
+	assert_eq(float(attack[2].get("seconds", 0.0)), 0.12)
+	assert_eq(str(attack[2].get("easing", "")), "bounce_out")
+	# 只给缓动、不给偏移也允许。
+	var only_easing: CardAnimationScript = CardAnimationScript.parse(
+		"when attack:\n    move_to(target, 0.1, \"linear\")"
+	)
+	assert_eq(only_easing.errors.size(), 0, "第三参给缓动应通过：%s" % [only_easing.errors])
+	var instruction: Dictionary = only_easing.instructions_for("attack")[0]
+	assert_eq(str(instruction.get("easing", "")), "linear")
+	assert_eq(float(instruction.get("offset_x", 1.0)), 0.0)
 
 
 func test_move_errors() -> void:
@@ -112,8 +150,12 @@ func test_move_errors() -> void:
 		+ "    move_to(self, 0.1)\n"
 		+ "    move_to(target)\n"
 		+ "    move_to(target, \"快的\")\n"
+		+ "    move_to(target, 0.1, 5)\n"
+		+ "    move_to(target, 0.1, 5, \"x\")\n"
+		+ "    move_to(target, 0.1, 5, 5, \"teleport\")\n"
 		+ "    move_back(0.1, 0.2)\n"
-		+ "    move_back()"
+		+ "    move_back()\n"
+		+ "    move_back(0.1, \"teleport\")"
 	)
-	assert_eq(script.errors.size(), 5, "五个非法位移语句都应报错：%s" % [script.errors])
+	assert_eq(script.errors.size(), 9, "九个非法位移语句都应报错：%s" % [script.errors])
 	assert_true(script.instructions_for("attack").is_empty(), "报错的语句不应进入指令表")
