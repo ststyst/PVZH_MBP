@@ -120,15 +120,16 @@ theme_override_constants/margin_bottom = 6
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="EnemyHeroRow" type="HBoxContainer" parent="Margin/Root" unique_id=2037775112]
+[node name="EnemyHeroRow" type="Control" parent="Margin/Root" unique_id=2037775112]
 custom_minimum_size = Vector2(0, 170)
 layout_mode = 2
-theme_override_constants/separation = 6
 
 [node name="LeftControls" type="VBoxContainer" parent="Margin/Root/EnemyHeroRow" unique_id=1356532391]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 4
+layout_mode = 1
+anchor_bottom = 1.0
+offset_left = 6.0
+offset_right = 222.0
+grow_vertical = 2
 theme_override_constants/separation = 4
 alignment = 1
 
@@ -145,8 +146,14 @@ theme_override_font_sizes/font_size = 28
 text = "第 1 回合"
 
 [node name="EnemyHeroColumn" type="VBoxContainer" parent="Margin/Root/EnemyHeroRow" unique_id=2031788741]
-layout_mode = 2
-size_flags_horizontal = 0
+layout_mode = 1
+anchor_left = 0.5
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -132.0
+offset_right = 132.0
+grow_horizontal = 2
+grow_vertical = 2
 theme_override_constants/separation = 2
 alignment = 1
 
@@ -164,10 +171,56 @@ theme_override_font_sizes/font_size = 11
 text = "手牌 0 · 牌库 0"
 horizontal_alignment = 1
 
-[node name="RightSpacer" type="Control" parent="Margin/Root/EnemyHeroRow" unique_id=924710635]
-layout_mode = 2
-size_flags_horizontal = 3
+[node name="EnemyStatsPanel" type="Control" parent="Margin/Root/EnemyHeroRow" unique_id=615204739]
+layout_mode = 1
+anchor_left = 0.5
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = 140.0
+offset_right = 262.0
+grow_horizontal = 2
+grow_vertical = 2
 mouse_filter = 2
+
+[node name="EnemyHealthLabel" type="Label" parent="Margin/Root/EnemyHeroRow/EnemyStatsPanel" unique_id=227740182]
+unique_name_in_owner = true
+layout_mode = 0
+offset_top = 14.0
+offset_right = 60.0
+offset_bottom = 44.0
+theme_override_font_sizes/font_size = 24
+text = "0"
+horizontal_alignment = 1
+
+[node name="EnemyEnergyLabel" type="Label" parent="Margin/Root/EnemyHeroRow/EnemyStatsPanel" unique_id=430118202]
+unique_name_in_owner = true
+layout_mode = 0
+offset_top = 48.0
+offset_right = 60.0
+offset_bottom = 78.0
+theme_override_font_sizes/font_size = 24
+text = "0"
+horizontal_alignment = 1
+
+[node name="EnemyShieldLabel" type="Label" parent="Margin/Root/EnemyHeroRow/EnemyStatsPanel" unique_id=884011631]
+unique_name_in_owner = true
+layout_mode = 0
+offset_top = 82.0
+offset_right = 60.0
+offset_bottom = 112.0
+theme_override_font_sizes/font_size = 24
+text = "0"
+horizontal_alignment = 1
+
+[node name="EnemyShieldDurabilityLabel" type="Label" parent="Margin/Root/EnemyHeroRow/EnemyStatsPanel" unique_id=721579403]
+unique_name_in_owner = true
+layout_mode = 0
+offset_top = 116.0
+offset_right = 60.0
+offset_bottom = 146.0
+theme_override_font_sizes/font_size = 24
+text = "0"
+horizontal_alignment = 1
 
 [node name="Board" type="HBoxContainer" parent="Margin/Root" unique_id=488875423]
 unique_name_in_owner = true

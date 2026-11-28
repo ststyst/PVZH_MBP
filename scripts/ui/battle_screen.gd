@@ -43,7 +43,11 @@ var _ai_accum: float = 0.0
 @onready var _player_hero_button: Button = %PlayerHeroButton
 @onready var _enemy_info_label: Label = %EnemyInfoLabel
 @onready var _player_info_label: Label = %PlayerInfoLabel
-# 我方英雄数值拆成独立节点（编辑器里可自由摆放，只显示数字）。
+# 敌我双方英雄数值都拆成独立节点（编辑器里可自由摆放，只显示数字）。
+@onready var _enemy_health_label: Label = %EnemyHealthLabel
+@onready var _enemy_energy_label: Label = %EnemyEnergyLabel
+@onready var _enemy_shield_label: Label = %EnemyShieldLabel
+@onready var _enemy_shield_durability_label: Label = %EnemyShieldDurabilityLabel
 @onready var _player_health_label: Label = %PlayerHealthLabel
 @onready var _player_energy_label: Label = %PlayerEnergyLabel
 @onready var _player_shield_label: Label = %PlayerShieldLabel
@@ -1077,18 +1081,17 @@ func _update_hero_bars() -> void:
 	var player_state: BattlePlayerState = engine.players[player_side]
 	var enemy_state: BattlePlayerState = engine.players[enemy_side]
 	_player_hero_button.text = "%s（%s）" % [player_state.hero.display_name(), player_side.to_upper()]
-	_enemy_hero_button.text = "%s（%s）\n生命 %d/%d · 费用 %d/%d\n充能 %d/%d · 耐久 %d" % [
-		enemy_state.hero.display_name(), enemy_side.to_upper(),
-		enemy_state.hero_health, enemy_state.hero_max_health,
-		engine.visible_energy_for(enemy_side, player_side), enemy_state.energy_cap,
-		enemy_state.charge_shield, mode.charge_shield_max,
-		enemy_state.charge_shield_durability,
-	]
-	# 我方数值只写数字，位置/字号/颜色全部交给场景里的独立节点。
+	_enemy_hero_button.text = "%s（%s）" % [enemy_state.hero.display_name(), enemy_side.to_upper()]
+	# 双方数值只写数字，位置/字号/颜色全部交给场景里的独立节点。
 	_player_health_label.text = str(player_state.hero_health)
 	_player_energy_label.text = str(int(player_state.energy))
 	_player_shield_label.text = str(player_state.charge_shield)
 	_player_shield_durability_label.text = str(player_state.charge_shield_durability)
+	_enemy_health_label.text = str(enemy_state.hero_health)
+	# 敌方费用按"可见费用"显示（与原先汇总文字口径一致）。
+	_enemy_energy_label.text = str(engine.visible_energy_for(enemy_side, player_side))
+	_enemy_shield_label.text = str(enemy_state.charge_shield)
+	_enemy_shield_durability_label.text = str(enemy_state.charge_shield_durability)
 	_player_info_label.text = "手牌 %d · 牌库 %d" % [player_state.hand_count(), player_state.deck_count()]
 	_enemy_info_label.text = "手牌 %d · 牌库 %d" % [enemy_state.hand_count(), enemy_state.deck_count()]
 	var player_targetable: bool = (
