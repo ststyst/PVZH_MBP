@@ -14,6 +14,8 @@ const COMBAT_COLUMN_GAP: float = 0.2
 const ANIMATION_WAIT_TIMEOUT: float = 8.0
 ## 实体位移动画期间，临时抬高「该实体所在列」的层级（跨列扑击不被相邻列压住）。
 const MOTION_COLUMN_Z_INDEX: int = 30
+## 攻击动画期间攻击方视图/列/棋盘的临时层级：保证盖住受击方（播完还原）。
+const ATTACK_ACTOR_Z_INDEX: int = 40
 ## 环境 id -> 每列背景图路径（留空 = 不显示）。其它环境仍可用
 ## set_environment_background_path() 在运行时动态注册。
 const ENVIRONMENT_BACKGROUND_PATHS: Dictionary = {
@@ -161,6 +163,9 @@ func set_hero_art_path(side: String, path: String) -> void:
 var _views_by_entity_id: Dictionary = {}
 var _animation_queue: Array[Dictionary] = []
 var _animation_busy: bool = false
+## 攻击动画期间临时抬层的实体视图（键 = BattleEntityView）。
+## _update_slot_button 刷新时会跳过这些视图的 z_index，否则会盖不住受击方。
+var _layer_raised_views: Dictionary = {}
 ## 逐列战斗驱动协程是否正在运行（防止重复启动）。
 var _combat_sequence_running: bool = false
 var _empty_slot_style: StyleBoxEmpty = null
@@ -1178,7 +1183,9 @@ func _update_slot_button(
 	if entity == null:
 		if _entity_views.has(button):
 			var hidden_view: BattleEntityView = _entity_views[button] as BattleEntityView
-			if is_instance_valid(hidden_view):
+			# 攻击/死亡动画还在播时先不隐藏：否则受击方会在攻击动画播完前凭空消失
+			# （等动画队列播空后的下一次刷新再隐藏，观感上就是"被打死"）。
+			if is_instance_valid(hidden_view) and not _animation_busy:
 				hidden_view.visible = false
 		button.text = ""
 		if actionable and (
@@ -1195,8 +1202,8 @@ func _update_slot_button(
 			button.disabled = true
 		return
 	var view: BattleEntityView = _get_entity_view(button)
-	# 位移动画期间不改层级（否则扑向目标时会被同格/相邻格压住）。
-	if not view.is_moving():
+	# 位移动画/攻击动画期间不改层级（否则扑向目标时会被同格/相邻格压住）。
+	if not view.is_moving() and not _layer_raised_views.has(view):
 		view.z_index = _entity_view_z_index(column, side, slot)
 	if entity.has_buff("buried") and entity.side != player_side:
 		view.visible = false
@@ -1491,8 +1498,12 @@ func _play_animation_cue(cue: Dictionary) -> void:
 	var ghosts: Array[BattleEntityView] = []
 	var moved_views: Array[BattleEntityView] = []
 	# 跨列扑击（三连打/广域打击）时，需要把整列临时抬到别的列之上。
-	var boosted_zones: Array[Control] = []
+	var boosted_zones: Array[Dictionary] = []
+	# 攻击动画期间临时抬高的图层（视图 / 列 / 棋盘），播完按原值还原。
+	var raised_layers: Array[Dictionary] = []
 	var longest_duration: float = 0.0
+	if str(cue.get("trigger", "")) == "attack":
+		_raise_attacker_layers(actor, cue.get("target"), ghosts, raised_layers)
 	for raw_instruction: Variant in instructions:
 		if not raw_instruction is Dictionary:
 			continue
@@ -1545,9 +1556,9 @@ func _play_animation_cue(cue: Dictionary) -> void:
 					if not moved_views.has(mover):
 						moved_views.append(mover)
 					var zone: Control = _column_zone_for_view(mover)
-					if zone != null and not boosted_zones.has(zone):
-						boosted_zones.append(zone)
-						zone.z_index = MOTION_COLUMN_Z_INDEX
+					if zone != null and not _has_layer_entry(boosted_zones, zone):
+						boosted_zones.append({"node": zone, "z": zone.z_index})
+						zone.z_index = maxi(zone.z_index, MOTION_COLUMN_Z_INDEX)
 			"move_back":
 				for mover: BattleEntityView in moved_views:
 					if is_instance_valid(mover):
@@ -1564,12 +1575,59 @@ func _play_animation_cue(cue: Dictionary) -> void:
 	for mover: BattleEntityView in moved_views:
 		if is_instance_valid(mover):
 			mover.reset_motion()
-	for zone: Control in boosted_zones:
-		if is_instance_valid(zone):
-			zone.z_index = 0
+	_restore_layers(boosted_zones)
+	_restore_layers(raised_layers)
 	for ghost: BattleEntityView in ghosts:
 		if is_instance_valid(ghost):
 			ghost.queue_free()
+
+
+## 攻击动画期间把攻击方抬到受击方之上：视图本身 → 所在列 →（打我方英雄时）整个棋盘。
+## 只记录原值，由 _restore_layers 在动画播完后还原；非攻击动画不受影响。
+func _raise_attacker_layers(
+	actor: BattleEntity, target: Variant, ghosts: Array[BattleEntityView], raised: Array[Dictionary]
+) -> void:
+	if actor == null:
+		return
+	var actor_view: BattleEntityView = _resolve_animation_view("self", actor, target, ghosts, false)
+	if actor_view == null:
+		return
+	raised.append({"node": actor_view, "z": actor_view.z_index})
+	actor_view.z_index = maxi(actor_view.z_index, ATTACK_ACTOR_Z_INDEX)
+	_layer_raised_views[actor_view] = true
+	var actor_zone: Control = _column_zone_for_view(actor_view)
+	var target_zone: Control = null
+	if target is BattleEntity:
+		var target_view: BattleEntityView = _resolve_animation_view(
+			"target", null, target, ghosts, false
+		)
+		if target_view != null:
+			target_zone = _column_zone_for_view(target_view)
+	# 跨列攻击：整列临时上浮，避免被目标所在列盖住。
+	if actor_zone != null and actor_zone != target_zone:
+		raised.append({"node": actor_zone, "z": actor_zone.z_index})
+		actor_zone.z_index = maxi(actor_zone.z_index, ATTACK_ACTOR_Z_INDEX)
+	# 打我方英雄：我方英雄行画在棋盘之后，要把棋盘临时抬到它上面。
+	if target is String and str(target).begins_with("hero:"):
+		if str(target).substr(5) == player_side and _board != null:
+			raised.append({"node": _board, "z": _board.z_index})
+			_board.z_index = maxi(_board.z_index, ATTACK_ACTOR_Z_INDEX)
+
+
+func _has_layer_entry(entries: Array[Dictionary], node: CanvasItem) -> bool:
+	for entry: Dictionary in entries:
+		if entry.get("node") == node:
+			return true
+	return false
+
+
+func _restore_layers(entries: Array[Dictionary]) -> void:
+	for entry: Dictionary in entries:
+		var node: CanvasItem = entry.get("node") as CanvasItem
+		if is_instance_valid(node):
+			node.z_index = int(entry.get("z", 0))
+			if node is BattleEntityView:
+				_layer_raised_views.erase(node)
 
 
 ## 找到实体视图所在的「列容器」（Board 的直接子节点），用于跨列扑击时临时抬升整列层级。
