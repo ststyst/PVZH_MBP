@@ -18,6 +18,7 @@ const TEST_SCRIPTS: Array[String] = [
 	"res://tests/test_collection_manager.gd",
 	"res://tests/test_deck_rules.gd",
 	"res://tests/test_battle_engine.gd",
+	"res://tests/test_combat_stepping.gd",
 	"res://tests/test_recommended_decks.gd",
 	"res://tests/test_effect_parser.gd",
 	"res://tests/test_effect_runner.gd",

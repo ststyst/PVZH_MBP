@@ -21,6 +21,10 @@ signal tombstone_cost_broadcast(side: String, amount: int)
 signal spell_played(side: String, card: CardData)
 ## 某列环境发生变化（被新环境覆盖或被清除）；UI 用于切换该列环境背景。
 signal environment_changed(column: int, environment_id: String, environment_label: String, owner_side: String)
+## 进入对战（combat）阶段：逐列模式下 UI 从这里开始驱动列结算。
+signal combat_phase_started()
+## 某一列的对战结算已完成（含该列的攻击/死亡/清 Buff），UI 可据此等待动画后再推进下一列。
+signal combat_column_resolved(column: int)
 
 const SIDE_P: String = "p"
 const SIDE_Z: String = "z"
@@ -58,6 +62,14 @@ var environment_labels: Array[String] = []
 var turn: int = 1
 var phase: String = PHASE_MULLIGAN
 var active_side: String = ""
+## 逐列结算模式：true 时战斗阶段只做准备，由外部（UI / 联机同步）逐列推进，
+## 每列结算完成后发 combat_column_resolved，全部列结算完后调用 finish_combat_resolution()。
+## 默认 false = 一次性结算全部列（无头测试与旧调用保持一致）。
+var combat_step_mode: bool = false
+## 逐列模式下已结算的列数（0..COLUMN_COUNT）。
+var combat_columns_resolved: int = 0
+## 逐列模式下当前是否处于“列结算进行中”（用于收尾防重入）。
+var _combat_resolution_open: bool = false
 var winner: String = ""
 var log_entries: Array[String] = []
 var mulligan_ready: Dictionary = {SIDE_P: false, SIDE_Z: false}
@@ -634,27 +646,39 @@ func advance_phase() -> void:
 			phase = PHASE_COMBAT
 			active_side = ""
 			_log("对战回合：开始逐列结算")
+			if combat_step_mode:
+				# 逐列模式：这里只做准备，列结算由外部逐列推进（UI 等动画、联机同步点）。
+				_begin_stepped_combat()
+				combat_phase_started.emit()
+				changed.emit()
+				return
 			_resolve_combat()
-			# 战斗阶段结束：清“中止抽牌”。
-			clear_draw_block_markers()
-			if winner == "" and not _special_pending_sides.is_empty():
-				if _maybe_begin_special_turn(PHASE_TURN_END):
-					return
-			if winner == "":
-				phase = PHASE_TURN_END
-				_log("回合结束效果结算")
-				_resolve_turn_end()
-				# 回合结束阶段结束：清“中止抽牌”。
-				clear_draw_block_markers()
-			_clear_hero_shields()
-			if winner == "" and not _special_pending_sides.is_empty():
-				if _maybe_begin_special_turn(PHASE_TURN_END, true):
-					return
-			if winner == "":
-				_start_next_turn()
+			_finish_combat_phase_sequence()
 		_:
 			pass
 	changed.emit()
+
+
+## 对战阶段全部列结算完成后的收尾：清标志物、特殊回合、回合结束、进入下一回合。
+## 一次性结算与逐列结算共用，保证两条路径的规则顺序完全一致。
+func _finish_combat_phase_sequence() -> void:
+	# 战斗阶段结束：清“中止抽牌”。
+	clear_draw_block_markers()
+	if winner == "" and not _special_pending_sides.is_empty():
+		if _maybe_begin_special_turn(PHASE_TURN_END):
+			return
+	if winner == "":
+		phase = PHASE_TURN_END
+		_log("回合结束效果结算")
+		_resolve_turn_end()
+		# 回合结束阶段结束：清“中止抽牌”。
+		clear_draw_block_markers()
+	_clear_hero_shields()
+	if winner == "" and not _special_pending_sides.is_empty():
+		if _maybe_begin_special_turn(PHASE_TURN_END, true):
+			return
+	if winner == "":
+		_start_next_turn()
 
 
 func _clear_hero_shields() -> void:
@@ -3123,6 +3147,44 @@ func _resolve_combat() -> void:
 			return
 		_combat_column(column)
 	_end_effect_resolution()
+
+
+# ----- 逐列结算（combat_step_mode = true 时由外部驱动） -----
+
+## 进入逐列结算：只做前置准备，不发 combat_column_resolved。
+func _begin_stepped_combat() -> void:
+	_begin_effect_resolution()
+	_first_strike_used_this_round.clear()
+	combat_columns_resolved = 0
+	_combat_resolution_open = true
+
+
+## 是否还有列没结算（逐列模式；战斗已分胜负时为 false）。
+func has_pending_combat_columns() -> bool:
+	return _combat_resolution_open and winner == "" and combat_columns_resolved < COLUMN_COUNT
+
+
+## 结算下一列并返回列号；没有可结算的列时返回 -1。
+## 调用方应在收到 combat_column_resolved 后等待本列动画播完，再调用下一次。
+func resolve_next_combat_column() -> int:
+	if not has_pending_combat_columns():
+		return -1
+	var column: int = combat_columns_resolved
+	_combat_column(column)
+	combat_columns_resolved += 1
+	changed.emit()
+	combat_column_resolved.emit(column)
+	return column
+
+
+## 全部列结算完成后的收尾（幂等）：结束效果作用域 + 回合收尾 + 广播刷新。
+func finish_combat_resolution() -> void:
+	if not _combat_resolution_open:
+		return
+	_combat_resolution_open = false
+	_end_effect_resolution()
+	_finish_combat_phase_sequence()
+	changed.emit()
 
 
 func _combat_column(column: int) -> void:

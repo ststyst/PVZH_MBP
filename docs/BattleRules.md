@@ -88,6 +88,14 @@
 - 结算攻击、伤害、死亡、反伤、狂热等
 - 战斗阶段结束后检查特殊回合
 
+#### 逐列结算的粒度（2026-11-28）
+
+- 每一列是一个**完整的结算单元**：该列双方第一轮攻击 → 死亡结算 → `double_strike` 第二轮 → 死亡结算 → 清除该列战斗 Buff（`frozen` / `invincible`），然后才进入下一列。
+- 一列结算完不会立刻推进下一列：表现层会等**该列动画全部播完**（外加 `COMBAT_COLUMN_GAP` 的列间停顿）再推进，全部列播完才进入回合结束 → 下一回合。
+- 结算结果与「一次性把 5 列全算完」**完全一致**（同一套函数，只是拆成可逐步调用的形式；有无动画不影响规则判定）。
+- 引擎接口：`combat_step_mode`（默认 `false` = 一次性结算，无头测试用）、`has_pending_combat_columns()`、`resolve_next_combat_column()`、`finish_combat_resolution()`；信号 `combat_phase_started` / `combat_column_resolved(column)`。
+- 已分胜负时不继续结算剩余列；`finish_combat_resolution()` 收尾幂等。
+
 ### 7. 特殊回合
 
 - 由充能护盾满充能触发

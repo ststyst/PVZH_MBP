@@ -8,6 +8,10 @@ extends Control
 const CARD_TILE_SCENE: PackedScene = preload("res://scenes/cards/CardTile.tscn")
 const ENTITY_VIEW_SCENE: PackedScene = preload("res://scenes/battle/BattleEntityView.tscn")
 const AI_INTERVAL: float = 0.7
+## 逐列战斗结算时，两列之间的停顿（秒），避免动画一列接一列糊在一起。
+const COMBAT_COLUMN_GAP: float = 0.2
+## 等待动画队列播完的上限（秒）：动画异常（循环/缺失时长）时兜底，避免战斗卡死。
+const ANIMATION_WAIT_TIMEOUT: float = 8.0
 ## 环境 id -> 每列背景图路径（留空 = 不显示）。其它环境仍可用
 ## set_environment_background_path() 在运行时动态注册。
 const ENVIRONMENT_BACKGROUND_PATHS: Dictionary = {
@@ -155,6 +159,8 @@ func set_hero_art_path(side: String, path: String) -> void:
 var _views_by_entity_id: Dictionary = {}
 var _animation_queue: Array[Dictionary] = []
 var _animation_busy: bool = false
+## 逐列战斗驱动协程是否正在运行（防止重复启动）。
+var _combat_sequence_running: bool = false
 var _empty_slot_style: StyleBoxEmpty = null
 var _highlight_slot_style: StyleBoxFlat = null
 var _special_target_mode: bool = false
@@ -199,10 +205,13 @@ func _ready() -> void:
 	engine.effect_resolution_limit = ServerConfig.effect_resolution_limit()
 	engine.protected_environments = ServerConfig.protected_environments()
 	engine.environment_keyword_filters = ServerConfig.environment_keyword_filters()
+	# 逐列结算：每列的战斗结算 + 该列动画全部播完后，才推进下一列。
+	engine.combat_step_mode = true
 	engine.changed.connect(_on_engine_changed)
 	engine.spell_played.connect(_on_spell_played)
 	engine.game_finished.connect(_on_game_finished)
 	engine.animation_cue.connect(_on_animation_cue)
+	engine.combat_phase_started.connect(_on_combat_phase_started)
 	engine.environment_changed.connect(_on_engine_environment_changed)
 	engine.setup(
 		player_side,
@@ -1410,6 +1419,53 @@ func _on_animation_cue(trigger: String, actor: BattleEntity, target: Variant) ->
 	_animation_queue.append({"trigger": trigger, "actor": actor, "target": target})
 	if not _animation_busy:
 		_run_animation_queue()
+
+
+# ----- 逐列战斗结算（每列动画播完才推进下一列） -----
+
+func _on_combat_phase_started() -> void:
+	_run_stepped_combat()
+
+
+## 由引擎的 combat_phase_started 触发：逐列结算，每列等动画播完再进入下一列。
+## 全部列结算完、动画也播完后，再让引擎收尾（回合结束 → 下一回合），
+## 这样"下一列/下一回合"永远不会抢在上一列的动画前面。
+func _run_stepped_combat() -> void:
+	if engine == null or _combat_sequence_running:
+		return
+	_combat_sequence_running = true
+	# 先让上一个阶段（锦囊/出牌）的动画播完，再开始第一列。
+	await _wait_for_animations_idle()
+	while engine != null and engine.has_pending_combat_columns():
+		var column: int = engine.resolve_next_combat_column()
+		if column < 0:
+			break
+		# 本列的攻击/受击/死亡动画全部播完，才进入下一列。
+		await _wait_for_animations_idle()
+		if engine == null:
+			break
+		await get_tree().create_timer(COMBAT_COLUMN_GAP).timeout
+	if engine != null:
+		# 最后一列的动画也播完，才让引擎收尾（回合结束 → 下一回合）。
+		await _wait_for_animations_idle()
+		engine.finish_combat_resolution()
+	_combat_sequence_running = false
+
+
+## 等动画队列播空。带超时兜底：动画异常（循环动画、时长异常）时不会把战斗卡死。
+func _wait_for_animations_idle() -> void:
+	var waited: float = 0.0
+	while _animation_busy or not _animation_queue.is_empty():
+		if engine == null or not is_inside_tree():
+			_animation_queue.clear()
+			_animation_busy = false
+			return
+		await get_tree().process_frame
+		waited += get_process_delta_time()
+		if waited >= ANIMATION_WAIT_TIMEOUT:
+			_animation_queue.clear()
+			_animation_busy = false
+			return
 
 
 func _run_animation_queue() -> void:
