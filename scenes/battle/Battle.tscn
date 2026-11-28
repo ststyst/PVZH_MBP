@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://cfdw5r8274jtg" path="res://scripts/ui/battle_screen.gd" id="1_battle"]
 [ext_resource type="PackedScene" path="res://scenes/cards/CardInfoDialog.tscn" id="2_card_info"]
-[ext_resource type="Texture2D" uid="uid://dqbx5h5550uvt" path="res://assets/battle/backgrounds/示例ui.png" id="2_w6b63"]
+[ext_resource type="Texture2D" uid="uid://cui1y0m3ix3uy" path="res://assets/battle/backgrounds/bg2.png" id="2_w6b63"]
 [ext_resource type="Texture2D" uid="uid://cf6ayoesjnveb" path="res://assets/battle/boards/战斗区域.png" id="3_emwda"]
 
 [node name="Battle" type="Control" unique_id=513367747]
@@ -135,13 +135,13 @@ alignment = 1
 [node name="PhaseLabel" type="Label" parent="Margin/Root/EnemyHeroRow/LeftControls" unique_id=531279080]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 30
 text = "阶段"
 
 [node name="TurnLabel" type="Label" parent="Margin/Root/EnemyHeroRow/LeftControls" unique_id=1704720497]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 12
+theme_override_font_sizes/font_size = 28
 text = "第 1 回合"
 
 [node name="EnemyHeroColumn" type="VBoxContainer" parent="Margin/Root/EnemyHeroRow" unique_id=2031788741]
@@ -164,34 +164,10 @@ theme_override_font_sizes/font_size = 11
 text = "手牌 0 · 牌库 0"
 horizontal_alignment = 1
 
-[node name="RightControls" type="VBoxContainer" parent="Margin/Root/EnemyHeroRow" unique_id=1780325078]
+[node name="RightSpacer" type="Control" parent="Margin/Root/EnemyHeroRow" unique_id=924710635]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_vertical = 4
-theme_override_constants/separation = 4
-alignment = 1
-
-[node name="TimerLabel" type="Label" parent="Margin/Root/EnemyHeroRow/RightControls" unique_id=1988880240]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_font_sizes/font_size = 12
-text = "不限时"
-horizontal_alignment = 2
-
-[node name="EndPhaseButton" type="Button" parent="Margin/Root/EnemyHeroRow/RightControls" unique_id=407352772]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(110, 32)
-layout_mode = 2
-size_flags_horizontal = 8
-text = "结束阶段"
-
-[node name="ConfirmTargetsButton" type="Button" parent="Margin/Root/EnemyHeroRow/RightControls" unique_id=642902760]
-unique_name_in_owner = true
-visible = false
-custom_minimum_size = Vector2(110, 32)
-layout_mode = 2
-size_flags_horizontal = 8
-text = "确认目标"
+mouse_filter = 2
 
 [node name="Board" type="HBoxContainer" parent="Margin/Root" unique_id=488875423]
 unique_name_in_owner = true
@@ -205,7 +181,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="EnvironmentBackground" type="TextureRect" parent="Margin/Root/Board/Column1"]
+[node name="EnvironmentBackground" type="TextureRect" parent="Margin/Root/Board/Column1" unique_id=2115476002]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -216,7 +192,7 @@ mouse_filter = 2
 expand_mode = 1
 stretch_mode = 6
 
-[node name="Content" type="VBoxContainer" parent="Margin/Root/Board/Column1"]
+[node name="Content" type="VBoxContainer" parent="Margin/Root/Board/Column1" unique_id=329214474]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -266,7 +242,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="EnvironmentBackground" type="TextureRect" parent="Margin/Root/Board/Column2"]
+[node name="EnvironmentBackground" type="TextureRect" parent="Margin/Root/Board/Column2" unique_id=301899029]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -277,7 +253,7 @@ mouse_filter = 2
 expand_mode = 1
 stretch_mode = 6
 
-[node name="Content" type="VBoxContainer" parent="Margin/Root/Board/Column2"]
+[node name="Content" type="VBoxContainer" parent="Margin/Root/Board/Column2" unique_id=1913491636]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -327,7 +303,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="EnvironmentBackground" type="TextureRect" parent="Margin/Root/Board/Column3"]
+[node name="EnvironmentBackground" type="TextureRect" parent="Margin/Root/Board/Column3" unique_id=2082123008]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -338,7 +314,7 @@ mouse_filter = 2
 expand_mode = 1
 stretch_mode = 6
 
-[node name="Content" type="VBoxContainer" parent="Margin/Root/Board/Column3"]
+[node name="Content" type="VBoxContainer" parent="Margin/Root/Board/Column3" unique_id=1016121521]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -388,7 +364,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="EnvironmentBackground" type="TextureRect" parent="Margin/Root/Board/Column4"]
+[node name="EnvironmentBackground" type="TextureRect" parent="Margin/Root/Board/Column4" unique_id=1250913209]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -399,7 +375,7 @@ mouse_filter = 2
 expand_mode = 1
 stretch_mode = 6
 
-[node name="Content" type="VBoxContainer" parent="Margin/Root/Board/Column4"]
+[node name="Content" type="VBoxContainer" parent="Margin/Root/Board/Column4" unique_id=718085955]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -449,7 +425,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="EnvironmentBackground" type="TextureRect" parent="Margin/Root/Board/Column5"]
+[node name="EnvironmentBackground" type="TextureRect" parent="Margin/Root/Board/Column5" unique_id=540023121]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -460,7 +436,7 @@ mouse_filter = 2
 expand_mode = 1
 stretch_mode = 6
 
-[node name="Content" type="VBoxContainer" parent="Margin/Root/Board/Column5"]
+[node name="Content" type="VBoxContainer" parent="Margin/Root/Board/Column5" unique_id=1046943315]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -505,12 +481,19 @@ size_flags_vertical = 3
 theme_override_font_sizes/font_size = 10
 clip_text = true
 
-[node name="PlayerHeroRow" type="CenterContainer" parent="Margin/Root" unique_id=242911672]
+[node name="PlayerHeroRow" type="Control" parent="Margin/Root" unique_id=242911672]
 custom_minimum_size = Vector2(0, 170)
 layout_mode = 2
 
 [node name="PlayerHeroColumn" type="VBoxContainer" parent="Margin/Root/PlayerHeroRow" unique_id=1184971806]
-layout_mode = 2
+layout_mode = 1
+anchor_left = 0.5
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -132.0
+offset_right = 132.0
+grow_horizontal = 2
+grow_vertical = 2
 theme_override_constants/separation = 2
 alignment = 1
 
@@ -527,6 +510,91 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 11
 text = "手牌 0 · 牌库 0"
 horizontal_alignment = 1
+
+[node name="PlayerStatsPanel" type="Control" parent="Margin/Root/PlayerHeroRow" unique_id=615204738]
+layout_mode = 1
+anchor_left = 0.5
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = 140.0
+offset_right = 262.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="PlayerHealthLabel" type="Label" parent="Margin/Root/PlayerHeroRow/PlayerStatsPanel" unique_id=227740181]
+unique_name_in_owner = true
+layout_mode = 0
+offset_top = 14.0
+offset_right = 60.0
+offset_bottom = 44.0
+theme_override_font_sizes/font_size = 24
+text = "0"
+horizontal_alignment = 1
+
+[node name="PlayerEnergyLabel" type="Label" parent="Margin/Root/PlayerHeroRow/PlayerStatsPanel" unique_id=430118201]
+unique_name_in_owner = true
+layout_mode = 0
+offset_top = 48.0
+offset_right = 60.0
+offset_bottom = 78.0
+theme_override_font_sizes/font_size = 24
+text = "0"
+horizontal_alignment = 1
+
+[node name="PlayerShieldLabel" type="Label" parent="Margin/Root/PlayerHeroRow/PlayerStatsPanel" unique_id=884011630]
+unique_name_in_owner = true
+layout_mode = 0
+offset_top = 82.0
+offset_right = 60.0
+offset_bottom = 112.0
+theme_override_font_sizes/font_size = 24
+text = "0"
+horizontal_alignment = 1
+
+[node name="PlayerShieldDurabilityLabel" type="Label" parent="Margin/Root/PlayerHeroRow/PlayerStatsPanel" unique_id=721579402]
+unique_name_in_owner = true
+layout_mode = 0
+offset_top = 116.0
+offset_right = 60.0
+offset_bottom = 146.0
+theme_override_font_sizes/font_size = 24
+text = "0"
+horizontal_alignment = 1
+
+[node name="RightControls" type="VBoxContainer" parent="Margin/Root/PlayerHeroRow" unique_id=1780325078]
+layout_mode = 1
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -124.0
+offset_right = -6.0
+grow_horizontal = 0
+grow_vertical = 2
+theme_override_constants/separation = 4
+alignment = 1
+
+[node name="TimerLabel" type="Label" parent="Margin/Root/PlayerHeroRow/RightControls" unique_id=1988880240]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "不限时"
+horizontal_alignment = 2
+
+[node name="EndPhaseButton" type="Button" parent="Margin/Root/PlayerHeroRow/RightControls" unique_id=407352772]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(110, 32)
+layout_mode = 2
+size_flags_horizontal = 8
+text = "结束阶段"
+
+[node name="ConfirmTargetsButton" type="Button" parent="Margin/Root/PlayerHeroRow/RightControls" unique_id=642902760]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(110, 32)
+layout_mode = 2
+size_flags_horizontal = 8
+text = "确认目标"
 
 [node name="HandTitleBar" type="HBoxContainer" parent="Margin/Root" unique_id=192767563]
 custom_minimum_size = Vector2(0, 18)

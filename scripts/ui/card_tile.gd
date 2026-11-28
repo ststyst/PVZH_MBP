@@ -63,6 +63,18 @@ func set_cost(value: int) -> void:
 	cost_label.text = str(maxi(value, 0))
 
 
+## 让按钮本体彻底隐形：清空所有状态的按钮样式盒（含焦点框），
+## 只留下素材 Sprite / 插画 / 文字，避免素材没遮住的灰色底板露出来。
+func set_chrome_hidden(hidden: bool = true) -> void:
+	const STATES: Array[String] = ["normal", "hover", "pressed", "focus", "disabled"]
+	flat = hidden
+	for state: String in STATES:
+		if hidden:
+			add_theme_stylebox_override(state, StyleBoxEmpty.new())
+		else:
+			remove_theme_stylebox_override(state)
+
+
 ## 覆盖攻击/生命显示（用于手牌实例加成，如“军阀点数”）。
 func set_stats(attack: int, health: int) -> void:
 	attack_label.text = str(maxi(attack, 0))

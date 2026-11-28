@@ -11,9 +11,9 @@ const AI_INTERVAL: float = 0.7
 ## 环境 id -> 每列背景图路径（留空 = 不显示）。其它环境仍可用
 ## set_environment_background_path() 在运行时动态注册。
 const ENVIRONMENT_BACKGROUND_PATHS: Dictionary = {
-	"highground": "",
-	"default": "",
-	"water": "",
+	"highground": "res://assets/battle/backgrounds/columns/high_ground.png",
+	"default": "res://assets/battle/backgrounds/columns/default.png",
+	"water": "res://assets/battle/backgrounds/columns/pool.png",
 	"sunny_field": "",
 	"flooded_garden": "",
 }
@@ -43,6 +43,11 @@ var _ai_accum: float = 0.0
 @onready var _player_hero_button: Button = %PlayerHeroButton
 @onready var _enemy_info_label: Label = %EnemyInfoLabel
 @onready var _player_info_label: Label = %PlayerInfoLabel
+# 我方英雄数值拆成独立节点（编辑器里可自由摆放，只显示数字）。
+@onready var _player_health_label: Label = %PlayerHealthLabel
+@onready var _player_energy_label: Label = %PlayerEnergyLabel
+@onready var _player_shield_label: Label = %PlayerShieldLabel
+@onready var _player_shield_durability_label: Label = %PlayerShieldDurabilityLabel
 @onready var _board: HBoxContainer = %Board
 @onready var _phase_label: Label = %PhaseLabel
 @onready var _turn_label: Label = %TurnLabel
@@ -1071,13 +1076,7 @@ func _refresh_all() -> void:
 func _update_hero_bars() -> void:
 	var player_state: BattlePlayerState = engine.players[player_side]
 	var enemy_state: BattlePlayerState = engine.players[enemy_side]
-	_player_hero_button.text = "%s（%s）\n生命 %d/%d · 费用 %d/%d\n充能 %d/%d · 耐久 %d" % [
-		player_state.hero.display_name(), player_side.to_upper(),
-		player_state.hero_health, player_state.hero_max_health,
-		player_state.energy, player_state.energy_cap,
-		player_state.charge_shield, mode.charge_shield_max,
-		player_state.charge_shield_durability,
-	]
+	_player_hero_button.text = "%s（%s）" % [player_state.hero.display_name(), player_side.to_upper()]
 	_enemy_hero_button.text = "%s（%s）\n生命 %d/%d · 费用 %d/%d\n充能 %d/%d · 耐久 %d" % [
 		enemy_state.hero.display_name(), enemy_side.to_upper(),
 		enemy_state.hero_health, enemy_state.hero_max_health,
@@ -1085,6 +1084,11 @@ func _update_hero_bars() -> void:
 		enemy_state.charge_shield, mode.charge_shield_max,
 		enemy_state.charge_shield_durability,
 	]
+	# 我方数值只写数字，位置/字号/颜色全部交给场景里的独立节点。
+	_player_health_label.text = str(player_state.hero_health)
+	_player_energy_label.text = str(int(player_state.energy))
+	_player_shield_label.text = str(player_state.charge_shield)
+	_player_shield_durability_label.text = str(player_state.charge_shield_durability)
 	_player_info_label.text = "手牌 %d · 牌库 %d" % [player_state.hand_count(), player_state.deck_count()]
 	_enemy_info_label.text = "手牌 %d · 牌库 %d" % [enemy_state.hand_count(), enemy_state.deck_count()]
 	var player_targetable: bool = (
@@ -1243,6 +1247,8 @@ func _rebuild_hand() -> void:
 		tile.custom_minimum_size = Vector2(126, 104)
 		tile.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 		tile.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		# 手牌只显示卡面素材，按钮底板完全隐形（否则会看到未遮挡的灰色底）。
+		tile.set_chrome_hidden(true)
 		current_column.add_child(tile)
 		tile.setup(card, 0, "", false, true)
 		tile.set_cost(engine.effective_hand_cost(player_side, index))
