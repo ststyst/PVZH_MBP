@@ -8,6 +8,15 @@ extends Control
 const CARD_TILE_SCENE: PackedScene = preload("res://scenes/cards/CardTile.tscn")
 const ENTITY_VIEW_SCENE: PackedScene = preload("res://scenes/battle/BattleEntityView.tscn")
 const AI_INTERVAL: float = 0.7
+## 环境 id -> 每列背景图路径（留空 = 不显示）。其它环境仍可用
+## set_environment_background_path() 在运行时动态注册。
+const ENVIRONMENT_BACKGROUND_PATHS: Dictionary = {
+	"highground": "",
+	"default": "",
+	"water": "",
+	"sunny_field": "",
+	"flooded_garden": "",
+}
 
 signal battle_background_changed(texture: Texture2D)
 ## 某列环境变化（被新环境覆盖或被清除），供外部刷新该列环境背景。
@@ -195,6 +204,7 @@ func _ready() -> void:
 		mode,
 	)
 	engine.confirm_mulligan(enemy_side)
+	_register_configured_environment_backgrounds()
 	refresh_column_environment_backgrounds()
 	_show_mulligan()
 
@@ -336,6 +346,15 @@ func refresh_column_environment_backgrounds() -> void:
 		return
 	for column: int in range(_board_columns.size()):
 		_apply_column_environment_background(column, str(engine.environments[column]))
+
+
+## 读取 ENVIRONMENT_BACKGROUND_PATHS 中的非空路径并注册（启动时调用一次）。
+func _register_configured_environment_backgrounds() -> void:
+	for environment_id: String in ENVIRONMENT_BACKGROUND_PATHS.keys():
+		var path: String = str(ENVIRONMENT_BACKGROUND_PATHS[environment_id])
+		if path.is_empty():
+			continue
+		set_environment_background_path(environment_id, path)
 
 
 func _apply_column_environment_background(column: int, environment_id: String) -> void:
