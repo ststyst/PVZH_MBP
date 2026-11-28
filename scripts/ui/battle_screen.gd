@@ -209,26 +209,18 @@ func _build_board_columns() -> void:
 		column.add_theme_constant_override("separation", 2)
 		var env_label := Label.new()
 		env_label.name = "EnvLabel"
-		env_label.custom_minimum_size = Vector2(0, 22)
+		env_label.custom_minimum_size = Vector2(0, 16)
 		env_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		env_label.add_theme_font_size_override("font_size", 10)
+		env_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		env_label.add_theme_font_size_override("font_size", 9)
 		env_label.text = "第%d列" % (column_index + 1)
 		column.add_child(env_label)
 		for side_slot: Array in [
 			["z", "ZTeamButton", BattleEngine.SLOT_TEAM_UP],
 			["z", "ZNormalButton", BattleEngine.SLOT_NORMAL],
-			["separator", "Separator", -1],
 			["p", "PNormalButton", BattleEngine.SLOT_NORMAL],
 			["p", "PTeamButton", BattleEngine.SLOT_TEAM_UP],
 		]:
-			var kind: String = str(side_slot[0])
-			if kind == "separator":
-				var separator := HSeparator.new()
-				separator.name = str(side_slot[1])
-				separator.size_flags_vertical = Control.SIZE_EXPAND_FILL
-				separator.size_flags_stretch_ratio = 0.333
-				column.add_child(separator)
-				continue
 			var button := Button.new()
 			button.name = str(side_slot[1])
 			button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -928,17 +920,24 @@ func _pending_slot_valid(column: int, slot: int) -> bool:
 # ----- 状态刷新 -----
 
 func _align_layout_to_art() -> void:
-	if _board_art_area == null or _board == null:
+	if _board == null:
 		return
-	var board_art: TextureRect = _board_art_area.get_node_or_null("BoardArtTexture") as TextureRect
-	if board_art != null:
-		var target_size: Vector2 = Vector2(board_art.size.x, board_art.size.y * 1.3)
-		_board.size = target_size
-		_board.global_position = board_art.global_position - Vector2(0.0, (target_size.y - board_art.size.y) * 0.5)
+	# 背景素材区跟随真实 UI 控件，而不是反过来用素材区决定布局。
+	_align_control_rect(_board_art_area, _board)
+	_align_control_rect(_enemy_hero_art, _enemy_hero_button)
+	_align_control_rect(_player_hero_art, _player_hero_button)
 	var hand_placeholder: Control = get_node_or_null("Background/ArtPlaceholders/HandScroll") as Control
-	if hand_placeholder != null and _hand_scroll != null:
-		_hand_scroll.global_position = hand_placeholder.global_position
-		_hand_scroll.size = hand_placeholder.size
+	_align_control_rect(hand_placeholder, _hand_scroll)
+	_align_control_rect(_hand_safe_area, _hand_scroll)
+	_align_control_rect(_enemy_hero_target_area, _enemy_hero_button)
+	_align_control_rect(_player_hero_target_area, _player_hero_button)
+
+
+func _align_control_rect(target: Control, source: Control) -> void:
+	if target == null or source == null:
+		return
+	target.global_position = source.global_position
+	target.size = source.size
 
 
 func _on_engine_changed() -> void:
@@ -959,14 +958,14 @@ func _refresh_all() -> void:
 func _update_hero_bars() -> void:
 	var player_state: BattlePlayerState = engine.players[player_side]
 	var enemy_state: BattlePlayerState = engine.players[enemy_side]
-	_player_hero_button.text = "%s（%s） 生命 %d/%d · 费用 %d/%d · 充能 %d/%d · 耐久 %d" % [
+	_player_hero_button.text = "%s（%s）\n生命 %d/%d · 费用 %d/%d\n充能 %d/%d · 耐久 %d" % [
 		player_state.hero.display_name(), player_side.to_upper(),
 		player_state.hero_health, player_state.hero_max_health,
 		player_state.energy, player_state.energy_cap,
 		player_state.charge_shield, mode.charge_shield_max,
 		player_state.charge_shield_durability,
 	]
-	_enemy_hero_button.text = "%s（%s） 生命 %d/%d · 费用 %d/%d · 充能 %d/%d · 耐久 %d" % [
+	_enemy_hero_button.text = "%s（%s）\n生命 %d/%d · 费用 %d/%d\n充能 %d/%d · 耐久 %d" % [
 		enemy_state.hero.display_name(), enemy_side.to_upper(),
 		enemy_state.hero_health, enemy_state.hero_max_health,
 		engine.visible_energy_for(enemy_side, player_side), enemy_state.energy_cap,
@@ -995,7 +994,7 @@ func _update_board() -> void:
 			valid_slots = engine.valid_slots(player_side, pending_card)
 	for column_index: int in range(_board_columns.size()):
 		var column_ui: Dictionary = _board_columns[column_index]
-		column_ui["env"].text = "第%d列\n%s" % [column_index + 1, engine.environment_labels[column_index]]
+		column_ui["env"].text = "第%d列·%s" % [column_index + 1, engine.environment_labels[column_index]]
 		_update_slot_button(column_ui["z_team"], "z", column_index, BattleEngine.SLOT_TEAM_UP, valid_slots)
 		_update_slot_button(column_ui["z_normal"], "z", column_index, BattleEngine.SLOT_NORMAL, valid_slots)
 		_update_slot_button(column_ui["p_normal"], "p", column_index, BattleEngine.SLOT_NORMAL, valid_slots)
