@@ -18,6 +18,7 @@ var card_id: String = ""
 
 @onready var background_sprite: Sprite2D = %BackgroundSprite
 @onready var border_sprite: Sprite2D = %BorderSprite
+@onready var highlight_frame: Panel = %HighlightFrame
 @onready var art_clip: Control = %ArtClip
 @onready var art_texture: TextureRect = %ArtTexture
 @onready var cost_label: Label = %CostLabel
@@ -73,6 +74,14 @@ func set_chrome_hidden(hidden: bool = true) -> void:
 			add_theme_stylebox_override(state, StyleBoxEmpty.new())
 		else:
 			remove_theme_stylebox_override(state)
+
+
+## 手牌「此刻可以打出」的边缘高亮。
+## 描边颜色/粗细/圆角都改 CardTile.tscn 里 HighlightFrame 的 StyleBoxFlat 即可。
+func set_playable_highlight(enabled: bool) -> void:
+	if highlight_frame == null:
+		return
+	highlight_frame.visible = enabled
 
 
 ## 覆盖攻击/生命显示（用于手牌实例加成，如“军阀点数”）。

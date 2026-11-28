@@ -1262,16 +1262,10 @@ func _rebuild_hand() -> void:
 			)
 		tile.pressed.connect(_on_hand_pressed.bind(index))
 		tile.gui_input.connect(_on_hand_tile_gui_input.bind(index))
-		var disabled: bool = not _can_player_act()
-		if engine.phase == BattleEngine.PHASE_HAND and engine.active_side == "z" and not card.is_entity():
-			disabled = true
-		if engine.phase == BattleEngine.PHASE_SPELL and not (
-			card.is_spell() or card.is_environment() or (card.is_entity() and card.has_keyword("spell_phase_entity"))
-		):
-			disabled = true
-		if engine.effective_hand_cost(player_side, index) > int(state.energy):
-			disabled = true
-		tile.disabled = disabled
+		var playable: bool = _is_hand_card_playable(card, index)
+		tile.disabled = not playable
+		# 费用够、阶段也允许的手牌：描一圈高亮，提示“现在可以打出”。
+		tile.set_playable_highlight(playable)
 
 
 func _update_labels() -> void:
@@ -1321,6 +1315,21 @@ func _can_player_act() -> bool:
 	if engine.active_side != player_side:
 		return false
 	return engine.phase == BattleEngine.PHASE_HAND or engine.phase == BattleEngine.PHASE_SPELL
+
+
+## 这张手牌此刻是否真的能打出（无待选目标 + 轮到我方 + 阶段允许 + 费用够）。
+## 与 _on_hand_pressed 的拦截条件保持一致，供按钮可用状态与边缘高亮共用。
+func _is_hand_card_playable(card: CardData, index: int) -> bool:
+	if _pending_mode != "" or not _can_player_act():
+		return false
+	if engine.phase == BattleEngine.PHASE_HAND and engine.active_side == "z" and not card.is_entity():
+		return false
+	if engine.phase == BattleEngine.PHASE_SPELL and not (
+		card.is_spell() or card.is_environment() or (card.is_entity() and card.has_keyword("spell_phase_entity"))
+	):
+		return false
+	var state: BattlePlayerState = engine.players[player_side]
+	return engine.effective_hand_cost(player_side, index) <= int(state.energy)
 
 
 func _entity_at(column: int, side: String, slot: int) -> BattleEntity:
