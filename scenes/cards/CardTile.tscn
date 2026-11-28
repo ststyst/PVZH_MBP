@@ -32,14 +32,14 @@ position = Vector2(63, 52)
 [node name="ArtClip" type="Control" parent="." unique_id=819906900]
 unique_name_in_owner = true
 clip_contents = true
-layout_mode = 0
+anchors_preset = 0
 offset_left = 5.0
 offset_top = 19.0
 offset_right = 121.0
 offset_bottom = 86.0
 mouse_filter = 2
 
-[node name="ArtTexture" type="TextureRect" parent="ArtClip"]
+[node name="ArtTexture" type="TextureRect" parent="ArtClip" unique_id=1362957812]
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 15
@@ -68,7 +68,7 @@ offset_bottom = 47.0
 grow_horizontal = 0
 theme_override_colors/font_color = Color(0, 0, 0, 1)
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
-theme_override_constants/outline_size = 3
+theme_override_constants/outline_size = 7
 theme_override_fonts/font = ExtResource("2_wlbae")
 theme_override_font_sizes/font_size = 28
 text = "0"
@@ -150,7 +150,7 @@ offset_bottom = -14.0
 grow_vertical = 0
 theme_override_colors/font_color = Color(0, 0.04199999, 0.12, 1)
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
-theme_override_constants/outline_size = 4
+theme_override_constants/outline_size = 8
 theme_override_fonts/font = ExtResource("2_wlbae")
 theme_override_font_sizes/font_size = 28
 text = "0"
@@ -172,7 +172,7 @@ grow_horizontal = 0
 grow_vertical = 0
 theme_override_colors/font_color = Color(0, 0, 0, 1)
 theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
-theme_override_constants/outline_size = 4
+theme_override_constants/outline_size = 8
 theme_override_fonts/font = ExtResource("2_wlbae")
 theme_override_font_sizes/font_size = 28
 text = "0"
