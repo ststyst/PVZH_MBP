@@ -2314,6 +2314,34 @@ func test_for_each_slot_targeted_effect() -> void:
 	assert_eq(other.attack, 1, "其他列/普通位不应受影响")
 
 
+func test_environment_changed_signal() -> void:
+	var engine: BattleEngine = _started_engine()
+	var events: Array = []
+	engine.environment_changed.connect(func(
+		column: int, environment_id: String, environment_label: String, owner_side: String
+	) -> void:
+		events.append([column, environment_id, environment_label, owner_side])
+	)
+	var env_card: CardData = _make_test_card("pvzh:test_sunny_field", "")
+	env_card.kind = "environment"
+	env_card.english_name = "sunny_field"
+	env_card.chinese_name = "阳光田野"
+	assert_true(engine._place_environment("p", 1, env_card))
+	assert_eq(events.size(), 1, "环境被覆盖时应发出一次变化信号")
+	if not events.is_empty():
+		assert_eq(int(events[0][0]), 1)
+		assert_eq(str(events[0][1]), "sunny_field")
+		assert_eq(str(events[0][2]), "阳光田野")
+		assert_eq(str(events[0][3]), "p")
+	assert_true(engine.clear_environment_at(1))
+	assert_eq(events.size(), 2, "环境被清除时应发出一次变化信号")
+	if events.size() >= 2:
+		assert_eq(int(events[1][0]), 1)
+		assert_eq(str(events[1][1]), BattleEngine.ENV_DEFAULT)
+		assert_eq(str(events[1][2]), "默认")
+		assert_eq(str(events[1][3]), "")
+
+
 func test_environment_query_kind_and_owner() -> void:
 	var engine: BattleEngine = _started_engine()
 	var env_card: CardData = cards.get_card("pvzh:sunny_field")

@@ -10,6 +10,10 @@ const ENTITY_VIEW_SCENE: PackedScene = preload("res://scenes/battle/BattleEntity
 const AI_INTERVAL: float = 0.7
 
 signal battle_background_changed(texture: Texture2D)
+## 某列环境变化（被新环境覆盖或被清除），供外部刷新该列环境背景。
+signal column_environment_changed(
+	column: int, environment_id: String, environment_label: String, owner_side: String
+)
 
 var engine: BattleEngine = null
 var player_side: String = "p"
@@ -62,6 +66,8 @@ var _ai_accum: float = 0.0
 
 var _board_columns: Array[Dictionary] = []
 var _slot_highlights: Dictionary = {}
+## 环境 id -> 该列背景图（按需注册，未注册的环境显示为空）。
+var _environment_backgrounds: Dictionary = {}
 var _mulligan_used: Array[bool] = []
 var _hand_drag_index: int = -1
 var _hand_drag_active: bool = false
@@ -179,6 +185,7 @@ func _ready() -> void:
 	engine.spell_played.connect(_on_spell_played)
 	engine.game_finished.connect(_on_game_finished)
 	engine.animation_cue.connect(_on_animation_cue)
+	engine.environment_changed.connect(_on_engine_environment_changed)
 	engine.setup(
 		player_side,
 		player_hero,
@@ -188,6 +195,7 @@ func _ready() -> void:
 		mode,
 	)
 	engine.confirm_mulligan(enemy_side)
+	refresh_column_environment_backgrounds()
 	_show_mulligan()
 
 
@@ -202,11 +210,21 @@ func _to_string_array(raw: Variant) -> Array[String]:
 
 func _build_board_columns() -> void:
 	for column_index: int in range(BattleEngine.COLUMN_COUNT):
-		var column := VBoxContainer.new()
+		var column := Control.new()
 		column.name = "Column%d" % (column_index + 1)
 		column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		column.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		column.add_theme_constant_override("separation", 2)
+		var background := TextureRect.new()
+		background.name = "EnvironmentBackground"
+		background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		background.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		background.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		background.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		column.add_child(background)
+		var content := VBoxContainer.new()
+		content.name = "Content"
+		content.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		content.add_theme_constant_override("separation", 2)
 		var env_label := Label.new()
 		env_label.name = "EnvLabel"
 		env_label.custom_minimum_size = Vector2(0, 16)
@@ -214,7 +232,7 @@ func _build_board_columns() -> void:
 		env_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		env_label.add_theme_font_size_override("font_size", 9)
 		env_label.text = "第%d列" % (column_index + 1)
-		column.add_child(env_label)
+		content.add_child(env_label)
 		for side_slot: Array in [
 			["z", "ZTeamButton", BattleEngine.SLOT_TEAM_UP],
 			["z", "ZNormalButton", BattleEngine.SLOT_NORMAL],
@@ -229,7 +247,8 @@ func _build_board_columns() -> void:
 			button.add_theme_font_size_override("font_size", 10)
 			button.clip_text = true
 			button.text = ""
-			column.add_child(button)
+			content.add_child(button)
+		column.add_child(content)
 		_board.add_child(column)
 
 
@@ -238,14 +257,18 @@ func _collect_board_columns() -> void:
 	if _board.get_child_count() == 0:
 		_build_board_columns()
 	for index: int in range(_board.get_child_count()):
-		var column: VBoxContainer = _board.get_child(index) as VBoxContainer
+		var column: Control = _board.get_child(index) as Control
 		if column == null:
 			continue
-		var environment_label: Label = column.get_node("EnvLabel") as Label
-		var z_team: Button = column.get_node("ZTeamButton") as Button
-		var z_normal: Button = column.get_node("ZNormalButton") as Button
-		var p_normal: Button = column.get_node("PNormalButton") as Button
-		var p_team: Button = column.get_node("PTeamButton") as Button
+		var content: VBoxContainer = column.get_node_or_null("Content") as VBoxContainer
+		if content == null:
+			continue
+		var background: TextureRect = column.get_node_or_null("EnvironmentBackground") as TextureRect
+		var environment_label: Label = content.get_node("EnvLabel") as Label
+		var z_team: Button = content.get_node("ZTeamButton") as Button
+		var z_normal: Button = content.get_node("ZNormalButton") as Button
+		var p_normal: Button = content.get_node("PNormalButton") as Button
+		var p_team: Button = content.get_node("PTeamButton") as Button
 		z_team.pressed.connect(_on_slot_button_pressed.bind("z", index, BattleEngine.SLOT_TEAM_UP))
 		z_normal.pressed.connect(_on_slot_button_pressed.bind("z", index, BattleEngine.SLOT_NORMAL))
 		p_normal.pressed.connect(_on_slot_button_pressed.bind("p", index, BattleEngine.SLOT_NORMAL))
@@ -263,11 +286,72 @@ func _collect_board_columns() -> void:
 		p_team.button_up.connect(_on_slot_button_up)
 		_board_columns.append({
 			"env": environment_label,
+			"background": background,
 			"z_team": z_team,
 			"z_normal": z_normal,
 			"p_normal": p_normal,
 			"p_team": p_team,
 		})
+
+
+# ----- 每列环境背景接口 -----
+
+## 注册某个环境 id 的背景图；注册后立即刷新所有列。
+func set_environment_background(environment_id: String, texture: Texture2D) -> void:
+	if environment_id.is_empty():
+		return
+	if texture == null:
+		_environment_backgrounds.erase(environment_id)
+	else:
+		_environment_backgrounds[environment_id] = texture
+	refresh_column_environment_backgrounds()
+
+
+## 注册环境背景图（资源路径）；传空路径等同于清除该环境的背景。
+func set_environment_background_path(environment_id: String, path: String) -> void:
+	if path.is_empty():
+		set_environment_background(environment_id, null)
+		return
+	var texture: Texture2D = load(path) as Texture2D
+	if texture != null:
+		set_environment_background(environment_id, texture)
+
+
+## 清空所有已注册的环境背景图，并刷新所有列。
+func clear_environment_backgrounds() -> void:
+	_environment_backgrounds.clear()
+	refresh_column_environment_backgrounds()
+
+
+## 取得某一列的环境背景节点（column 从 0 开始）；越界返回 null。
+func get_column_environment_background(column: int) -> TextureRect:
+	if column < 0 or column >= _board_columns.size():
+		return null
+	return _board_columns[column].get("background", null) as TextureRect
+
+
+## 按当前环境刷新所有列背景；通常在外部注册完全部环境图后调用。
+func refresh_column_environment_backgrounds() -> void:
+	if engine == null:
+		return
+	for column: int in range(_board_columns.size()):
+		_apply_column_environment_background(column, str(engine.environments[column]))
+
+
+func _apply_column_environment_background(column: int, environment_id: String) -> void:
+	var background: TextureRect = get_column_environment_background(column)
+	if background == null:
+		return
+	var texture: Texture2D = _environment_backgrounds.get(environment_id, null) as Texture2D
+	background.texture = texture
+	background.visible = texture != null
+
+
+func _on_engine_environment_changed(
+	column: int, environment_id: String, environment_label: String, owner_side: String
+) -> void:
+	_apply_column_environment_background(column, environment_id)
+	column_environment_changed.emit(column, environment_id, environment_label, owner_side)
 
 
 func _init_slot_styles() -> void:

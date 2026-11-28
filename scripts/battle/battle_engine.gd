@@ -19,6 +19,8 @@ signal bounce_fx(actor: BattleEntity, target: BattleEntity, hide_identity: bool)
 signal tombstone_cost_broadcast(side: String, amount: int)
 ## 玩家打出锦囊（用于敌方锦囊提示）
 signal spell_played(side: String, card: CardData)
+## 某列环境发生变化（被新环境覆盖或被清除）；UI 用于切换该列环境背景。
+signal environment_changed(column: int, environment_id: String, environment_label: String, owner_side: String)
 
 const SIDE_P: String = "p"
 const SIDE_Z: String = "z"
@@ -1204,6 +1206,7 @@ func _place_environment(side: String, column: int, card: CardData) -> bool:
 	environment_cards[column] = card.card_id
 	environment_owners[column] = side
 	_log("第 %d 列环境变为：%s（%s）" % [column + 1, card.display_name(), side.to_upper()])
+	environment_changed.emit(column, str(environments[column]), str(environment_labels[column]), side)
 	if card.ability_script != null and card.ability_script.has_effect():
 		_run_script(card, side, [], {"column": column})
 	# 环境牌成功打出/放置：事件目标是打出方英雄，监听者用 side 判断我方/敌方。
@@ -1227,6 +1230,7 @@ func clear_environment_at(column: int) -> bool:
 	environment_cards.erase(column)
 	environment_owners[column] = ""
 	_log("第 %d 列环境被清除，恢复为中立默认环境" % [column + 1])
+	environment_changed.emit(column, ENV_DEFAULT, "默认", "")
 	changed.emit()
 	return true
 

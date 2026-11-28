@@ -200,13 +200,32 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 4
 
-[node name="Column1" type="VBoxContainer" parent="Margin/Root/Board" unique_id=581819005]
+[node name="Column1" type="Control" parent="Margin/Root/Board" unique_id=581819005]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+
+[node name="EnvironmentBackground" type="TextureRect" parent="Margin/Root/Board/Column1"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 6
+
+[node name="Content" type="VBoxContainer" parent="Margin/Root/Board/Column1"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 theme_override_constants/separation = 2
 
-[node name="EnvLabel" type="Label" parent="Margin/Root/Board/Column1" unique_id=973654747]
+[node name="EnvLabel" type="Label" parent="Margin/Root/Board/Column1/Content" unique_id=973654747]
 custom_minimum_size = Vector2(0, 16)
 layout_mode = 2
 theme_override_font_sizes/font_size = 9
@@ -214,41 +233,60 @@ text = "第1列"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="ZTeamButton" type="Button" parent="Margin/Root/Board/Column1" unique_id=591684975]
+[node name="ZTeamButton" type="Button" parent="Margin/Root/Board/Column1/Content" unique_id=591684975]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_font_sizes/font_size = 10
 clip_text = true
 
-[node name="ZNormalButton" type="Button" parent="Margin/Root/Board/Column1" unique_id=1812467483]
+[node name="ZNormalButton" type="Button" parent="Margin/Root/Board/Column1/Content" unique_id=1812467483]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_font_sizes/font_size = 10
 clip_text = true
 
-[node name="PNormalButton" type="Button" parent="Margin/Root/Board/Column1" unique_id=1457443803]
+[node name="PNormalButton" type="Button" parent="Margin/Root/Board/Column1/Content" unique_id=1457443803]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_font_sizes/font_size = 10
 clip_text = true
 
-[node name="PTeamButton" type="Button" parent="Margin/Root/Board/Column1" unique_id=1382217987]
+[node name="PTeamButton" type="Button" parent="Margin/Root/Board/Column1/Content" unique_id=1382217987]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_font_sizes/font_size = 10
 clip_text = true
 
-[node name="Column2" type="VBoxContainer" parent="Margin/Root/Board" unique_id=1542479393]
+[node name="Column2" type="Control" parent="Margin/Root/Board" unique_id=1542479393]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+
+[node name="EnvironmentBackground" type="TextureRect" parent="Margin/Root/Board/Column2"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 6
+
+[node name="Content" type="VBoxContainer" parent="Margin/Root/Board/Column2"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 theme_override_constants/separation = 2
 
-[node name="EnvLabel" type="Label" parent="Margin/Root/Board/Column2" unique_id=966232733]
+[node name="EnvLabel" type="Label" parent="Margin/Root/Board/Column2/Content" unique_id=966232733]
 custom_minimum_size = Vector2(0, 16)
 layout_mode = 2
 theme_override_font_sizes/font_size = 9
@@ -256,41 +294,60 @@ text = "第2列"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="ZTeamButton" type="Button" parent="Margin/Root/Board/Column2" unique_id=212979608]
+[node name="ZTeamButton" type="Button" parent="Margin/Root/Board/Column2/Content" unique_id=212979608]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_font_sizes/font_size = 10
 clip_text = true
 
-[node name="ZNormalButton" type="Button" parent="Margin/Root/Board/Column2" unique_id=97026494]
+[node name="ZNormalButton" type="Button" parent="Margin/Root/Board/Column2/Content" unique_id=97026494]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_font_sizes/font_size = 10
 clip_text = true
 
-[node name="PNormalButton" type="Button" parent="Margin/Root/Board/Column2" unique_id=1740885115]
+[node name="PNormalButton" type="Button" parent="Margin/Root/Board/Column2/Content" unique_id=1740885115]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_font_sizes/font_size = 10
 clip_text = true
 
-[node name="PTeamButton" type="Button" parent="Margin/Root/Board/Column2" unique_id=2048881948]
+[node name="PTeamButton" type="Button" parent="Margin/Root/Board/Column2/Content" unique_id=2048881948]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_font_sizes/font_size = 10
 clip_text = true
 
-[node name="Column3" type="VBoxContainer" parent="Margin/Root/Board" unique_id=1014990138]
+[node name="Column3" type="Control" parent="Margin/Root/Board" unique_id=1014990138]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+
+[node name="EnvironmentBackground" type="TextureRect" parent="Margin/Root/Board/Column3"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 6
+
+[node name="Content" type="VBoxContainer" parent="Margin/Root/Board/Column3"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 theme_override_constants/separation = 2
 
-[node name="EnvLabel" type="Label" parent="Margin/Root/Board/Column3" unique_id=469304073]
+[node name="EnvLabel" type="Label" parent="Margin/Root/Board/Column3/Content" unique_id=469304073]
 custom_minimum_size = Vector2(0, 16)
 layout_mode = 2
 theme_override_font_sizes/font_size = 9
@@ -298,41 +355,60 @@ text = "第3列"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="ZTeamButton" type="Button" parent="Margin/Root/Board/Column3" unique_id=36324169]
+[node name="ZTeamButton" type="Button" parent="Margin/Root/Board/Column3/Content" unique_id=36324169]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_font_sizes/font_size = 10
 clip_text = true
 
-[node name="ZNormalButton" type="Button" parent="Margin/Root/Board/Column3" unique_id=995268167]
+[node name="ZNormalButton" type="Button" parent="Margin/Root/Board/Column3/Content" unique_id=995268167]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_font_sizes/font_size = 10
 clip_text = true
 
-[node name="PNormalButton" type="Button" parent="Margin/Root/Board/Column3" unique_id=2099593083]
+[node name="PNormalButton" type="Button" parent="Margin/Root/Board/Column3/Content" unique_id=2099593083]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_font_sizes/font_size = 10
 clip_text = true
 
-[node name="PTeamButton" type="Button" parent="Margin/Root/Board/Column3" unique_id=1247432102]
+[node name="PTeamButton" type="Button" parent="Margin/Root/Board/Column3/Content" unique_id=1247432102]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_font_sizes/font_size = 10
 clip_text = true
 
-[node name="Column4" type="VBoxContainer" parent="Margin/Root/Board" unique_id=523170524]
+[node name="Column4" type="Control" parent="Margin/Root/Board" unique_id=523170524]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+
+[node name="EnvironmentBackground" type="TextureRect" parent="Margin/Root/Board/Column4"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 6
+
+[node name="Content" type="VBoxContainer" parent="Margin/Root/Board/Column4"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 theme_override_constants/separation = 2
 
-[node name="EnvLabel" type="Label" parent="Margin/Root/Board/Column4" unique_id=1892050645]
+[node name="EnvLabel" type="Label" parent="Margin/Root/Board/Column4/Content" unique_id=1892050645]
 custom_minimum_size = Vector2(0, 16)
 layout_mode = 2
 theme_override_font_sizes/font_size = 9
@@ -340,41 +416,60 @@ text = "第4列"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="ZTeamButton" type="Button" parent="Margin/Root/Board/Column4" unique_id=636511219]
+[node name="ZTeamButton" type="Button" parent="Margin/Root/Board/Column4/Content" unique_id=636511219]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_font_sizes/font_size = 10
 clip_text = true
 
-[node name="ZNormalButton" type="Button" parent="Margin/Root/Board/Column4" unique_id=1742556668]
+[node name="ZNormalButton" type="Button" parent="Margin/Root/Board/Column4/Content" unique_id=1742556668]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_font_sizes/font_size = 10
 clip_text = true
 
-[node name="PNormalButton" type="Button" parent="Margin/Root/Board/Column4" unique_id=885078504]
+[node name="PNormalButton" type="Button" parent="Margin/Root/Board/Column4/Content" unique_id=885078504]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_font_sizes/font_size = 10
 clip_text = true
 
-[node name="PTeamButton" type="Button" parent="Margin/Root/Board/Column4" unique_id=1918384931]
+[node name="PTeamButton" type="Button" parent="Margin/Root/Board/Column4/Content" unique_id=1918384931]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_font_sizes/font_size = 10
 clip_text = true
 
-[node name="Column5" type="VBoxContainer" parent="Margin/Root/Board" unique_id=962781489]
+[node name="Column5" type="Control" parent="Margin/Root/Board" unique_id=962781489]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+
+[node name="EnvironmentBackground" type="TextureRect" parent="Margin/Root/Board/Column5"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 6
+
+[node name="Content" type="VBoxContainer" parent="Margin/Root/Board/Column5"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 theme_override_constants/separation = 2
 
-[node name="EnvLabel" type="Label" parent="Margin/Root/Board/Column5" unique_id=1444721187]
+[node name="EnvLabel" type="Label" parent="Margin/Root/Board/Column5/Content" unique_id=1444721187]
 custom_minimum_size = Vector2(0, 16)
 layout_mode = 2
 theme_override_font_sizes/font_size = 9
@@ -382,28 +477,28 @@ text = "第5列"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="ZTeamButton" type="Button" parent="Margin/Root/Board/Column5" unique_id=2020468523]
+[node name="ZTeamButton" type="Button" parent="Margin/Root/Board/Column5/Content" unique_id=2020468523]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_font_sizes/font_size = 10
 clip_text = true
 
-[node name="ZNormalButton" type="Button" parent="Margin/Root/Board/Column5" unique_id=1084482366]
+[node name="ZNormalButton" type="Button" parent="Margin/Root/Board/Column5/Content" unique_id=1084482366]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_font_sizes/font_size = 10
 clip_text = true
 
-[node name="PNormalButton" type="Button" parent="Margin/Root/Board/Column5" unique_id=1261178835]
+[node name="PNormalButton" type="Button" parent="Margin/Root/Board/Column5/Content" unique_id=1261178835]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_font_sizes/font_size = 10
 clip_text = true
 
-[node name="PTeamButton" type="Button" parent="Margin/Root/Board/Column5" unique_id=2127170772]
+[node name="PTeamButton" type="Button" parent="Margin/Root/Board/Column5/Content" unique_id=2127170772]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
