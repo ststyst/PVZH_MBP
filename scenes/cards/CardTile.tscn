@@ -17,9 +17,27 @@ unique_name_in_owner = true
 z_index = 2
 position = Vector2(63, 52)
 
-[node name="ArtSprite" type="Sprite2D" parent="." unique_id=819906900]
+[node name="ArtClip" type="Control" parent="." unique_id=819906900]
 unique_name_in_owner = true
-position = Vector2(63, 28)
+clip_contents = true
+layout_mode = 0
+offset_left = 5.0
+offset_top = 19.0
+offset_right = 121.0
+offset_bottom = 86.0
+mouse_filter = 2
+
+[node name="ArtTexture" type="TextureRect" parent="ArtClip"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 6
 
 [node name="CostIconSprite" type="Sprite2D" parent="." unique_id=311244717]
 unique_name_in_owner = true

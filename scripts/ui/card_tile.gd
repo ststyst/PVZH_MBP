@@ -11,14 +11,15 @@ const RARITY_COLORS: Dictionary = {
 	"legend": Color(1.00, 0.72, 0.32),
 }
 const CARD_SIZE: Vector2 = Vector2(126, 104)
-## 插画宽度始终铺满卡面，高度按原始比例溢出，由卡面裁切。
-const ART_WINDOW_CENTER_Y: float = 0.45
+## 边框素材内部透明窗口的缺省矩形（126×104 边框：x5..120, y19..85）。
+const DEFAULT_ART_WINDOW: Rect2 = Rect2(5, 19, 116, 67)
 
 var card_id: String = ""
 
 @onready var background_sprite: Sprite2D = %BackgroundSprite
 @onready var border_sprite: Sprite2D = %BorderSprite
-@onready var art_sprite: Sprite2D = %ArtSprite
+@onready var art_clip: Control = %ArtClip
+@onready var art_texture: TextureRect = %ArtTexture
 @onready var cost_label: Label = %CostLabel
 @onready var attack_icon_sprite: Sprite2D = %AttackIconSprite
 @onready var health_icon_sprite: Sprite2D = %HealthIconSprite
@@ -94,6 +95,7 @@ func _apply_border_sprite(rarity: String) -> void:
 func set_border_texture(texture: Texture2D) -> void:
 	border_sprite.texture = texture
 	border_sprite.visible = texture != null
+	_update_art_window(texture)
 	if texture == null:
 		return
 	border_sprite.position = CARD_SIZE * 0.5
@@ -102,6 +104,52 @@ func set_border_texture(texture: Texture2D) -> void:
 		CARD_SIZE.y / float(texture.get_height()),
 	)
 	border_sprite.scale = Vector2(cover_scale, cover_scale)
+
+
+## 边框素材内部透明窗口的缓存（同一张边框只扫描一次像素）。
+static var _art_window_cache: Dictionary = {}
+
+
+## 用边框素材的透明内窗作为插画遮罩：只允许内窗区域的插画显示。
+func _update_art_window(texture: Texture2D) -> void:
+	var cache_key: int = texture.get_instance_id() if texture != null else 0
+	if _art_window_cache.has(cache_key):
+		var cached: Rect2 = _art_window_cache[cache_key]
+		art_clip.position = cached.position
+		art_clip.size = cached.size
+		return
+	var window: Rect2 = DEFAULT_ART_WINDOW
+	if texture != null:
+		var image: Image = texture.get_image()
+		if image != null and image.get_width() > 2 and image.get_height() > 2:
+			var width: int = image.get_width()
+			var height: int = image.get_height()
+			var center_x: int = width / 2
+			var center_y: int = height / 2
+			var left: int = center_x
+			while left > 0 and image.get_pixel(left - 1, center_y).a <= 0.01:
+				left -= 1
+			var right: int = center_x
+			while right < width - 1 and image.get_pixel(right + 1, center_y).a <= 0.01:
+				right += 1
+			var top: int = center_y
+			while top > 0 and image.get_pixel(center_x, top - 1).a <= 0.01:
+				top -= 1
+			var bottom: int = center_y
+			while bottom < height - 1 and image.get_pixel(center_x, bottom + 1).a <= 0.01:
+				bottom += 1
+			if right > left and bottom > top:
+				window = Rect2(left, top, right - left + 1, bottom - top + 1)
+				if (
+					width != int(CARD_SIZE.x) or height != int(CARD_SIZE.y)
+				):
+					var scale_ratio: Vector2 = Vector2(
+						CARD_SIZE.x / float(width), CARD_SIZE.y / float(height)
+					)
+					window = Rect2(window.position * scale_ratio, window.size * scale_ratio)
+	_art_window_cache[cache_key] = window
+	art_clip.position = window.position
+	art_clip.size = window.size
 
 
 func set_border_path(path: String) -> void:
@@ -115,15 +163,8 @@ func set_border_path(path: String) -> void:
 
 func _apply_art_sprite(card: CardData) -> void:
 	var texture: Texture2D = CardArt.get_texture(card.art_path)
-	art_sprite.visible = texture != null
-	art_sprite.texture = texture
-	if texture == null:
-		return
-	if texture == null or texture.get_width() <= 0:
-		return
-	art_sprite.position = Vector2(CARD_SIZE.x * 0.5, CARD_SIZE.y * ART_WINDOW_CENTER_Y)
-	var width_scale: float = CARD_SIZE.x / float(texture.get_width())
-	art_sprite.scale = Vector2(width_scale, width_scale)
+	art_texture.visible = texture != null
+	art_texture.texture = texture
 
 
 func _apply_stats(card: CardData) -> void:
