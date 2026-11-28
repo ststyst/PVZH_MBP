@@ -321,3 +321,15 @@ const ART_SCALE_MULTIPLIER: float = 2.0
 之前 `_get_entity_view()` 在实体 ready 后再次调用 `set_anchors_and_offsets_preset(PRESET_FULL_RECT)`，覆盖了 `DISPLAY_SIZE_RATIO = 0.95` 的 95% 锚点，所以仍无空隙。
 
 已移除该覆盖。现在实体视图按 95% 宽高显示，四周各留 2.5% 空隙。
+
+## 实体动画（不属于图形素材，但同样在 `assets/` 下）
+
+场上实体的动画（旋转/缩放/颤动/闪烁、攻击位移）由 `assets/animations/` 下的三个
+AnimationLibrary 提供，**制作流程与注意事项不在本文件**：
+
+- 完整流程（编辑器操作、轨道路径口径、常见坑）：`docs/AnimationDsl.md` 的「制作流程」一节
+- 速查表：`assets/animations/README.md`
+- 卡牌伪代码里怎么引用：`docs/AnimationDsl.md` 的「语句」与「CSV 写法」
+
+按项目约定，动画素材同样**只由你提供**；我这边只写读取/播放/回退逻辑，
+缺库或缺动画时静默跳过、不报错。

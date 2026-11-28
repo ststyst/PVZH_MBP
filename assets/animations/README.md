@@ -1,58 +1,34 @@
 # 实体动画素材（AnimationLibrary）
 
-这里放 3 个动画库，对应实体动画的三种模式：
+这里放 3 个动画库，对应实体动画的三种模式。完整制作流程（含编辑器步骤、轨道路径口径、
+常见坑）见 **`docs/AnimationDsl.md` 的「制作流程」一节**，本文件只做速查。
 
-| 文件 | 模式 | 作用对象 |
-|---|---|---|
-| `whole.tres` | `whole` | 整个实体（背景 + 外观 + 数值/名称），像一张图片一样整体旋转/缩放/颤动 |
-| `background.tres` | `background` | 只作用实体背景 |
-| `art.tres` | `art` | 只作用实体外观 |
+| 文件 | 模式 | 挂载的 AnimationPlayer | `root_node`（轨道基准） |
+|---|---|---|---|
+| `whole.tres` | `whole` | `WholePlayer` | `WholeRoot`（背景 + 外观 + 数值/名称整体） |
+| `background.tres` | `background` | `BackgroundPlayer` | `WholeRoot/BackgroundRoot`（仅背景） |
+| `art.tres` | `art` | `ArtPlayer` | `WholeRoot/ArtRoot`（仅外观） |
 
-## 制作方法
+## 速查
 
-只使用 AnimationPlayer，不接入 AnimationTree；三个模式的动画库分别挂在
-`WholePlayer` / `BackgroundPlayer` / `ArtPlayer` 上。
+1. 打开 `scenes/battle/BattleEntityView.tscn`，选中对应的 AnimationPlayer。
+2. Animation 面板 → 新建动画（名字唯一）→ 设 `Length`（秒）。
+3. 选中 `WholeRoot` / `BackgroundRoot` / `ArtRoot`，在 Inspector 里对
+   `rotation` / `scale` / `position` / `modulate` / `pivot_offset` 点钥匙插关键帧。
+4. 保存场景（三个 `.tres` 库文件会一起保存）。
+5. 在 `data/cards/official/cards.csv` 的 `animation` 列按名字引用，例如：
+   `when attack: play_animation(self, 'attack_swing', 'whole'); wait(0.2); play_animation(target, 'hit_flash', 'art')`
 
-1. 在 Godot 中打开 `scenes/battle/BattleEntityView.tscn`。
-2. 选中 `WholePlayer` / `BackgroundPlayer` / `ArtPlayer` 三个 AnimationPlayer。
-3. 它们的动画库已分别指向上面 3 个 `.tres`；在动画面板里新建动画并命名（名字唯一）。
-4. 动画轨道直接作用于对应的根节点：
-   - `whole`：`WholeRoot`（整体）
-   - `background`：`BackgroundRoot`
-   - `art`：`ArtRoot`
-   常用属性：`rotation`、`scale`、`position`、`modulate`、`pivot_offset`。
-5. 保存后，在卡牌 CSV 的 `animation` 列用动画名引用即可。
+## 关键口径
 
-代码会在实例化时自动加载这 3 个库；动画名找不到时会跳过（不报错）。
-
-## 简单动画思路
-
-- 旋转：`rotation` 0 → 0.4 → 0
-- 放大/缩小：`scale` 1 → 1.15 → 1
-- 颤动：`position` 在 ±3px 之间快速往返
-- 模拟 3D 翻转：`scale:x` 1 → 0 → 1
-- 撕裂/闪烁：`modulate` 闪烁 + 位移抖动（更复杂可做 shader/帧动画）
-- 通用特效：在伪代码里写 `play_fx(self, "smoke")`，会实例化
-  `assets/battle/fx/smoke.tscn`（你自己做的特效场景）。
-
-## 卡牌动画伪代码示例
-
-```text
-when attack:
-    play_animation(self, "attack_swing", "whole")
-    wait(0.3)
-    play_animation(target, "hit_flash", "art")
-when ability:
-    play_animation(self, "skill_glow", "background")
-when die:
-    play_animation(self, "death_tear", "whole")
-```
-
-- 模式省略时默认 `whole`
-- `wait(秒)` 控制先后顺序
-- 伪代码写在 `cards.csv` 的 `animation` 列
-
-## 尺寸/节点
-
-实体显示区域设计尺寸 136×84；背景/外观/图标 Sprite2D 与数值 Label 的布局见
-`assets/battle/entities/README.md`。
+- 轨道路径**相对 `root_node`**：动 `root_node` 本身时路径是 `.`（如 `.:rotation`）。
+  写成 `WholeRoot:rotation` / `/BattleEntityView/WholeRoot:rotation` 都不会生效。
+  在编辑器里点钥匙插入关键帧会自动写对，不要手改。
+- 动画名找不到时**静默跳过**，所以“没反应”先查名字与库是否已保存。
+- **不要在 `whole` 库里给 `position` 打关键帧**：位移请用伪代码的
+  `move_to` / `move_back`（运行时按目标位置计算，还能控制偏移与缓动），
+  两者抢同一个属性会抖。
+- 攻击动画建议 ≤ 0.3s：战斗逐列结算，每列动画播完才进入下一列。
+- 动画只作用场上实体（`BattleEntityView`）；手牌 `CardTile` 目前没有 AnimationPlayer。
+- 通用特效：伪代码 `play_fx(self, "smoke")` 会实例化 `assets/battle/fx/smoke.tscn`
+  （该目录需要自己创建）。
