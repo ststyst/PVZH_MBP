@@ -322,6 +322,31 @@ const ART_SCALE_MULTIPLIER: float = 2.0
 
 已移除该覆盖。现在实体视图按 95% 宽高显示，四周各留 2.5% 空隙。
 
+## 数值涨跌配色（2026-11-28）
+
+场上实体与手牌的数值会按「当前值 vs 卡牌数据库原值」变色，颜色常量集中在
+**`scripts/ui/stat_colors.gd`**（改配色只改这三个 `Color`）：
+
+```gdscript
+const BUFFED: Color = Color(0.42, 0.94, 0.45, 1.0)    # 绿：更好
+const NORMAL: Color = Color(1.0, 1.0, 1.0, 1.0)       # 白：相同
+const DEBUFFED: Color = Color(1.0, 0.42, 0.42, 1.0)   # 红：更差
+```
+
+| 显示 | 规则 |
+|---|---|
+| 实体攻击 | 高于数据库初始攻击 → 绿；相等 → 白；低于 → 红 |
+| 实体生命 | **低于当前生命上限（已受伤）→ 红**；否则高于数据库初始生命 → 绿；其余 → 白 |
+| 手牌费用 | 低于数据库原始费用 → 绿（更便宜）；相等 → 白；更高 → 红 |
+| 手牌攻击/生命 | 高于数据库原始值 → 绿；相等 → 白；更低 → 红 |
+
+- 手牌的颜色基准是**数据库原卡**：战斗手牌拿到的是「有效费用/攻击」的副本
+  （`BattleEngine.hand_card_display`），所以 `CardTile.setup()` 必须额外传 `base_card`
+  （`engine.get_card(card_id)`），否则拿当前值当基准会永远显示白色。
+- 实体生命优先级：受伤的红色优先于「高于初始生命」的绿色。
+- 相关方法：`StatColors.compare(current, base, higher_is_better)`、`StatColors.health(current, max_health, base_health)`；
+  回归用例 `tests/test_stat_colors.gd`。
+
 ## 实体动画（不属于图形素材，但同样在 `assets/` 下）
 
 场上实体的动画（旋转/缩放/颤动/闪烁、攻击位移）由 `assets/animations/` 下的三个

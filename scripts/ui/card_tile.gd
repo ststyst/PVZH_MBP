@@ -15,6 +15,10 @@ const CARD_SIZE: Vector2 = Vector2(126, 104)
 const DEFAULT_ART_WINDOW: Rect2 = Rect2(5, 19, 116, 67)
 
 var card_id: String = ""
+## 卡牌数据库里的基准数值（配色比较用；费用越低越好，攻/血越高越好）。
+var base_cost: int = 0
+var base_attack: int = 0
+var base_health: int = 0
 
 @onready var background_sprite: Sprite2D = %BackgroundSprite
 @onready var border_sprite: Sprite2D = %BorderSprite
@@ -35,14 +39,28 @@ var card_id: String = ""
 
 ## 注入卡牌数据与拥有数量。必须在 add_child 之后调用（依赖 @onready 节点）。
 ## status_text 非空时替换左下角状态文字（例如“拥有 2 · 编入 1”）。
-func setup(card: CardData, owned_count: int, status_text: String = "", show_owned: bool = true, compact: bool = false) -> void:
+## base_card：数据库里的原始卡（配色比较的基准）。战斗手牌传的是「有效费用/攻击」的副本，
+## 不传就会拿当前值当基准，导致颜色永远是白色。
+func setup(
+	card: CardData,
+	owned_count: int,
+	status_text: String = "",
+	show_owned: bool = true,
+	compact: bool = false,
+	base_card: CardData = null,
+) -> void:
 	card_id = card.card_id
+	var reference: CardData = base_card if base_card != null else card
+	base_cost = maxi(reference.cost, 0)
+	base_attack = reference.attack
+	base_health = reference.health
 	content.visible = not compact
 	_apply_background_sprite(card.rarity)
 	_apply_border_sprite(card.rarity)
 	_apply_art_sprite(card)
 	_apply_stats(card)
 	cost_label.text = str(maxi(card.cost, 0))
+	_apply_cost_color(maxi(card.cost, 0))
 	name_label.text = card.display_name()
 	name_label.add_theme_color_override("font_color", _rarity_color(card.rarity))
 	meta_label.text = _build_meta_text(card)
@@ -61,7 +79,9 @@ func setup(card: CardData, owned_count: int, status_text: String = "", show_owne
 
 
 func set_cost(value: int) -> void:
-	cost_label.text = str(maxi(value, 0))
+	var shown: int = maxi(value, 0)
+	cost_label.text = str(shown)
+	_apply_cost_color(shown)
 
 
 ## 让按钮本体彻底隐形：清空所有状态的按钮样式盒（含焦点框），
@@ -86,8 +106,31 @@ func set_playable_highlight(enabled: bool) -> void:
 
 ## 覆盖攻击/生命显示（用于手牌实例加成，如“军阀点数”）。
 func set_stats(attack: int, health: int) -> void:
-	attack_label.text = str(maxi(attack, 0))
-	health_label.text = str(maxi(health, 1))
+	var shown_attack: int = maxi(attack, 0)
+	var shown_health: int = maxi(health, 1)
+	attack_label.text = str(shown_attack)
+	health_label.text = str(shown_health)
+	_apply_attack_color(shown_attack)
+	_apply_health_color(shown_health)
+
+
+## 费用配色：低于数据库原始费用 → 绿（更便宜）；相等 → 白；更高 → 红。
+func _apply_cost_color(value: int) -> void:
+	cost_label.add_theme_color_override("font_color", StatColors.compare(value, base_cost, false))
+
+
+## 攻击配色：高于数据库原始攻击 → 绿；相等 → 白；更低 → 红。
+func _apply_attack_color(value: int) -> void:
+	attack_label.add_theme_color_override(
+		"font_color", StatColors.compare(value, base_attack, true)
+	)
+
+
+## 生命配色：高于数据库原始生命 → 绿；相等 → 白；更低 → 红。
+func _apply_health_color(value: int) -> void:
+	health_label.add_theme_color_override(
+		"font_color", StatColors.compare(value, base_health, true)
+	)
 
 
 func _build_meta_text(card: CardData) -> String:
@@ -197,6 +240,9 @@ func _apply_stats(card: CardData) -> void:
 	if is_entity:
 		attack_label.text = str(card.attack)
 		health_label.text = str(card.health)
+		# 数据库原值 → 白色；手牌实例加成由 set_stats 覆盖成绿/红。
+		_apply_attack_color(card.attack)
+		_apply_health_color(card.health)
 
 
 func _update_owned_text(owned_count: int) -> void:

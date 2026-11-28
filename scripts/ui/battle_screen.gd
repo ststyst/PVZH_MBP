@@ -166,6 +166,8 @@ var _animation_busy: bool = false
 ## 攻击动画期间临时抬层的实体视图（键 = BattleEntityView）。
 ## _update_slot_button 刷新时会跳过这些视图的 z_index，否则会盖不住受击方。
 var _layer_raised_views: Dictionary = {}
+## 手牌实例状态变了（费用/攻击加成），等下一帧统一重建手牌。
+var _hand_dirty: bool = false
 ## 逐列战斗驱动协程是否正在运行（防止重复启动）。
 var _combat_sequence_running: bool = false
 var _empty_slot_style: StyleBoxEmpty = null
@@ -480,7 +482,7 @@ func _rebuild_mulligan_row() -> void:
 		columns[index % 2].add_child(entry)
 		var tile: CardTile = CARD_TILE_SCENE.instantiate()
 		entry.add_child(tile)
-		tile.setup(card, 0, "", false, true)
+		tile.setup(card, 0, "", false, true, engine.get_card(card.card_id))
 		var refresh := Button.new()
 		refresh.text = "刷新"
 		refresh.disabled = index < _mulligan_used.size() and _mulligan_used[index]
@@ -1087,10 +1089,14 @@ func _on_engine_changed() -> void:
 	_refresh_all()
 
 
-## 某个实体/手牌实例的显示状态变了（掉血、加攻、获得词缀…）：
-## 只刷新受影响的那个实体视图，不重建整屏（也不会打断正在播的动画）。
+## 某个实体/手牌实例的显示状态变了（掉血、加攻、获得词缀、手牌费用修正…）：
+## - 实体：只刷新那一个实体视图，不重建整屏（也不会打断正在播的动画）；
+## - 手牌实例：标记脏，由 _process 每帧最多重建一次手牌（费用/攻击加成会变）。
 func _on_display_state_changed(handle: Variant) -> void:
-	if engine == null or not (handle is BattleEntity):
+	if engine == null:
+		return
+	if not (handle is BattleEntity):
+		_hand_dirty = true
 		return
 	var entity: BattleEntity = handle
 	var view: BattleEntityView = _views_by_entity_id.get(entity.entity_id, null) as BattleEntityView
@@ -1297,7 +1303,8 @@ func _rebuild_hand() -> void:
 		# 手牌只显示卡面素材，按钮底板完全隐形（否则会看到未遮挡的灰色底）。
 		tile.set_chrome_hidden(true)
 		current_column.add_child(tile)
-		tile.setup(card, 0, "", false, true)
+		# 传数据库原卡做配色基准：card 是「有效费用/攻击」的副本。
+		tile.setup(card, 0, "", false, true, engine.get_card(card.card_id))
 		tile.set_cost(engine.effective_hand_cost(player_side, index))
 		# 手牌实例加成（例如“军阀点数”）实时显示在攻击/生命上。
 		var instance: BattleCardInstance = state.hand[index]
@@ -1413,6 +1420,10 @@ func _process(delta: float) -> void:
 	_update_long_press(delta)
 	if engine == null or not _started:
 		return
+	# 手牌实例（费用/攻击加成）变了：每帧最多重建一次，避免一事件一次重建。
+	if _hand_dirty:
+		_hand_dirty = false
+		_rebuild_hand()
 	var key: String = _phase_key()
 	if key != _last_phase_key:
 		_last_phase_key = key
@@ -1776,7 +1787,7 @@ func _refresh_special_overlay() -> void:
 		return
 	var tile: CardTile = CARD_TILE_SCENE.instantiate()
 	_special_card_slot.add_child(tile)
-	tile.setup(card, 0, "特殊回合 · 费用 -1")
+	tile.setup(card, 0, "特殊回合 · 费用 -1", true, false, engine.get_card(card.card_id))
 	tile.disabled = true
 	tile.position = Vector2(maxf((_special_card_slot.size.x - 160.0) * 0.5, 0.0), 0.0)
 	_special_card_tile = tile

@@ -125,6 +125,7 @@ func setup(entity: BattleEntity) -> void:
 	health_label.text = str(entity.health)
 	attack_label.visible = true
 	health_label.visible = true
+	_apply_stat_colors(entity)
 
 
 ## 只刷新数值与名称（掉血 / 加攻 / 治疗等高频变化），不重设素材与布局。
@@ -138,6 +139,22 @@ func refresh_stats(entity: BattleEntity) -> void:
 	name_label.text = entity.display_name()
 	attack_label.text = str(entity.attack)
 	health_label.text = str(entity.health)
+	_apply_stat_colors(entity)
+
+
+## 攻击/生命数值的涨跌配色（规则见 StatColors，颜色常量也集中在那里）：
+## - 攻击：高于卡牌数据库初始攻击 → 绿；相等 → 白；低于 → 红
+## - 生命：低于当前生命上限（已受伤）→ 红；否则高于数据库初始生命 → 绿；其余白
+func _apply_stat_colors(entity: BattleEntity) -> void:
+	if entity == null or entity.card == null:
+		return
+	attack_label.add_theme_color_override(
+		"font_color", StatColors.compare(entity.attack, entity.card.attack, true)
+	)
+	health_label.add_theme_color_override(
+		"font_color",
+		StatColors.health(entity.health, entity.max_health, entity.card.health)
+	)
 
 
 func set_highlight(enabled: bool) -> void:
