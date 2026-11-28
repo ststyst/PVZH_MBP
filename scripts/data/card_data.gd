@@ -247,6 +247,8 @@ static func from_pack_dict(data: Dictionary, card_namespace: String = "") -> Car
 		)
 	elif not card.animation.is_empty():
 		card.animation_script = CardAnimationScript.parse(card.animation)
+	# 包里没有/解析出问题/为空时，回退到默认动画伪代码。
+	card.animation_script = CardAnimationScript.apply_fallback(card.animation_script)
 	card.class_label = str(data.get("class_label", ""))
 	card.rarity_label = str(data.get("rarity_label", ""))
 	var raw_keywords: Variant = data.get("keywords", [])

@@ -36,6 +36,25 @@ func test_csv_set_loaded() -> void:
 	assert_true(database.get_neutral_classes().has("neutral"))
 
 
+func test_empty_animation_uses_default_script() -> void:
+	# animation 列为空的卡，应自动拿到默认动画伪代码（data/battle/default_animation.txt）。
+	database.reload()
+	var checked: int = 0
+	for card_id: String in database.cards.keys():
+		var card: CardData = database.get_card(card_id)
+		if card == null or not card.animation.strip_edges().is_empty():
+			continue
+		assert_true(card.animation_script != null, "%s 应有动画脚本对象" % card_id)
+		assert_true(
+			card.animation_script.has_trigger("attack"),
+			"%s 的动画为空，应回退到默认攻击动画" % card_id
+		)
+		checked += 1
+		if checked >= 3:
+			break
+	assert_gt(checked, 0, "官方 CSV 里应有 animation 为空的卡（用于验证回退）")
+
+
 func test_card_fields() -> void:
 	database.reload()
 	var fireball: CardData = database.get_card("pvzh:fireball")

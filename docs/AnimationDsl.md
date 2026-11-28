@@ -159,11 +159,11 @@ when attack: play_animation(self, "swing", "whole"); wait(0.2); play_animation(t
 
 ```text
 when attack:
-    move_to(target, 0.1, -18, -12, "back_out")
-    play_animation(self, "attack_swing", "whole")
-    play_animation(target, "hit_flash", "art")
-    wait(0.16)
-    move_back(0.12)
+	move_to(target, 0.1, -18, -12, "back_out")
+	play_animation(self, "attack_swing", "whole")
+	play_animation(target, "hit_flash", "art")
+	wait(0.16)
+	move_back(0.12)
 ```
 
 ### 第 3 步：生效与验证
@@ -189,6 +189,31 @@ when attack:
 | 动画比预期短 | `play_animation` 只负责播放，cue 的等待时长取最长项；多段动作要配 `wait` |
 | 改了 CSV 没变化 | 存在编译过的 `official.cardpack`（见上） |
 | 手牌/卡面没有动画 | 当前只有场上实体（`BattleEntityView`）有 AnimationPlayer；手牌 `CardTile` 不支持动画 |
+
+## 默认动画伪代码（卡牌没写 / 写错时自动用）
+
+**文件**：`data/battle/default_animation.txt`（纯文本，可直接编辑，不需要改任何脚本）
+
+```text
+when attack:
+    move_to(target, 0.06, -18, 0, "ease_in")
+    play_animation(self, "hit", "whole")
+    play_animation(target, "hurt", "whole")
+    wait(0.02)
+    move_back(0.06, "ease_out")
+```
+
+- **什么时候用**：某张卡的 `animation` 列为空，**或**那列伪代码解析出错（`errors` 非空）时，
+  卡牌会自动改用这份默认动画（`CardAnimationScript.apply_fallback()`）。
+  语法错误仍然会出现在 `CardDatabase.load_errors` 与编译报告里，不会被静默吞掉。
+- **生效范围**：CSV 载入（`CardDatabase`）、卡包编译（编译产物里写入默认动画）、卡包载入
+  （`CardData.from_pack_dict`）三条路径一致。
+- **改完何时生效**：默认文本每次都在解析时读文件，所以保存后**重新载入卡牌**
+  （重开战斗 / 开发者面板重载卡数据库）即生效；不用重启编辑器，也不用改代码。
+- **注意**：默认动画里引用的 `hit` / `hurt` 需要在 `assets/animations/whole.tres` 里做出同名动画，
+  否则这两条会被静默跳过，只剩位移（这正是现在的状态，等你自己补动画）。
+- 想临时验证回退是否生效：把 `card_animation_script.gd` 的 `DEFAULT_SOURCE_PATH` 指到别的文件，
+  或直接改这个 txt 看战斗表现即可。
 
 ## 战斗层接口（联机方向）
 

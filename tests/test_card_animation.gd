@@ -159,3 +159,48 @@ func test_move_errors() -> void:
 	)
 	assert_eq(script.errors.size(), 9, "九个非法位移语句都应报错：%s" % [script.errors])
 	assert_true(script.instructions_for("attack").is_empty(), "报错的语句不应进入指令表")
+
+
+func test_default_animation_is_explicit_text() -> void:
+	# 默认动画必须以可编辑的纯文本保存（data/battle/default_animation.txt）。
+	var source: String = CardAnimationScript.default_source()
+	assert_true(source.length() > 0, "默认动画文件应存在且非空：%s" % CardAnimationScript.DEFAULT_SOURCE_PATH)
+	var default_script: CardAnimationScript = CardAnimationScript.default_script()
+	assert_eq(default_script.errors.size(), 0, "默认动画伪代码应能解析：%s" % [default_script.errors])
+	assert_true(default_script.has_trigger("attack"), "默认动画应包含 when attack")
+	var attack: Array = default_script.instructions_for("attack")
+	assert_eq(attack.size(), 5, "默认攻击动画应为 5 条语句")
+	assert_eq(str(attack[0].get("type", "")), "move_to")
+	assert_eq(float(attack[0].get("offset_x", 0.0)), -18.0)
+	assert_eq(float(attack[0].get("offset_y", 0.0)), 0.0)
+	assert_eq(str(attack[0].get("easing", "")), "ease_in")
+	assert_eq(str(attack[1].get("animation", "")), "hit")
+	assert_eq(str(attack[1].get("mode", "")), "whole")
+	assert_eq(str(attack[2].get("target", "")), "target")
+	assert_eq(str(attack[2].get("animation", "")), "hurt")
+	assert_eq(str(attack[3].get("type", "")), "wait")
+	assert_eq(str(attack[4].get("type", "")), "move_back")
+	assert_eq(str(attack[4].get("easing", "")), "ease_out")
+
+
+func test_default_animation_fallback() -> void:
+	# 空脚本 → 用默认动画。
+	var empty_script: CardAnimationScript = CardAnimationScript.parse("")
+	assert_true(empty_script.is_empty())
+	var resolved: CardAnimationScript = CardAnimationScript.apply_fallback(empty_script)
+	assert_true(resolved.has_trigger("attack"), "空动画应回退到默认动画")
+	assert_eq(resolved.errors.size(), 0)
+	# null 也回退。
+	var from_null: CardAnimationScript = CardAnimationScript.apply_fallback(null)
+	assert_true(from_null.has_trigger("attack"), "null 动画应回退到默认动画")
+	# 有语法错误的脚本 → 用默认动画（原脚本的错误列表仍然保留在传入对象上）。
+	var broken: CardAnimationScript = CardAnimationScript.parse("when attack:\n    play_animation(nobody, \"x\")")
+	assert_true(broken.has_errors())
+	var fixed: CardAnimationScript = CardAnimationScript.apply_fallback(broken)
+	assert_eq(fixed.errors.size(), 0, "回退得到的默认动画不应带错误")
+	assert_true(fixed.has_trigger("attack"))
+	# 正常脚本不被替换。
+	var own: CardAnimationScript = CardAnimationScript.parse(
+		"when die:\n    play_animation(self, \"death\")"
+	)
+	assert_true(CardAnimationScript.apply_fallback(own) == own, "合法动画不应被默认动画覆盖")

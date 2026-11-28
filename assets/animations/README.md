@@ -32,3 +32,10 @@
 - 动画只作用场上实体（`BattleEntityView`）；手牌 `CardTile` 目前没有 AnimationPlayer。
 - 通用特效：伪代码 `play_fx(self, "smoke")` 会实例化 `assets/battle/fx/smoke.tscn`
   （该目录需要自己创建）。
+
+## 默认动画（没写动画的卡会自动用）
+
+`data/battle/default_animation.txt`（纯文本，可直接改）是**所有卡的默认动画伪代码**：
+卡牌的 `animation` 列为空或语法出错时自动回退到它。当前默认是「攻击时快速贴上去、
+播 `hit`（自身）/ `hurt`（目标）、立刻归位」，所以做 `whole.tres` 时可以顺手做两个同名动画
+`hit`、`hurt`，否则默认动画只有位移、没有卡面变化。

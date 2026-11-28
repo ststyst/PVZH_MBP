@@ -123,6 +123,8 @@ static func compile_pack(
 		var animation_script: CardAnimationScript = CardAnimationScript.parse(animation)
 		for problem: String in animation_script.errors:
 			errors.append("%s：动画语法错误：%s" % [row_label, problem])
+		# 编译产物里也写入默认动画，保证打包后与直接读 CSV 的行为一致。
+		animation_script = CardAnimationScript.apply_fallback(animation_script)
 		for problem: String in ability_script.errors:
 			errors.append("%s：能力语法错误：%s" % [row_label, problem])
 		for problem: String in ability_script.validate_for_kind(kind):

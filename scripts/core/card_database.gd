@@ -266,6 +266,8 @@ func _load_row(
 	card.animation_script = CardAnimationScript.parse(card.animation)
 	for problem: String in card.animation_script.errors:
 		load_errors.append("卡牌 %s 动画语法错误：%s" % [english_name, problem])
+	# 动画为空或语法出错时回退到默认动画伪代码（data/battle/default_animation.txt）。
+	card.animation_script = CardAnimationScript.apply_fallback(card.animation_script)
 	card.ability_script = CardEffectScript.parse(card.ability)
 	for problem: String in card.ability_script.errors:
 		load_errors.append("卡牌 %s 能力语法错误：%s" % [english_name, problem])

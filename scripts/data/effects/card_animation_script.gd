@@ -27,6 +27,9 @@ extends RefCounted
 const TRIGGERS: Array[String] = ["attack", "ability", "die", "cast"]
 const SELECTORS: Array[String] = ["self", "target", "global"]
 const MODES: Array[String] = ["whole", "background", "art"]
+## 默认动画伪代码文件（纯文本，可直接编辑）：卡牌自己的 animation 为空、
+## 或那份伪代码解析出错时，自动回退到这里的内容。
+const DEFAULT_SOURCE_PATH: String = "res://data/battle/default_animation.txt"
 ## 位移动画的缓动预设（由表现层映射成 Tween 的 trans/ease）。
 const EASINGS: Array[String] = [
 	"linear", "ease_in", "ease_out", "ease_in_out", "back_out", "bounce_out"
@@ -79,6 +82,30 @@ static func parse(source: String) -> CardAnimationScript:
 			continue
 		for statement: String in stripped.split(";"):
 			script._parse_statement(statement.strip_edges(), current_trigger, index + 1)
+	return script
+
+
+## 读取默认动画伪代码原文（每次读文件：改完本文件重新载入卡牌就生效）。
+static func default_source() -> String:
+	if not FileAccess.file_exists(DEFAULT_SOURCE_PATH):
+		return ""
+	var file: FileAccess = FileAccess.open(DEFAULT_SOURCE_PATH, FileAccess.READ)
+	if file == null:
+		return ""
+	return file.get_as_text()
+
+
+## 解析默认动画伪代码。
+static func default_script() -> CardAnimationScript:
+	return parse(default_source())
+
+
+## 卡牌动画为空、或解析出错时换成默认动画；正常脚本原样返回。
+static func apply_fallback(script: CardAnimationScript) -> CardAnimationScript:
+	if script == null:
+		return default_script()
+	if script.has_errors() or script.is_empty():
+		return default_script()
 	return script
 
 

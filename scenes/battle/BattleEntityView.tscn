@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://b0c1h3k4b37xh" path="res://scripts/battle/battle_entity_view.gd" id="1_entity_view"]
 [ext_resource type="FontFile" uid="uid://coev8tv05u67j" path="res://assets/ttf/VonwaonBitmap-16pxLite.ttf" id="2_m5twh"]
-[ext_resource type="AnimationLibrary" path="res://assets/animations/whole.tres" id="2_whole_lib"]
+[ext_resource type="AnimationLibrary" uid="uid://dfqj5tsgubswo" path="res://assets/animations/whole.tres" id="2_whole_lib"]
 [ext_resource type="AnimationLibrary" path="res://assets/animations/background.tres" id="3_background_lib"]
 [ext_resource type="AnimationLibrary" path="res://assets/animations/art.tres" id="4_art_lib"]
 
@@ -66,8 +66,13 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+offset_left = 15.273787
+offset_top = 56.285347
+offset_right = -83.02893
+offset_bottom = -51.650635
 grow_horizontal = 2
 grow_vertical = 2
+rotation = -0.09327048
 pivot_offset = Vector2(68, 42)
 mouse_filter = 2
 
