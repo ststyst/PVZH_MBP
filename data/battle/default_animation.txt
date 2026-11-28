@@ -9,10 +9,13 @@
 # 当前默认：攻击时快速贴到目标旁边 → 播自身 hit / 目标 hurt → 立刻归位。
 # 注意 "hit" / "hurt" 需要你在 assets/animations/*.tres 里做出同名动画，
 # 没有对应动画时会静默跳过（只剩位移效果）。
+#
+# 时长规则：`wait` 的秒数要 >= 上一条 `move_to` 的秒数，否则位移还没走完
+# 就被 `move_back` 打断（表现为"没看见移动"）。这里 0.12 移动 + 0.14 停留（含 0.02 缓冲）。
 
 when attack:
-    move_to(target, 0.06, -18, 0, "ease_in")
-    play_animation(self, "hit", "whole")
-    play_animation(target, "hurt", "whole")
-    wait(0.02)
-    move_back(0.06, "ease_out")
+	move_to(target, 0.12, -18, 0, "ease_in")
+	play_animation(self, "hit", "whole")
+	play_animation(target, "hurt", "whole")
+	wait(0.14)
+	move_back(0.12, "ease_out")

@@ -186,6 +186,8 @@ when attack:
 | 动画完全没反应 | 动画名拼错（静默跳过）；库文件没保存；轨道路径不是相对 `root_node` |
 | 动画播了但卡面没变 | 模式选错：`art` 只动外观、`background` 只动背景、数值/名称要 `whole` |
 | 整体位置在抖 | 在 `whole` 库里给 `position` 打了关键帧，同时又用了 `move_to`（Tween 和动画抢同一属性）。位移统一交给 `move_to` / `move_back` |
+| **看不见位移** | `wait` 的秒数 < `move_to` 的秒数，位移被后面的 `move_back` 提前打断（见「默认动画伪代码」的时长规则） |
+| **实体跑偏/像消失** | `move_to` 结束时必须能复位（脚本里写 `move_back`，或依赖动画播完自动复位）。2026-11-28 已修：视图位移改成基于 offset，棋盘重排也不会累积偏移 |
 | 动画比预期短 | `play_animation` 只负责播放，cue 的等待时长取最长项；多段动作要配 `wait` |
 | 改了 CSV 没变化 | 存在编译过的 `official.cardpack`（见上） |
 | 手牌/卡面没有动画 | 当前只有场上实体（`BattleEntityView`）有 AnimationPlayer；手牌 `CardTile` 不支持动画 |
@@ -196,13 +198,16 @@ when attack:
 
 ```text
 when attack:
-    move_to(target, 0.06, -18, 0, "ease_in")
-    play_animation(self, "hit", "whole")
-    play_animation(target, "hurt", "whole")
-    wait(0.02)
-    move_back(0.06, "ease_out")
+	move_to(target, 0.12, -18, 0, "ease_in")
+	play_animation(self, "hit", "whole")
+	play_animation(target, "hurt", "whole")
+	wait(0.14)
+	move_back(0.12, "ease_out")
 ```
 
+- **时长规则（重要）**：`wait` 的秒数要 **≥ 上一条 `move_to` 的秒数**。否则位移还没走完，
+  下一个 `move_back` 就会把移动打断 —— 表现就是「完全没看见移动」。
+  例如 `move_to(..., 0.5)` 后面只写 `wait(0.02)`，实体只会挪动零点几像素。
 - **什么时候用**：某张卡的 `animation` 列为空，**或**那列伪代码解析出错（`errors` 非空）时，
   卡牌会自动改用这份默认动画（`CardAnimationScript.apply_fallback()`）。
   语法错误仍然会出现在 `CardDatabase.load_errors` 与编译报告里，不会被静默吞掉。

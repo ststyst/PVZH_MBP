@@ -66,14 +66,10 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 15.273787
-offset_top = 56.285347
-offset_right = -83.02893
-offset_bottom = -51.650635
+offset_right = -98.302734
+offset_bottom = -107.936035
 grow_horizontal = 2
 grow_vertical = 2
-rotation = -0.09327048
-pivot_offset = Vector2(68, 42)
 mouse_filter = 2
 
 [node name="ArtSprite" type="Sprite2D" parent="WholeRoot/ArtRoot" unique_id=731111801]

@@ -60,9 +60,10 @@ const MOTION_EASINGS: Dictionary = {
 
 
 var _last_card: CardData = null
-## 位移状态：首次 move_by 时记住原位，move_back / reset_motion 用它复位。
+## 位移状态：首次 move_by 时记住原位的四个 offset，
+## 之后一律用「锚点 + 这些 offset」推导原位，避免棋盘重排后累积偏移。
 var _motion_active: bool = false
-var _motion_home: Vector2 = Vector2.ZERO
+var _motion_home_offsets: Vector4 = Vector4.ZERO
 var _motion_saved_z: int = 0
 var _motion_tween: Tween = null
 
@@ -191,46 +192,62 @@ func stop_animation(mode: String = MODE_WHOLE) -> void:
 		player.stop()
 
 
-## 把整个视图平移到「当前显示位置 + offset」，返回时长（秒）。
+## 把整个视图平移到「原位 + offset」，返回时长（秒）。
 ## 用于「攻击者扑到受击者身上」这类运行时才知道坐标的位移：
 ## 目标坐标由 UI 在播放动画时用两个视图的 global_position 相减得到。
 ## easing 见 MOTION_EASINGS（默认 ease_in：加速撞过去，收尾干脆有冲击力）。
 func move_by(offset: Vector2, seconds: float, easing: String = "ease_in") -> float:
 	var duration: float = maxf(seconds, 0.01)
 	if not _motion_active:
-		_motion_home = position
+		_motion_home_offsets = Vector4(offset_left, offset_top, offset_right, offset_bottom)
 		_motion_saved_z = z_index
 		_motion_active = true
 	z_index = maxi(z_index, MOTION_Z_INDEX)
-	_start_motion_tween(_motion_home + offset, duration, easing)
+	_start_motion_tween(_home_position() + offset, duration, easing)
 	return duration
 
 
-## 回到本次移动前的位置，返回时长（秒）；没移动过则返回 0。
+## 回到原位，返回时长（秒）；没移动过则返回 0。
 func move_home(seconds: float, easing: String = "ease_out") -> float:
 	if not _motion_active:
 		return 0.0
 	var duration: float = maxf(seconds, 0.01)
-	_start_motion_tween(_motion_home, duration, easing)
+	_start_motion_tween(_home_position(), duration, easing)
 	if _motion_tween != null and _motion_tween.is_valid():
 		_motion_tween.finished.connect(_on_motion_finished, CONNECT_ONE_SHOT)
 	return duration
 
 
 ## 立即复位（动画脚本没写 move_back、或视图被复用/打断时兜底）。
+## 直接还原四个 offset，而不是写回缓存的 position：这样布局尺寸变化后依然贴合格子。
 func reset_motion() -> void:
 	if _motion_tween != null and _motion_tween.is_valid():
 		_motion_tween.kill()
 	_motion_tween = null
 	if not _motion_active:
 		return
-	position = _motion_home
+	offset_left = _motion_home_offsets.x
+	offset_top = _motion_home_offsets.y
+	offset_right = _motion_home_offsets.z
+	offset_bottom = _motion_home_offsets.w
 	z_index = _motion_saved_z
 	_motion_active = false
 
 
 func is_moving() -> bool:
 	return _motion_active
+
+
+## 原位（未位移时）的 position：锚点 × 父容器尺寸 + 记下的 offset。
+## 不用缓存的 position，避免棋盘/手牌重排导致基准漂移。
+func _home_position() -> Vector2:
+	var parent_control: Control = get_parent() as Control
+	if parent_control == null:
+		return position
+	return Vector2(
+		parent_control.size.x * anchor_left + _motion_home_offsets.x,
+		parent_control.size.y * anchor_top + _motion_home_offsets.y,
+	)
 
 
 func _start_motion_tween(target_position: Vector2, duration: float, easing: String) -> void:
@@ -246,8 +263,8 @@ func _on_motion_finished() -> void:
 	_motion_tween = null
 	if not _motion_active:
 		return
-	z_index = _motion_saved_z
-	_motion_active = false
+	# 回到原位时也走 offset 还原，布局中途变化也不会残留偏移。
+	reset_motion()
 
 
 ## 播放通用特效场景（assets/battle/fx/<name>.tscn）。
